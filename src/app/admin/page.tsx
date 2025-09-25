@@ -306,17 +306,8 @@ export default function AdminPage() {
               </div>
             </nav>
             <div className="pt-4 border-t border-border space-y-2">
+                       
               <div className="flex items-center justify-between">
-                <Button variant="ghost" size="sm" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'} title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}>
-                  {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </Button>
-                <Link href="/landing">
-                  <Button variant="ghost" size="sm">
-                    <LogOut className="h-4 w-4" />
-                    <span className="ml-2">Sair</span>
-                  </Button>
-                </Link>
-              </div>              <div className="flex items-center justify-between">
                 <Link href="#" className="flex items-center space-x-3 px-3 py-2 text-foreground hover:bg-muted rounded-lg">
                   <Settings className="h-5 w-5" />
                   <span>Configurações</span>
