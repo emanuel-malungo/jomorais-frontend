@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@/assets/styles/globals.css";
+import icon from "../assets/images/icon.png";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Jomorais | Sistema de gestao escolar",
   description: "Sistema de gestao escolar",
+  icons: {
+    icon: icon.src,
+    shortcut: icon.src,
+    apple: icon.src,
+  },
 };
 
 export default function RootLayout({
