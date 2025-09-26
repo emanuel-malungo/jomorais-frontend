@@ -546,19 +546,19 @@ export default function AdminPage() {
               <div className="bg-card/80 rounded-lg p-5 border border-border/50 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <CreditCard className="h-5 w-5 text-green-600" />
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <CreditCard className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">Pagamentos</p>
                       <p className="text-xs text-muted-foreground">Este mês</p>
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-green-600">68%</span>
+                  <span className="text-lg font-bold text-green-600 dark:text-green-400">68%</span>
                 </div>
                 <div className="space-y-2">
                   <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-500" style={{ width: "68%" }}></div>
+                    <div className="h-full bg-gradient-to-r from-green-500 to-green-600 dark:from-green-400 dark:to-green-500 rounded-full transition-all duration-500" style={{ width: "68%" }}></div>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>1,938 de 2,847 alunos</span>
@@ -571,19 +571,19 @@ export default function AdminPage() {
               <div className="bg-card/80 rounded-lg p-5 border border-border/50 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Users className="h-5 w-5 text-blue-600" />
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">Ocupação</p>
                       <p className="text-xs text-muted-foreground">Das turmas</p>
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-blue-600">82%</span>
+                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">82%</span>
                 </div>
                 <div className="space-y-2">
                   <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500" style={{ width: "82%" }}></div>
+                    <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 rounded-full transition-all duration-500" style={{ width: "82%" }}></div>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>41 de 50 turmas</span>
@@ -596,19 +596,19 @@ export default function AdminPage() {
               <div className="bg-card/80 rounded-lg p-5 border border-border/50 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <Award className="h-5 w-5 text-orange-600" />
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                      <Award className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">Notas</p>
                       <p className="text-xs text-muted-foreground">Lançadas</p>
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-orange-600">54%</span>
+                  <span className="text-lg font-bold text-orange-600 dark:text-orange-400">54%</span>
                 </div>
                 <div className="space-y-2">
                   <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all duration-500" style={{ width: "54%" }}></div>
+                    <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600 dark:from-orange-400 dark:to-orange-500 rounded-full transition-all duration-500" style={{ width: "54%" }}></div>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>153 de 284 disciplinas</span>
@@ -621,22 +621,22 @@ export default function AdminPage() {
             {/* Quick insights */}
             <div className="mt-6 pt-6 border-t border-border/50">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="p-1 bg-green-500 rounded-full">
+                <div className="flex items-center space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/30">
+                  <div className="p-1 bg-green-500 dark:bg-green-600 rounded-full">
                     <TrendingUp className="h-3 w-3 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-green-800">Meta de pagamentos atingida</p>
-                    <p className="text-xs text-green-600">68% supera a meta de 65%</p>
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200">Meta de pagamentos atingida</p>
+                    <p className="text-xs text-green-600 dark:text-green-300">68% supera a meta de 65%</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="p-1 bg-orange-500 rounded-full">
+                <div className="flex items-center space-x-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800/30">
+                  <div className="p-1 bg-orange-500 dark:bg-orange-600 rounded-full">
                     <Clock className="h-3 w-3 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-orange-800">Atenção: Lançamento de notas</p>
-                    <p className="text-xs text-orange-600">46% das disciplinas pendentes</p>
+                    <p className="text-sm font-medium text-orange-800 dark:text-orange-200">Atenção: Lançamento de notas</p>
+                    <p className="text-xs text-orange-600 dark:text-orange-300">46% das disciplinas pendentes</p>
                   </div>
                 </div>
               </div>
