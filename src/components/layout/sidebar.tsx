@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Separator } from "@/components/ui/separator"
 import icon from "@/assets/images/icon.png"
 
 import { 
@@ -29,8 +28,6 @@ import {
   Wallet,
   Sparkles,
   LogOut,
-  Database,
-  Zap
 } from "lucide-react"
 
 export interface MenuItem {
@@ -137,16 +134,15 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
 
   const SidebarContent = () => (
     <div className={cn(
-      "flex h-full flex-col bg-gradient-to-b from-[#182F59] via-[#1a3260] to-[#182F59] shadow-2xl transition-all duration-300",
+      "flex h-full flex-col bg-white shadow-lg transition-all duration-300 border-r border-gray-200",
       isCollapsed ? "w-16" : "w-72"
     )}>
       {/* Header com logo */}
-      <div className="flex h-20 items-center px-4 bg-gradient-to-r from-[#182F59] to-[#1a3260] border-b border-[#FFD002]/20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#FFD002]/5 to-transparent"></div>
+      <div className="flex h-20 items-center px-4 bg-white border-b border-gray-200">
         {!isCollapsed && (
-          <div className="flex items-center space-x-3 relative z-10">
+          <div className="flex items-center space-x-3">
             <div className="relative">
-              <div className="h-12 w-12 bg-gradient-to-br from-[#FFD002] via-[#FFD002] to-[#FFC107] rounded-2xl flex items-center justify-center shadow-xl ring-2 ring-[#FFD002]/30">
+              <div className="h-12 w-12 border-1 rounded-2xl flex items-center justify-center">
                 <Image
                   src={icon}
                   alt="JoMorais Logo"
@@ -157,9 +153,9 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
               </div>
             </div>
             <div>
-              <span className="text-2xl font-bold text-white">JoMorais</span>
+              <span className="text-2xl font-bold text-gray-800">JoMorais</span>
               <div className="flex items-center space-x-2">
-                <p className="text-xs text-[#FFD002] font-semibold">Sistema Escolar</p>
+                <p className="text-xs text-[#FFC506] font-semibold">Sistema Escolar</p>
               </div>
             </div>
           </div>
@@ -167,9 +163,9 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#FFD002]/20">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <TooltipProvider delayDuration={0}>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {menuItems.map((item) => {
               if (!item.children) {
                 // Item simples
@@ -181,31 +177,28 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "w-full justify-start h-11 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                            "w-full justify-start h-11 rounded-lg transition-all duration-200",
                             isCollapsed ? "justify-center px-2" : "px-3",
                             item.href && isActive(item.href) 
-                              ? "bg-gradient-to-r from-[#FFD002]/20 to-[#FFD002]/10 text-white shadow-lg ring-1 ring-[#FFD002]/30" 
-                              : "hover:bg-gradient-to-r hover:from-[#FFD002]/10 hover:to-transparent hover:shadow-md text-white/80 hover:text-white"
+                              ? "bg-gray-100 text-gray-900" 
+                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                           )}
                         >
-                          {item.href && isActive(item.href) && (
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#FFD002] to-[#FFC107] rounded-r-full"></div>
-                          )}
                           <item.icon className={cn(
-                            "h-5 w-5 transition-all duration-300",
+                            "h-5 w-5 transition-colors duration-200",
                             !isCollapsed && "mr-3",
                             item.href && isActive(item.href) 
-                              ? "text-[#FFD002] drop-shadow-sm" 
-                              : "text-white/70 group-hover:text-[#FFD002] group-hover:scale-110"
+                              ? "text-gray-900" 
+                              : "text-gray-500"
                           )} />
                           {!isCollapsed && (
-                            <span className="flex-1 text-left text-sm font-medium leading-tight">{item.title}</span>
+                            <span className="flex-1 text-left text-sm font-medium">{item.title}</span>
                           )}
                         </Button>
                       </Link>
                     </TooltipTrigger>
                     {isCollapsed && (
-                      <TooltipContent side="right" className="font-medium bg-[#1a3260] border-[#FFD002]/20 text-white">
+                      <TooltipContent side="right" className="font-medium">
                         {item.title}
                       </TooltipContent>
                     )}
@@ -226,34 +219,28 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "w-full justify-start h-11 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                            "w-full justify-start h-11 rounded-lg transition-all duration-200",
                             isCollapsed ? "justify-center px-2" : "px-3",
                             hasActive 
-                              ? "bg-gradient-to-r from-[#FFD002]/20 to-[#FFD002]/10 text-white shadow-lg ring-1 ring-[#FFD002]/30" 
-                              : "hover:bg-gradient-to-r hover:from-[#FFD002]/10 hover:to-transparent hover:shadow-md text-white/80 hover:text-white"
+                              ? "bg-gray-100 text-gray-900 border border-[#FFC506]" 
+                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                           )}
                         >
-                          {hasActive && (
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#FFD002] to-[#FFC107] rounded-r-full"></div>
-                          )}
                           <item.icon className={cn(
-                            "h-5 w-5 transition-all duration-300",
+                            "h-5 w-5 transition-colors duration-200",
                             !isCollapsed && "mr-3",
                             hasActive 
-                              ? "text-[#FFD002] drop-shadow-sm" 
-                              : "text-white/70 group-hover:text-[#FFD002] group-hover:scale-110"
+                              ? "text-[#FFC506]" 
+                              : "text-gray-500"
                           )} />
                           {!isCollapsed && (
                             <>
-                              <span className="flex-1 text-left text-sm font-medium leading-tight">{item.title}</span>
+                              <span className="flex-1 text-left text-sm font-medium">{item.title}</span>
                               <div className={cn(
-                                "ml-2 transition-all duration-300 shrink-0",
+                                "ml-2 transition-transform duration-200",
                                 isExpanded && "rotate-90"
                               )}>
-                                <ChevronRight className={cn(
-                                  "h-4 w-4",
-                                  hasActive ? "text-[#FFD002]" : "text-white/50 group-hover:text-[#FFD002]"
-                                )} />
+                                <ChevronRight className="h-4 w-4 text-gray-400" />
                               </div>
                             </>
                           )}
@@ -261,7 +248,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                       </CollapsibleTrigger>
                     </TooltipTrigger>
                     {isCollapsed && (
-                      <TooltipContent side="right" className="font-medium bg-[#1a3260] border-[#FFD002]/20 text-white">
+                      <TooltipContent side="right" className="font-medium">
                         {item.title}
                       </TooltipContent>
                     )}
@@ -270,32 +257,32 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                   {!isCollapsed && (
                     <CollapsibleContent className="space-y-1 overflow-hidden">
                       <div className="ml-6 space-y-1 relative">
-                        <div className="absolute left-2 top-0 bottom-0 w-px bg-gradient-to-b from-[#FFD002]/30 via-[#FFD002]/20 to-transparent"></div>
+                        <div className="absolute left-2 top-0 bottom-0 w-px bg-gray-200"></div>
                         {item.children?.map((child) => (
                           <Link key={child.title} href={child.href || "#"}>
                             <Button
                               variant="ghost"
                               size="sm"
                               className={cn(
-                                "w-full justify-start h-9 text-sm rounded-lg transition-all duration-300 group relative pl-6 pr-3",
+                                "w-full justify-start h-9 text-sm rounded-lg transition-all duration-200 pl-6 pr-3",
                                 child.href && isActive(child.href) 
-                                  ? "bg-gradient-to-r from-[#FFD002]/25 to-[#FFD002]/10 text-white font-semibold shadow-md ring-1 ring-[#FFD002]/20" 
-                                  : "hover:bg-[#FFD002]/10 hover:shadow-sm text-white/70 hover:text-white"
+                                  ? "bg-gray-100 text-gray-900 border border-[#FFC506]" 
+                                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                               )}
                             >
                               <div className={cn(
-                                "absolute left-2 top-1/2 transform -translate-y-1/2 w-1.5 h-1.5 rounded-full transition-all duration-300",
+                                "absolute left-2 top-1/2 transform -translate-y-1/2 w-1.5 h-1.5 rounded-full transition-colors duration-200",
                                 child.href && isActive(child.href) 
-                                  ? "bg-[#FFD002] shadow-lg shadow-[#FFD002]/50" 
-                                  : "bg-white/30 group-hover:bg-[#FFD002] group-hover:shadow-md group-hover:shadow-[#FFD002]/30"
+                                  ? "bg-[#FFC506]" 
+                                  : "bg-gray-300"
                               )}></div>
                               <child.icon className={cn(
-                                "h-4 w-4 mr-3 ml-2 transition-all duration-300 shrink-0",
+                                "h-4 w-4 mr-3 ml-2 transition-colors duration-200",
                                 child.href && isActive(child.href) 
-                                  ? "text-[#FFD002]" 
-                                  : "text-white/60 group-hover:text-[#FFD002] group-hover:scale-110"
+                                  ? "text-[#FFC506]" 
+                                  : "text-gray-500"
                               )} />
-                              <span className="flex-1 text-left text-xs leading-tight">{child.title}</span>
+                              <span className="flex-1 text-left text-xs">{child.title}</span>
                             </Button>
                           </Link>
                         ))}
@@ -311,14 +298,14 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
 
       {/* Footer com informações do sistema e logout */}
       {!isCollapsed && (
-        <div className="border-t border-[#FFD002]/20 px-4 py-4 space-y-4 bg-gradient-to-r from-[#182F59] to-[#1a3260]">
+        <div className="border-t border-gray-200 px-4 py-4 space-y-4 bg-white">
           {/* Version and Copyright */}
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center space-x-2">
-              <Sparkles className="h-4 w-4 text-[#FFD002] animate-pulse" />
-              <span className="text-sm font-bold text-[#FFD002]">v2.1.0 Pro</span>
+              <Sparkles className="h-4 w-4 text-[#FFC506]" />
+              <span className="text-sm font-bold text-[#FFC506]">v2.1.0 Pro</span>
             </div>
-            <div className="text-xs text-white/60">
+            <div className="text-xs text-gray-500">
               © 2025 JoMorais - Gestão Escolar
             </div>
           </div>
@@ -326,9 +313,9 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
           {/* Logout Button */}
           <Button 
             variant="outline" 
-            className="w-full border-[#FFD002]/30 bg-transparent text-white hover:bg-[#FFD002] hover:text-[#182F59] hover:border-[#FFD002] transition-all duration-300 group"
+            className="w-full border-gray-300 bg-white text-gray-600 hover:bg-red-200 hover:text-white hover:border-red-200 transition-all duration-200"
           >
-            <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
+            <LogOut className="h-4 w-4 mr-2" />
             Terminar Sessão
           </Button>
         </div>
@@ -336,18 +323,18 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
 
       {/* Collapsed Footer */}
       {isCollapsed && (
-        <div className="border-t border-[#FFD002]/20 px-2 py-4 space-y-3">
+        <div className="border-t border-gray-200 px-2 py-4 space-y-3">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
                 variant="outline" 
                 size="sm"
-                className="w-full h-10 border-[#FFD002]/30 bg-transparent text-white hover:bg-[#FFD002] hover:text-[#182F59] p-0 cursor-pointer"
+                className="w-full h-10 border-gray-300 bg-white text-gray-600 hover:bg-red-200 hover:text-white hover:border-red-200 p-0"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#1a3260] border-[#FFD002]/20 text-white">
+            <TooltipContent side="right">
               Terminar Sessão
             </TooltipContent>
           </Tooltip>

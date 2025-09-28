@@ -12,7 +12,7 @@ const Container: React.FC<ContainerProps> = ({ children }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="flex h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <div className="hidden md:block w-72">
         <Sidebar />

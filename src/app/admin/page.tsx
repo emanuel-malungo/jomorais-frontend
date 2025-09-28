@@ -7,18 +7,14 @@ import {
   WelcomeHeader,
   StatCard,
   ChartCard,
-  MetricsCard,
-  QuickActions,
   RecentActivity,
   SystemStatus
 } from '@/components/dashboard';
 import { 
   Users, 
   GraduationCap, 
-  BookOpen, 
   DollarSign, 
   TrendingUp,
-  Calendar,
   Clock,
   Target,
   Award,
@@ -135,42 +131,6 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Cards de métricas adicionais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
-        <MetricsCard
-          title="Disciplinas Ativas"
-          value="45"
-          subtitle="+2 novas este mês"
-          icon={BookOpen}
-          iconColor="bg-gradient-to-br from-indigo-500 to-purple-600"
-          period="HOJE"
-        />
-        <MetricsCard
-          title="Aulas Ministradas"
-          value="312"
-          subtitle="98% de presença"
-          icon={Calendar}
-          iconColor="bg-gradient-to-br from-pink-500 to-rose-600"
-          period="SEMANA"
-        />
-        <MetricsCard
-          title="Avaliações"
-          value="89"
-          subtitle="16 pendentes"
-          icon={Target}
-          iconColor="bg-gradient-to-br from-cyan-500 to-blue-600"
-          period="MÊS"
-        />
-        <MetricsCard
-          title="Horas Letivas"
-          value="8.5h"
-          subtitle="Meta: 8h diárias"
-          icon={Clock}
-          iconColor="bg-gradient-to-br from-orange-500 to-red-600"
-          period="HOJE"
-        />
-      </div>
-
       {/* Charts principais */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
         {/* Evolução de matrículas */}
@@ -280,7 +240,8 @@ export default function Dashboard() {
       </div>
 
       {/* Seção de receitas e presença */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-10">
+       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
+        <div className="xl:col-span-2">
         {/* Receitas */}
         <ChartCard title="Receitas Mensais" icon={DollarSign}>
           <ResponsiveContainer width="100%" height={300}>
@@ -311,6 +272,7 @@ export default function Dashboard() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
+        </div>
 
         {/* Taxa de presença */}
         <ChartCard title="Taxa de Presença Semanal" icon={Clock}>
@@ -357,8 +319,7 @@ export default function Dashboard() {
       </div>
 
       {/* Seção final com ações e atividades */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <QuickActions />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <RecentActivity />
         <SystemStatus />
       </div>

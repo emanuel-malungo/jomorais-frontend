@@ -3,17 +3,11 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { 
   Settings, 
   LogOut, 
-  Bell, 
-  Search, 
   Menu,
-  Sun,
-  Zap,
   Shield,
-  Database
 } from 'lucide-react'
 
 // Mock user data - replace with actual user data
