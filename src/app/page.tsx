@@ -19,7 +19,6 @@ interface AuthFormData {
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState('');
   const router = useRouter();
 
   const {
@@ -35,39 +34,21 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: AuthFormData) => {
-	setLoginError('');
 	
 	try {
-	  // Simulação de autenticação - substitua pela sua lógica real
-	  // Credenciais de exemplo para demonstração
-	  const validEmail = 'admin@jomorais.com';
-	  const validPassword = 'admin123';
-	  
+	
 	  // Simula delay de autenticação
 	  await new Promise(resolve => setTimeout(resolve, 1500));
-	  
-	  if (data.email === validEmail && data.password === validPassword) {
-		// Login bem-sucedido - redireciona para admin
-		console.log('Login bem-sucedido!');
-		router.push('/admin');
-	  } else {
-		// Credenciais inválidas
-		setLoginError('Email ou senha incorretos. Tente: admin@jomorais.com / admin123');
-	  }
+	 
+	  router.push('/admin');
+	
 	} catch (error) {
 	  console.error('Erro na autenticação:', error);
-	  setLoginError('Erro interno. Tente novamente.');
 	}
   };
 
   return (
 	<div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-	  {/* Decorative background elements */}
-	  <div className="absolute inset-0 overflow-hidden">
-		<div className="absolute -top-40 -right-40 w-80 h-80 bg-[#FFD700]/10  rounded-full"></div>
-		<div className="absolute -bottom-40 -left-40 w-80 h-80 bg-[#2d5016]/10 rounded-full"></div>
-		<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-[#FFD700]/5 to-[#2d5016]/5 rounded-full"></div>
-	  </div>
 
 	  <div className="relative w-full max-w-md">
 
@@ -171,13 +152,6 @@ export default function LoginPage() {
 				Esqueci minha senha?
 			  </button>
 			</div>
-
-			{/* Error message */}
-			{loginError && (
-			  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-				{loginError}
-			  </div>
-			)}
 
 			{/* Login button */}
 			<Button
