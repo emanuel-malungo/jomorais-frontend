@@ -312,26 +312,6 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
       {/* Footer com informações do sistema e logout */}
       {!isCollapsed && (
         <div className="border-t border-[#FFD002]/20 px-4 py-4 space-y-4 bg-gradient-to-r from-[#182F59] to-[#1a3260]">
-          {/* System Info */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-2">
-                <Database className="h-3 w-3 text-[#FFD002]" />
-                <span className="text-white/70">Banco de Dados</span>
-              </div>
-              <span className="text-green-400 font-semibold">Conectado</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-2">
-                <Zap className="h-3 w-3 text-[#FFD002]" />
-                <span className="text-white/70">Performance</span>
-              </div>
-              <span className="text-[#FFD002] font-semibold">Excelente</span>
-            </div>
-          </div>
-
-          <Separator className="bg-[#FFD002]/20" />
-
           {/* Version and Copyright */}
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center space-x-2">
