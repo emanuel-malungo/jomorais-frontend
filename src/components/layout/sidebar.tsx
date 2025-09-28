@@ -49,8 +49,8 @@ const menuItems: MenuItem[] = [
     icon: Users,
     children: [
       { title: "Lista de Alunos", icon: Users, href: "/admin/student-management/list-student" },
-      { title: "Matrículas", icon: UserCheck, href: "/admin/student-management/matriculas" },
-      { title: "Confirmações", icon: GraduationCap, href: "/admin/student-management/confirmacoes" },
+      { title: "Matrículas", icon: GraduationCap, href: "/admin/student-management/enrolls" },
+      { title: "Confirmações", icon: UserCheck, href: "/admin/student-management/confirmacoes" },
       { title: "Transferências", icon: FileText, href: "/admin/student-management/transferencias" }
     ]
   },
