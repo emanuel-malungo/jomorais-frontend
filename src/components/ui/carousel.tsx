@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -64,10 +65,14 @@ export function Carousel({
               index === currentIndex ? "opacity-100" : "opacity-0"
             )}
           >
-            <img
+            <Image
               src={image}
               alt={`Slide ${index + 1}`}
+              fill
               className="w-full h-full object-cover"
+              style={{ objectFit: "cover" }}
+              sizes="100vw"
+              priority={index === currentIndex}
             />
           </div>
         ))}

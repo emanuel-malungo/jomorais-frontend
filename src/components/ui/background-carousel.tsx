@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface BackgroundCarouselProps {
@@ -55,10 +56,13 @@ export function BackgroundCarousel({
               index === currentIndex ? "opacity-100" : "opacity-0"
             )}
           >
-            <img
+            <Image
               src={image}
               alt=""
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority={index === 0}
             />
           </div>
         ))}
