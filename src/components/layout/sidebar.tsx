@@ -2,14 +2,15 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
+import icon from "@/assets/images/icon.png"
 
 import { 
   ChevronRight,
@@ -29,11 +30,6 @@ import {
   Wallet,
   Sparkles,
   LogOut,
-  Bell,
-  Shield,
-  User,
-  ChevronDown,
-  Activity,
   Database,
   Zap
 } from "lucide-react"
@@ -56,29 +52,32 @@ const menuItems: MenuItem[] = [
   {
     title: "Gestão de Alunos",
     icon: Users,
+    badge: "1.2k",
     children: [
-      { title: "Lista de Alunos", icon: Users, href: "/estudantes", badge: "1.2k" },
-      { title: "Matrículas", icon: UserCheck, href: "/estudantes/matriculas", badge: "45" },
-      { title: "Confirmações", icon: GraduationCap, href: "/estudantes/confirmacoes", badge: "12" },
-      { title: "Transferências", icon: FileText, href: "/estudantes/transferencias", badge: "3" }
+      { title: "Lista de Alunos", icon: Users, href: "/estudantes" },
+      { title: "Matrículas", icon: UserCheck, href: "/estudantes/matriculas" },
+      { title: "Confirmações", icon: GraduationCap, href: "/estudantes/confirmacoes" },
+      { title: "Transferências", icon: FileText, href: "/estudantes/transferencias" }
     ]
   },
   {
     title: "Gestão Acadêmica",
     icon: BookOpen,
+    badge: "28",
     children: [
       { title: "Disciplinas", icon: BookOpen, href: "/disciplinas" },
-      { title: "Turmas", icon: School, href: "/turmas", badge: "28" },
+      { title: "Turmas", icon: School, href: "/turmas" },
       { title: "Horários", icon: Clock, href: "/horarios" },
-      { title: "Notas", icon: FileText, href: "/notas", badge: "NEW" },
+      { title: "Notas", icon: FileText, href: "/notas" },
       { title: "Classes", icon: GraduationCap, href: "/admin/classes" }
     ]
   },
   {
     title: "Professores",
     icon: GraduationCap,
+    badge: "89",
     children: [
-      { title: "Lista de Professores", icon: GraduationCap, href: "/professores", badge: "89" },
+      { title: "Lista de Professores", icon: GraduationCap, href: "/professores" },
       { title: "Disciplinas do Docente", icon: BookOpen, href: "/professores/disciplinas" },
       { title: "Diretores de Turma", icon: UserCheck, href: "/professores/diretores" }
     ]
@@ -86,11 +85,12 @@ const menuItems: MenuItem[] = [
   {
     title: "Financeiro",
     icon: DollarSign,
+    badge: "156",
     children: [
-      { title: "Pagamentos", icon: Wallet, href: "/financeiro", badge: "156" },
-      { title: "Propinas", icon: DollarSign, href: "/financeiro/propinas", badge: "12" },
+      { title: "Pagamentos", icon: Wallet, href: "/financeiro" },
+      { title: "Propinas", icon: DollarSign, href: "/financeiro/propinas" },
       { title: "Serviços", icon: FileText, href: "/financeiro/servicos" },
-      { title: "Notas de Crédito", icon: FileText, href: "/financeiro/notas-credito", badge: "5" }
+      { title: "Notas de Crédito", icon: FileText, href: "/financeiro/notas-credito" }
     ]
   },
   {
@@ -117,15 +117,6 @@ const menuItems: MenuItem[] = [
 interface SidebarProps {
   isCollapsed?: boolean
   onToggleCollapse?: () => void
-}
-
-// Mock user data - replace with actual user data
-const currentUser = {
-  name: "João Morais",
-  email: "joao.morais@jomorais.edu.ao",
-  avatar: "/api/placeholder/40/40",
-  role: "Administrador",
-  initials: "JM"
 }
 
 export default function Sidebar({ isCollapsed = false }: SidebarProps) {
@@ -159,7 +150,13 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
           <div className="flex items-center space-x-3 relative z-10">
             <div className="relative">
               <div className="h-12 w-12 bg-gradient-to-br from-[#FFD002] via-[#FFD002] to-[#FFC107] rounded-2xl flex items-center justify-center shadow-xl ring-2 ring-[#FFD002]/30">
-                <School className="h-7 w-7 text-[#182F59]" />
+                <Image
+                  src={icon}
+                  alt="JoMorais Logo"
+                  width={28}
+                  height={28}
+                  className="object-contain"
+                />
               </div>
               <div className="absolute -top-1 -right-1 h-4 w-4 bg-gradient-to-br from-[#00FF87] to-[#60EFFF] rounded-full animate-pulse"></div>
             </div>
@@ -167,9 +164,6 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
               <span className="text-2xl font-bold text-white">JoMorais</span>
               <div className="flex items-center space-x-2">
                 <p className="text-xs text-[#FFD002] font-semibold">Sistema Escolar</p>
-                <Badge className="h-5 bg-[#FFD002]/20 text-[#FFD002] border-[#FFD002]/30 text-xs">
-                  Pro
-                </Badge>
               </div>
             </div>
           </div>
@@ -387,7 +381,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
           {/* Logout Button */}
           <Button 
             variant="outline" 
-            className="w-full border-[#FFD002]/30 text-white hover:bg-[#FFD002] hover:text-[#182F59] hover:border-[#FFD002] transition-all duration-300 group"
+            className="w-full border-[#FFD002]/30 bg-transparent text-white hover:bg-[#FFD002] hover:text-[#182F59] hover:border-[#FFD002] transition-all duration-300 group"
           >
             <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
             Terminar Sessão
@@ -403,7 +397,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
               <Button 
                 variant="outline" 
                 size="sm"
-                className="w-full h-10 border-[#FFD002]/30 text-[#182F59] hover:bg-[#FFD002] hover:text-[#182F59] p-0 cursor-pointer"
+                className="w-full h-10 border-[#FFD002]/30 bg-transparent text-white hover:bg-[#FFD002] hover:text-[#182F59] p-0 cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
