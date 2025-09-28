@@ -86,7 +86,7 @@ export default function LoginPage() {
 			  />
 			</div>
 			<h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
-			  Seja bem-vindo(a)!
+			  Acessa a tua conta
 			</h1>
 			<p className="text-gray-600 text-base">
 			  Preencha os campos a baixo para acessar o sistema com sucesso.
