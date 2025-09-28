@@ -58,10 +58,10 @@ const menuItems: MenuItem[] = [
     title: "Gestão Acadêmica",
     icon: BookOpen,
     children: [
-      { title: "Disciplinas", icon: BookOpen, href: "/disciplinas" },
-      { title: "Turmas", icon: School, href: "/turmas" },
-      { title: "Horários", icon: Clock, href: "/horarios" },
-      { title: "Notas", icon: FileText, href: "/notas" },
+      { title: "Disciplinas", icon: BookOpen, href: "/admin/academic-management/disciplines" },
+      { title: "Turmas", icon: School, href: "/classes" },
+      { title: "Horários", icon: Clock, href: "/schedules" },
+      { title: "Notas", icon: FileText, href: "/grades" },
       { title: "Classes", icon: GraduationCap, href: "/admin/classes" }
     ]
   },
