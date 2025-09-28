@@ -51,7 +51,7 @@ const menuItems: MenuItem[] = [
       { title: "Alunos", icon: Users, href: "/admin/student-management/student" },
       { title: "Matrículas", icon: GraduationCap, href: "/admin/student-management/enrolls" },
       { title: "Confirmações", icon: UserCheck, href: "/admin/student-management/confirmations" },
-      { title: "Transferências", icon: FileText, href: "/admin/student-management/transferencias" }
+      { title: "Transferências", icon: FileText, href: "/admin/student-management/transfers" }
     ]
   },
   {
