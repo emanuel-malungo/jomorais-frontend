@@ -6,7 +6,6 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
@@ -46,13 +45,11 @@ const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
     icon: Home,
-    href: "/admin",
-    badge: "3"
+    href: "/admin"
   },
   {
     title: "Gestão de Alunos",
     icon: Users,
-    badge: "1.2k",
     children: [
       { title: "Lista de Alunos", icon: Users, href: "/estudantes" },
       { title: "Matrículas", icon: UserCheck, href: "/estudantes/matriculas" },
@@ -63,7 +60,6 @@ const menuItems: MenuItem[] = [
   {
     title: "Gestão Acadêmica",
     icon: BookOpen,
-    badge: "28",
     children: [
       { title: "Disciplinas", icon: BookOpen, href: "/disciplinas" },
       { title: "Turmas", icon: School, href: "/turmas" },
@@ -75,7 +71,6 @@ const menuItems: MenuItem[] = [
   {
     title: "Professores",
     icon: GraduationCap,
-    badge: "89",
     children: [
       { title: "Lista de Professores", icon: GraduationCap, href: "/professores" },
       { title: "Disciplinas do Docente", icon: BookOpen, href: "/professores/disciplinas" },
@@ -85,7 +80,6 @@ const menuItems: MenuItem[] = [
   {
     title: "Financeiro",
     icon: DollarSign,
-    badge: "156",
     children: [
       { title: "Pagamentos", icon: Wallet, href: "/financeiro" },
       { title: "Propinas", icon: DollarSign, href: "/financeiro/propinas" },
@@ -142,7 +136,10 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
   }
 
   const SidebarContent = () => (
-    <div className="flex h-full flex-col bg-gradient-to-b from-[#182F59] via-[#1a3260] to-[#182F59] shadow-2xl">
+    <div className={cn(
+      "flex h-full flex-col bg-gradient-to-b from-[#182F59] via-[#1a3260] to-[#182F59] shadow-2xl transition-all duration-300",
+      isCollapsed ? "w-16" : "w-72"
+    )}>
       {/* Header com logo */}
       <div className="flex h-20 items-center px-4 bg-gradient-to-r from-[#182F59] to-[#1a3260] border-b border-[#FFD002]/20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#FFD002]/5 to-transparent"></div>
@@ -158,7 +155,6 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                   className="object-contain"
                 />
               </div>
-              <div className="absolute -top-1 -right-1 h-4 w-4 bg-gradient-to-br from-[#00FF87] to-[#60EFFF] rounded-full animate-pulse"></div>
             </div>
             <div>
               <span className="text-2xl font-bold text-white">JoMorais</span>
@@ -173,7 +169,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#FFD002]/20">
         <TooltipProvider delayDuration={0}>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {menuItems.map((item) => {
               if (!item.children) {
                 // Item simples
@@ -185,8 +181,8 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "w-full justify-start h-12 rounded-xl transition-all duration-300 group relative overflow-hidden",
-                            isCollapsed && "justify-center px-2",
+                            "w-full justify-start h-11 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                            isCollapsed ? "justify-center px-2" : "px-3",
                             item.href && isActive(item.href) 
                               ? "bg-gradient-to-r from-[#FFD002]/20 to-[#FFD002]/10 text-white shadow-lg ring-1 ring-[#FFD002]/30" 
                               : "hover:bg-gradient-to-r hover:from-[#FFD002]/10 hover:to-transparent hover:shadow-md text-white/80 hover:text-white"
@@ -203,22 +199,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                               : "text-white/70 group-hover:text-[#FFD002] group-hover:scale-110"
                           )} />
                           {!isCollapsed && (
-                            <>
-                              <span className="flex-1 text-left text-sm font-medium">{item.title}</span>
-                              {item.badge && (
-                                <Badge 
-                                  variant="secondary" 
-                                  className={cn(
-                                    "ml-2 h-5 text-xs font-bold shadow-sm",
-                                    item.badge === "NEW" 
-                                      ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white animate-pulse"
-                                      : "bg-[#FFD002]/20 text-[#FFD002] border border-[#FFD002]/30"
-                                  )}
-                                >
-                                  {item.badge}
-                                </Badge>
-                              )}
-                            </>
+                            <span className="flex-1 text-left text-sm font-medium leading-tight">{item.title}</span>
                           )}
                         </Button>
                       </Link>
@@ -226,9 +207,6 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                     {isCollapsed && (
                       <TooltipContent side="right" className="font-medium bg-[#1a3260] border-[#FFD002]/20 text-white">
                         {item.title}
-                        {item.badge && (
-                          <Badge className="ml-2 bg-[#FFD002]/20 text-[#FFD002]">{item.badge}</Badge>
-                        )}
                       </TooltipContent>
                     )}
                   </Tooltip>
@@ -248,8 +226,8 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "w-full justify-start h-12 rounded-xl transition-all duration-300 group relative overflow-hidden",
-                            isCollapsed && "justify-center px-2",
+                            "w-full justify-start h-11 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                            isCollapsed ? "justify-center px-2" : "px-3",
                             hasActive 
                               ? "bg-gradient-to-r from-[#FFD002]/20 to-[#FFD002]/10 text-white shadow-lg ring-1 ring-[#FFD002]/30" 
                               : "hover:bg-gradient-to-r hover:from-[#FFD002]/10 hover:to-transparent hover:shadow-md text-white/80 hover:text-white"
@@ -267,9 +245,9 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                           )} />
                           {!isCollapsed && (
                             <>
-                              <span className="flex-1 text-left text-sm font-medium">{item.title}</span>
+                              <span className="flex-1 text-left text-sm font-medium leading-tight">{item.title}</span>
                               <div className={cn(
-                                "ml-2 transition-all duration-300",
+                                "ml-2 transition-all duration-300 shrink-0",
                                 isExpanded && "rotate-90"
                               )}>
                                 <ChevronRight className={cn(
@@ -291,46 +269,33 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
 
                   {!isCollapsed && (
                     <CollapsibleContent className="space-y-1 overflow-hidden">
-                      <div className="ml-8 space-y-1 relative">
-                        <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-[#FFD002]/30 via-[#FFD002]/20 to-transparent"></div>
+                      <div className="ml-6 space-y-1 relative">
+                        <div className="absolute left-2 top-0 bottom-0 w-px bg-gradient-to-b from-[#FFD002]/30 via-[#FFD002]/20 to-transparent"></div>
                         {item.children?.map((child) => (
                           <Link key={child.title} href={child.href || "#"}>
                             <Button
                               variant="ghost"
                               size="sm"
                               className={cn(
-                                "w-full justify-start h-10 text-sm rounded-lg transition-all duration-300 group relative pl-4",
+                                "w-full justify-start h-9 text-sm rounded-lg transition-all duration-300 group relative pl-6 pr-3",
                                 child.href && isActive(child.href) 
                                   ? "bg-gradient-to-r from-[#FFD002]/25 to-[#FFD002]/10 text-white font-semibold shadow-md ring-1 ring-[#FFD002]/20" 
                                   : "hover:bg-[#FFD002]/10 hover:shadow-sm text-white/70 hover:text-white"
                               )}
                             >
                               <div className={cn(
-                                "absolute left-0 top-1/2 transform -translate-y-1/2 w-2 h-2 rounded-full transition-all duration-300",
+                                "absolute left-2 top-1/2 transform -translate-y-1/2 w-1.5 h-1.5 rounded-full transition-all duration-300",
                                 child.href && isActive(child.href) 
                                   ? "bg-[#FFD002] shadow-lg shadow-[#FFD002]/50" 
                                   : "bg-white/30 group-hover:bg-[#FFD002] group-hover:shadow-md group-hover:shadow-[#FFD002]/30"
                               )}></div>
                               <child.icon className={cn(
-                                "h-4 w-4 mr-3 ml-4 transition-all duration-300",
+                                "h-4 w-4 mr-3 ml-2 transition-all duration-300 shrink-0",
                                 child.href && isActive(child.href) 
                                   ? "text-[#FFD002]" 
                                   : "text-white/60 group-hover:text-[#FFD002] group-hover:scale-110"
                               )} />
-                              <span className="flex-1 text-left">{child.title}</span>
-                              {child.badge && (
-                                <Badge 
-                                  variant="secondary" 
-                                  className={cn(
-                                    "ml-2 h-4 text-xs font-bold shadow-sm",
-                                    child.badge === "NEW" 
-                                      ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white animate-pulse"
-                                      : "bg-[#FFD002]/20 text-[#FFD002] border border-[#FFD002]/30"
-                                  )}
-                                >
-                                  {child.badge}
-                                </Badge>
-                              )}
+                              <span className="flex-1 text-left text-xs leading-tight">{child.title}</span>
                             </Button>
                           </Link>
                         ))}
