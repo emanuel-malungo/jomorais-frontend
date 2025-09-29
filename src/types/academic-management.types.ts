@@ -50,6 +50,8 @@ export interface Turma {
   codigo_Sala: number;
   codigo_Periodo: number;
   codigo_AnoLectivo: number;
+  status?: string;
+  max_Alunos?: number;
   tb_classes?: Classe;
   tb_cursos?: Curso;
   tb_salas?: Sala;
@@ -76,6 +78,68 @@ export interface DisciplinaFormData {
 
 export interface CursoFormData {
   designacao: string;
+  observacoes?: string;
+}
+
+export interface TurmaFormData {
+  designacao: string;
+  codigo_Classe: number;
+  codigo_Curso: number;
+  codigo_Sala: number;
+  codigo_Periodo: number;
+  codigo_AnoLectivo: number;
+  status?: string;
+  max_Alunos?: number;
+}
+
+export interface Horario {
+  codigo: number;
+  diaSemana: string;
+  horaInicio: string;
+  horaFim: string;
+  codigo_Turma: number;
+  codigo_Disciplina: number;
+  codigo_Professor: number;
+  codigo_Sala: number;
+  status?: string;
+  tb_turmas?: Turma;
+  tb_disciplinas?: Disciplina;
+  tb_salas?: Sala;
+}
+
+export interface Nota {
+  codigo: number;
+  valor: number;
+  codigo_Estudante: number;
+  codigo_Disciplina: number;
+  codigo_Turma: number;
+  periodo: string;
+  tipoAvaliacao: string;
+  dataAvaliacao: string;
+  observacoes?: string;
+  tb_disciplinas?: Disciplina;
+  tb_turmas?: Turma;
+}
+
+export interface HorarioFormData {
+  diaSemana: string;
+  horaInicio: string;
+  horaFim: string;
+  codigo_Turma: number;
+  codigo_Disciplina: number;
+  codigo_Professor: number;
+  codigo_Sala: number;
+  status?: string;
+}
+
+export interface NotaFormData {
+  valor: number;
+  codigo_Estudante: number;
+  codigo_Disciplina: number;
+  codigo_Turma: number;
+  periodo: string;
+  tipoAvaliacao: string;
+  dataAvaliacao: string;
   observacoes?: string;
 }
 

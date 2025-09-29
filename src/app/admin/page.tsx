@@ -18,7 +18,7 @@ import {
   Clock,
   Target,
   Award,
-  Settings
+  settings
 } from 'lucide-react';
 import {
   AreaChart,
@@ -140,7 +140,7 @@ export default function Dashboard() {
             icon={TrendingUp}
             action={
               <Button variant="outline" size="sm" className="border-gray-200 hover:bg-gray-50">
-                <Settings className="w-4 h-4" />
+                <settings className="w-4 h-4" />
               </Button>
             }
           >

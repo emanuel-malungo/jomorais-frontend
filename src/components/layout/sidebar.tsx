@@ -26,6 +26,7 @@ import {
   Clock,
   MapPin,
   Wallet,
+  Shield,
   Sparkles,
   LogOut,
 } from "lucide-react"
@@ -59,48 +60,48 @@ const menuItems: MenuItem[] = [
     icon: BookOpen,
     children: [
       { title: "Disciplinas", icon: BookOpen, href: "/admin/academic-management/disciplines" },
-      { title: "Turmas", icon: School, href: "/classes" },
-      { title: "Horários", icon: Clock, href: "/schedules" },
-      { title: "Notas", icon: FileText, href: "/grades" },
-      { title: "Classes", icon: GraduationCap, href: "/admin/classes" }
+      { title: "Classes", icon: GraduationCap, href: "/admin/academic-management/classes" },
+      { title: "Turmas", icon: School, href: "/admin/academic-management/turmas" },
+      { title: "Horários", icon: Clock, href: "/admin/academic-management/hours" },
+      { title: "Notas", icon: FileText, href: "/admin/academic-management/notes" }
     ]
   },
   {
     title: "Professores",
     icon: GraduationCap,
     children: [
-      { title: "Lista de Professores", icon: GraduationCap, href: "/professores" },
-      { title: "Disciplinas do Docente", icon: BookOpen, href: "/professores/disciplinas" },
-      { title: "Diretores de Turma", icon: UserCheck, href: "/professores/diretores" }
+      { title: "Lista de Professores", icon: GraduationCap, href: "/admin/teacher-management/list" },
+      { title: "Disciplinas do Docente", icon: BookOpen, href: "/admin/teacher-management/discpline-teacher" },
+      { title: "Diretores de Turma", icon: UserCheck, href: "/admin/teacher-management/director-turma" }
     ]
   },
   {
     title: "Financeiro",
     icon: DollarSign,
     children: [
-      { title: "Pagamentos", icon: Wallet, href: "/financeiro" },
-      { title: "Propinas", icon: DollarSign, href: "/financeiro/propinas" },
-      { title: "Serviços", icon: FileText, href: "/financeiro/servicos" },
-      { title: "Notas de Crédito", icon: FileText, href: "/financeiro/notas-credito" }
+      { title: "Pagamentos", icon: Wallet, href: "/admin/finance-management/payments" },
+      { title: "Propinas", icon: DollarSign, href: "/admin/finance-management/tuitions" },
+      { title: "Serviços", icon: FileText, href: "/admin/finance-management/services" },
+      { title: "Notas de Crédito", icon: FileText, href: "/admin/finance-management/credit-notes" }
     ]
   },
   {
     title: "Relatórios",
     icon: BarChart3,
     children: [
-      { title: "Relatórios de Alunos", icon: Users, href: "/relatorios/alunos" },
-      { title: "Relatórios Financeiros", icon: DollarSign, href: "/relatorios/financeiros" },
-      { title: "Relatórios Acadêmicos", icon: BookOpen, href: "/relatorios/academicos" }
+      { title: "Relatórios de Alunos", icon: Users, href: "/admin/reports-management/students" },
+      { title: "Relatórios Financeiros", icon: DollarSign, href: "/admin/reports-management/financial" },
+      { title: "Relatórios Acadêmicos", icon: BookOpen, href: "/admin/reports-management/academic" }
     ]
   },
   {
     title: "Configurações",
     icon: Settings,
     children: [
-      { title: "Dados Institucionais", icon: School, href: "/configuracoes/instituicao" },
-      { title: "Ano Letivo", icon: Calendar, href: "/configuracoes/ano-letivo" },
-      { title: "Geográfico", icon: MapPin, href: "/configuracoes/geografico" },
-      { title: "Usuários", icon: Users, href: "/configuracoes/usuarios" }
+      { title: "Dados Institucionais", icon: School, href: "/admin/settings-management/instituicao" },
+      { title: "Ano Letivo", icon: Calendar, href: "/admin/settings-management/ano-letivo" },
+      { title: "Geográfico", icon: MapPin, href: "/admin/settings-management/geografico" },
+      { title: "Usuários", icon: Users, href: "/admin/settings-management/usuarios" }
     ]
   }
 ]
