@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { 
-  WelcomeHeader,
-  StatCard,
   ChartCard,
   RecentActivity,
   SystemStatus
@@ -18,7 +16,8 @@ import {
   Clock,
   Target,
   Award,
-  settings
+  Settings,
+  Download
 } from 'lucide-react';
 import {
   AreaChart,
@@ -36,6 +35,9 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+
+import StatCard from '@/components/layout/StatCard';
+import WelcomeHeader from '@/components/layout/WelcomeHeader';
 
 // Dados mockados
 const enrollmentData = [
@@ -83,8 +85,16 @@ export default function Dashboard() {
     <Container>
       {/* Welcome Header */}
       <WelcomeHeader 
-        selectedPeriod={selectedPeriod}
-        setSelectedPeriod={setSelectedPeriod}
+        iconMain={<Users className="w-8 h-8 text-white" />}
+        title="Painel Administrativo"
+        description=" Gerencie sua instituição de ensino com eficiência. Acompanhe matrículas, finanças,
+              desempenho acadêmico e muito mais em um só lugar."
+        titleBtnRight="Adicionar Estudante"
+        iconBtnRight={<Users className="w-5 h-5 mr-2" />}
+        onClickBtnRight={() => alert('Função de adicionar estudante acionada!')}
+        titleBtnLeft="Exportar Relatório"
+        iconBtnLeft={<Download className="w-5 h-5 mr-2" />}
+        onClickBtnLeft={() => alert('Função de exportar relatório acionada!')}
       />
 
       {/* KPI Cards principais */}
@@ -140,7 +150,7 @@ export default function Dashboard() {
             icon={TrendingUp}
             action={
               <Button variant="outline" size="sm" className="border-gray-200 hover:bg-gray-50">
-                <settings className="w-4 h-4" />
+                <Settings className="w-4 h-4" />
               </Button>
             }
           >

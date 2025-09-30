@@ -4,10 +4,10 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { 
-  settings, 
   LogOut, 
   Menu,
   Shield,
+  Settings,
 } from 'lucide-react'
 
 // Mock user data - replace with actual user data
@@ -44,10 +44,10 @@ const Header: React.FC = () => {
             size="sm"
             className="h-10 w-10 p-0 text-gray-600 hover:text-[#182F59] hover:bg-[#182F59]/5 rounded-xl transition-all duration-200"
           >
-            <settings className="h-4 w-4" />
+            <Settings className="h-4 w-4" />
           </Button>
         </div>
-
+    
         {/* Divider */}
         <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
 

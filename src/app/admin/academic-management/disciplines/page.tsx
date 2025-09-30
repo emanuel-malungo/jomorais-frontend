@@ -52,6 +52,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { Disciplina, Curso } from '@/types/academic-management.types';
+import StatCard from '@/components/layout/StatCard';
 
 // Dados mockados baseados na estrutura do backend
 const mockDisciplinas: Disciplina[] = [
