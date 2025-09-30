@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import useStudent from '@/hooks/useStudent';
+import { useGeographic } from '@/hooks/useGeographic';
 import { Student } from '@/types/student.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,28 +33,17 @@ import {
   ArrowLeft,
   Save,
   User,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar,
   FileText,
   GraduationCap,
   Users,
-  DollarSign,
   AlertCircle,
 } from 'lucide-react';
 
-// Dados mockados para selects
+// Dados mockados para selects que ainda não têm API
 const documentTypes = [
   { codigo: 1, designacao: "Bilhete de Identidade" },
   { codigo: 2, designacao: "Passaporte" },
   { codigo: 3, designacao: "Certidão de Nascimento" },
-];
-
-const provinces = [
-  "Luanda", "Benguela", "Huíla", "Namibe", "Cunene", "Cuando Cubango",
-  "Moxico", "Lunda Norte", "Lunda Sul", "Malanje", "Uíge", "Zaire",
-  "Cabinda", "Kwanza Norte", "Kwanza Sul", "Bié", "Huambo"
 ];
 
 const courses = [
@@ -76,6 +66,19 @@ export default function AddStudentPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("personal");
   const { createStudent, loading, error } = useStudent();
+  
+  // Hooks geográficos - integração com geographic service
+  const { 
+    nacionalidades, 
+    estadosCivis, 
+    provincias,
+    municipios,
+    comunas 
+  } = useGeographic();
+
+  // Estados para seleções hierárquicas (província -> município -> comuna)
+  const [selectedProvinciaId, setSelectedProvinciaId] = useState<number | undefined>();
+  const [selectedMunicipioId, setSelectedMunicipioId] = useState<number | undefined>();
 
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -88,6 +91,11 @@ export default function AddStudentPage() {
     dataNascimento: "",
     sexo: "",
     morada: "",
+    nacionalidade: "",
+    estadoCivil: "",
+    provincia: "",
+    municipio: "",
+    comuna: "",
     
     // Documentos
     tipo_documento: "",
@@ -115,6 +123,31 @@ export default function AddStudentPage() {
       [field]: value
     }));
     
+    // Lógica especial para hierarquia geográfica
+    if (field === 'provincia') {
+      const provinciaId = parseInt(value);
+      setSelectedProvinciaId(provinciaId);
+      setSelectedMunicipioId(undefined);
+      setFormData(prev => ({
+        ...prev,
+        municipio: "",
+        comuna: ""
+      }));
+      // Buscar municípios da província selecionada
+      municipios.getMunicipiosByProvincia(provinciaId);
+    }
+    
+    if (field === 'municipio') {
+      const municipioId = parseInt(value);
+      setSelectedMunicipioId(municipioId);
+      setFormData(prev => ({
+        ...prev,
+        comuna: ""
+      }));
+      // Buscar comunas do município selecionado
+      comunas.getComunasByMunicipio(municipioId);
+    }
+    
     // Limpar erro quando o usuário começar a digitar
     if (errors[field]) {
       setErrors(prev => ({
@@ -133,6 +166,10 @@ export default function AddStudentPage() {
     if (!formData.telefone.trim()) newErrors.telefone = "Telefone é obrigatório";
     if (!formData.dataNascimento) newErrors.dataNascimento = "Data de nascimento é obrigatória";
     if (!formData.sexo) newErrors.sexo = "Sexo é obrigatório";
+    if (!formData.nacionalidade) newErrors.nacionalidade = "Nacionalidade é obrigatória";
+    if (!formData.provincia) newErrors.provincia = "Província é obrigatória";
+    if (!formData.municipio) newErrors.municipio = "Município é obrigatório";
+    if (!formData.comuna) newErrors.comuna = "Comuna é obrigatória";
     if (!formData.tipo_documento) newErrors.tipo_documento = "Tipo de documento é obrigatório";
     if (!formData.n_documento_identificacao.trim()) newErrors.n_documento_identificacao = "Número do documento é obrigatório";
     if (!formData.nome_encarregado.trim()) newErrors.nome_encarregado = "Nome do encarregado é obrigatório";
@@ -171,9 +208,9 @@ export default function AddStudentPage() {
         provinciaEmissao: formData.provinciaEmissao || undefined,
         tipo_desconto: formData.tipo_desconto || undefined,
         motivo_Desconto: formData.motivo_desconto || undefined,
-        // Campos obrigatórios
-        codigo_Nacionalidade: 1, // Angola por padrão
-        codigo_Comuna: 1, // Valor padrão
+        // Campos geográficos obrigatórios
+        codigo_Nacionalidade: parseInt(formData.nacionalidade) || 1,
+        codigo_Comuna: parseInt(formData.comuna) || 1,
         codigo_Encarregado: 1, // Valor temporário - deve ser implementado depois
         codigo_Utilizador: 1, // Valor temporário - deve vir do contexto de auth
         // Campos com valores padrão
@@ -398,6 +435,158 @@ export default function AddStudentPage() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Nacionalidade *
+                  </label>
+                  <Select value={formData.nacionalidade} onValueChange={(value) => handleInputChange('nacionalidade', value)}>
+                    <SelectTrigger className={errors.nacionalidade ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione a nacionalidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nacionalidades.loading ? (
+                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                      ) : (
+                        nacionalidades.nacionalidades?.filter(n => n.id).map((nacionalidade) => (
+                          <SelectItem key={nacionalidade.id} value={nacionalidade.id.toString()}>
+                            {nacionalidade.nome}
+                          </SelectItem>
+                        )) || []
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.nacionalidade && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.nacionalidade}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Estado Civil
+                  </label>
+                  <Select value={formData.estadoCivil} onValueChange={(value) => handleInputChange('estadoCivil', value)}>
+                    <SelectTrigger className={errors.estadoCivil ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione o estado civil" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {estadosCivis.loading ? (
+                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                      ) : (
+                        estadosCivis.estadosCivis?.filter(e => e.id).map((estadoCivil) => (
+                          <SelectItem key={estadoCivil.id} value={estadoCivil.id.toString()}>
+                            {estadoCivil.nome}
+                          </SelectItem>
+                        )) || []
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.estadoCivil && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.estadoCivil}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Província *
+                  </label>
+                  <Select value={formData.provincia} onValueChange={(value) => handleInputChange('provincia', value)}>
+                    <SelectTrigger className={errors.provincia ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione a província" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provincias.loading ? (
+                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                      ) : (
+                        provincias.provincias?.filter(p => p.id).map((provincia) => (
+                          <SelectItem key={provincia.id} value={provincia.id.toString()}>
+                            {provincia.nome}
+                          </SelectItem>
+                        )) || []
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.provincia && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.provincia}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Município *
+                  </label>
+                  <Select 
+                    value={formData.municipio} 
+                    onValueChange={(value) => handleInputChange('municipio', value)}
+                    disabled={!selectedProvinciaId}
+                  >
+                    <SelectTrigger className={errors.municipio ? "border-red-500" : ""}>
+                      <SelectValue placeholder={!selectedProvinciaId ? "Selecione primeiro a província" : "Selecione o município"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {municipios.loading ? (
+                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                      ) : (
+                        municipios.municipios
+                          ?.filter(municipio => municipio.id && municipio.provincia_id === selectedProvinciaId)
+                          ?.map((municipio) => (
+                            <SelectItem key={municipio.id} value={municipio.id.toString()}>
+                              {municipio.nome}
+                            </SelectItem>
+                          )) || []
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.municipio && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.municipio}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Comuna *
+                  </label>
+                  <Select 
+                    value={formData.comuna} 
+                    onValueChange={(value) => handleInputChange('comuna', value)}
+                    disabled={!selectedMunicipioId}
+                  >
+                    <SelectTrigger className={errors.comuna ? "border-red-500" : ""}>
+                      <SelectValue placeholder={!selectedMunicipioId ? "Selecione primeiro o município" : "Selecione a comuna"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {comunas.loading ? (
+                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                      ) : (
+                        comunas.comunas
+                          ?.filter(comuna => comuna.id && comuna.municipio_id === selectedMunicipioId)
+                          ?.map((comuna) => (
+                            <SelectItem key={comuna.id} value={comuna.id.toString()}>
+                              {comuna.nome}
+                            </SelectItem>
+                          )) || []
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.comuna && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.comuna}
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium text-gray-700">
                     Endereço
@@ -474,11 +663,11 @@ export default function AddStudentPage() {
                       <SelectValue placeholder="Selecione a província" />
                     </SelectTrigger>
                     <SelectContent>
-                      {provinces.map((province) => (
-                        <SelectItem key={province} value={province}>
-                          {province}
+                      {provincias.provincias?.filter(p => p.id && p.nome).map((provincia) => (
+                        <SelectItem key={provincia.id} value={provincia.nome}>
+                          {provincia.nome}
                         </SelectItem>
-                      ))}
+                      )) || []}
                     </SelectContent>
                   </Select>
                 </div>
