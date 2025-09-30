@@ -5,10 +5,8 @@ import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import useStudent from '@/hooks/useStudent';
 import { useGeographic } from '@/hooks/useGeographic';
-import { Student } from '@/types/student.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -34,32 +32,39 @@ import {
   Save,
   User,
   FileText,
-  GraduationCap,
   Users,
   AlertCircle,
 } from 'lucide-react';
 
-// Dados mockados para selects que ainda não têm API
+// Hooks para dados que ainda não têm API
+const useEncarregados = () => {
+  // Mock - deve ser substituído por hook real
+  return {
+    encarregados: [
+      { codigo: 1, nome: "João Silva" },
+      { codigo: 2, nome: "Maria Santos" },
+      { codigo: 3, nome: "Pedro Costa" },
+    ],
+    loading: false
+  };
+};
+
+const useUtilizadores = () => {
+  // Mock - deve ser substituído por hook real
+  return {
+    utilizadores: [
+      { codigo: 1, nome: "Admin Sistema" },
+      { codigo: 2, nome: "Secretário" },
+    ],
+    loading: false
+  };
+};
+
+// Dados mockados para tipos de documento
 const documentTypes = [
   { codigo: 1, designacao: "Bilhete de Identidade" },
   { codigo: 2, designacao: "Passaporte" },
   { codigo: 3, designacao: "Certidão de Nascimento" },
-];
-
-const courses = [
-  { codigo: 1, designacao: "Informática de Gestão" },
-  { codigo: 2, designacao: "Contabilidade" },
-  { codigo: 3, designacao: "Administração" },
-  { codigo: 4, designacao: "Marketing" },
-];
-
-const professions = [
-  { codigo: 1, designacao: "Engenheiro Civil" },
-  { codigo: 2, designacao: "Professor" },
-  { codigo: 3, designacao: "Médico" },
-  { codigo: 4, designacao: "Advogado" },
-  { codigo: 5, designacao: "Comerciante" },
-  { codigo: 6, designacao: "Funcionário Público" },
 ];
 
 export default function AddStudentPage() {
@@ -67,52 +72,43 @@ export default function AddStudentPage() {
   const [activeTab, setActiveTab] = useState("personal");
   const { createStudent, loading, error } = useStudent();
   
-  // Hooks geográficos - integração com geographic service
+  // Hooks geográficos
   const { 
     nacionalidades, 
-    estadosCivis, 
     provincias,
     municipios,
     comunas 
   } = useGeographic();
 
-  // Estados para seleções hierárquicas (província -> município -> comuna)
+  // Hooks para dados relacionados
+  const { encarregados } = useEncarregados();
+  const { utilizadores } = useUtilizadores();
+
+  // Estados para seleções hierárquicas
   const [selectedProvinciaId, setSelectedProvinciaId] = useState<number | undefined>();
   const [selectedMunicipioId, setSelectedMunicipioId] = useState<number | undefined>();
 
-  // Estados do formulário
+  // Estados do formulário baseado nos campos da API
   const [formData, setFormData] = useState({
-    // Dados pessoais
     nome: "",
     pai: "",
     mae: "",
+    codigo_Nacionalidade: "",
+    dataNascimento: "",
     email: "",
     telefone: "",
-    dataNascimento: "",
+    codigo_Comuna: "",
+    codigo_Encarregado: "",
+    codigo_Utilizador: "",
     sexo: "",
+    n_documento_identificacao: "",
+    saldo: 0,
     morada: "",
-    nacionalidade: "",
-    estadoCivil: "",
+    codigoTipoDocumento: "",
+    
+    // Campos auxiliares para hierarquia geográfica
     provincia: "",
     municipio: "",
-    comuna: "",
-    
-    // Documentos
-    tipo_documento: "",
-    n_documento_identificacao: "",
-    provinciaEmissao: "",
-    
-    // Encarregado
-    nome_encarregado: "",
-    telefone_encarregado: "",
-    email_encarregado: "",
-    profissao_encarregado: "",
-    local_trabalho_encarregado: "",
-    
-    // Matrícula
-    curso: "",
-    tipo_desconto: "",
-    motivo_desconto: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -123,7 +119,7 @@ export default function AddStudentPage() {
       [field]: value
     }));
     
-    // Lógica especial para hierarquia geográfica
+    // Lógica para hierarquia geográfica
     if (field === 'provincia') {
       const provinciaId = parseInt(value);
       setSelectedProvinciaId(provinciaId);
@@ -131,7 +127,7 @@ export default function AddStudentPage() {
       setFormData(prev => ({
         ...prev,
         municipio: "",
-        comuna: ""
+        codigo_Comuna: ""
       }));
       // Buscar municípios da província selecionada
       municipios.getMunicipiosByProvincia(provinciaId);
@@ -142,7 +138,7 @@ export default function AddStudentPage() {
       setSelectedMunicipioId(municipioId);
       setFormData(prev => ({
         ...prev,
-        comuna: ""
+        codigo_Comuna: ""
       }));
       // Buscar comunas do município selecionado
       comunas.getComunasByMunicipio(municipioId);
@@ -166,22 +162,16 @@ export default function AddStudentPage() {
     if (!formData.telefone.trim()) newErrors.telefone = "Telefone é obrigatório";
     if (!formData.dataNascimento) newErrors.dataNascimento = "Data de nascimento é obrigatória";
     if (!formData.sexo) newErrors.sexo = "Sexo é obrigatório";
-    if (!formData.nacionalidade) newErrors.nacionalidade = "Nacionalidade é obrigatória";
-    if (!formData.provincia) newErrors.provincia = "Província é obrigatória";
-    if (!formData.municipio) newErrors.municipio = "Município é obrigatório";
-    if (!formData.comuna) newErrors.comuna = "Comuna é obrigatória";
-    if (!formData.tipo_documento) newErrors.tipo_documento = "Tipo de documento é obrigatório";
+    if (!formData.codigo_Nacionalidade) newErrors.codigo_Nacionalidade = "Nacionalidade é obrigatória";
+    if (!formData.codigo_Comuna) newErrors.codigo_Comuna = "Comuna é obrigatória";
+    if (!formData.codigoTipoDocumento) newErrors.codigoTipoDocumento = "Tipo de documento é obrigatório";
     if (!formData.n_documento_identificacao.trim()) newErrors.n_documento_identificacao = "Número do documento é obrigatório";
-    if (!formData.nome_encarregado.trim()) newErrors.nome_encarregado = "Nome do encarregado é obrigatório";
-    if (!formData.telefone_encarregado.trim()) newErrors.telefone_encarregado = "Telefone do encarregado é obrigatório";
+    if (!formData.codigo_Encarregado) newErrors.codigo_Encarregado = "Encarregado é obrigatório";
 
     // Validação de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (formData.email && !emailRegex.test(formData.email)) {
       newErrors.email = "Email inválido";
-    }
-    if (formData.email_encarregado && !emailRegex.test(formData.email_encarregado)) {
-      newErrors.email_encarregado = "Email do encarregado inválido";
     }
 
     setErrors(newErrors);
@@ -194,30 +184,23 @@ export default function AddStudentPage() {
     }
     
     try {
-      // Criar objeto Student baseado no formData
+      // Criar objeto Student baseado nos campos esperados pela API
       const studentData = {
         nome: formData.nome,
         pai: formData.pai || undefined,
         mae: formData.mae || undefined,
+        codigo_Nacionalidade: parseInt(formData.codigo_Nacionalidade),
+        dataNascimento: formData.dataNascimento,
         email: formData.email || undefined,
         telefone: formData.telefone || undefined,
-        dataNascimento: formData.dataNascimento || undefined,
-        sexo: formData.sexo || undefined,
+        codigo_Comuna: parseInt(formData.codigo_Comuna),
+        codigo_Encarregado: parseInt(formData.codigo_Encarregado),
+        codigo_Utilizador: parseInt(formData.codigo_Utilizador) || 1, // Temporário
+        sexo: formData.sexo,
+        n_documento_identificacao: formData.n_documento_identificacao,
+        saldo: formData.saldo,
         morada: formData.morada || undefined,
-        n_documento_identificacao: formData.n_documento_identificacao || undefined,
-        provinciaEmissao: formData.provinciaEmissao || undefined,
-        tipo_desconto: formData.tipo_desconto || undefined,
-        motivo_Desconto: formData.motivo_desconto || undefined,
-        // Campos geográficos obrigatórios
-        codigo_Nacionalidade: parseInt(formData.nacionalidade) || 1,
-        codigo_Comuna: parseInt(formData.comuna) || 1,
-        codigo_Encarregado: 1, // Valor temporário - deve ser implementado depois
-        codigo_Utilizador: 1, // Valor temporário - deve vir do contexto de auth
-        // Campos com valores padrão
-        codigo_Status: 1,
-        saldo: 0,
-        codigoTipoDocumento: parseInt(formData.tipo_documento) || 1,
-        user_id: BigInt(1)
+        codigoTipoDocumento: parseInt(formData.codigoTipoDocumento)
       };
       
       await createStudent(studentData as any);
@@ -302,11 +285,10 @@ export default function AddStudentPage() {
 
       {/* Formulário em Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
           <TabsTrigger value="documents">Documentos</TabsTrigger>
-          <TabsTrigger value="guardian">Encarregado</TabsTrigger>
-          <TabsTrigger value="enrollment">Matrícula</TabsTrigger>
+          <TabsTrigger value="system">Sistema</TabsTrigger>
         </TabsList>
 
         <TabsContent value="personal" className="space-y-6">
@@ -439,8 +421,8 @@ export default function AddStudentPage() {
                   <label className="text-sm font-medium text-gray-700">
                     Nacionalidade *
                   </label>
-                  <Select value={formData.nacionalidade} onValueChange={(value) => handleInputChange('nacionalidade', value)}>
-                    <SelectTrigger className={errors.nacionalidade ? "border-red-500" : ""}>
+                  <Select value={formData.codigo_Nacionalidade} onValueChange={(value) => handleInputChange('codigo_Nacionalidade', value)}>
+                    <SelectTrigger className={errors.codigo_Nacionalidade ? "border-red-500" : ""}>
                       <SelectValue placeholder="Selecione a nacionalidade" />
                     </SelectTrigger>
                     <SelectContent>
@@ -455,41 +437,15 @@ export default function AddStudentPage() {
                       )}
                     </SelectContent>
                   </Select>
-                  {errors.nacionalidade && (
+                  {errors.codigo_Nacionalidade && (
                     <p className="text-sm text-red-500 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.nacionalidade}
+                      {errors.codigo_Nacionalidade}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Estado Civil
-                  </label>
-                  <Select value={formData.estadoCivil} onValueChange={(value) => handleInputChange('estadoCivil', value)}>
-                    <SelectTrigger className={errors.estadoCivil ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione o estado civil" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {estadosCivis.loading ? (
-                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                      ) : (
-                        estadosCivis.estadosCivis?.filter(e => e.id).map((estadoCivil) => (
-                          <SelectItem key={estadoCivil.id} value={estadoCivil.id.toString()}>
-                            {estadoCivil.nome}
-                          </SelectItem>
-                        )) || []
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {errors.estadoCivil && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.estadoCivil}
-                    </p>
-                  )}
-                </div>
+
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
@@ -558,11 +514,11 @@ export default function AddStudentPage() {
                     Comuna *
                   </label>
                   <Select 
-                    value={formData.comuna} 
-                    onValueChange={(value) => handleInputChange('comuna', value)}
+                    value={formData.codigo_Comuna} 
+                    onValueChange={(value) => handleInputChange('codigo_Comuna', value)}
                     disabled={!selectedMunicipioId}
                   >
-                    <SelectTrigger className={errors.comuna ? "border-red-500" : ""}>
+                    <SelectTrigger className={errors.codigo_Comuna ? "border-red-500" : ""}>
                       <SelectValue placeholder={!selectedMunicipioId ? "Selecione primeiro o município" : "Selecione a comuna"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -579,10 +535,10 @@ export default function AddStudentPage() {
                       )}
                     </SelectContent>
                   </Select>
-                  {errors.comuna && (
+                  {errors.codigo_Comuna && (
                     <p className="text-sm text-red-500 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.comuna}
+                      {errors.codigo_Comuna}
                     </p>
                   )}
                 </div>
@@ -616,8 +572,8 @@ export default function AddStudentPage() {
                   <label className="text-sm font-medium text-gray-700">
                     Tipo de Documento *
                   </label>
-                  <Select value={formData.tipo_documento} onValueChange={(value) => handleInputChange('tipo_documento', value)}>
-                    <SelectTrigger className={errors.tipo_documento ? "border-red-500" : ""}>
+                  <Select value={formData.codigoTipoDocumento} onValueChange={(value) => handleInputChange('codigoTipoDocumento', value)}>
+                    <SelectTrigger className={errors.codigoTipoDocumento ? "border-red-500" : ""}>
                       <SelectValue placeholder="Selecione o tipo de documento" />
                     </SelectTrigger>
                     <SelectContent>
@@ -628,10 +584,10 @@ export default function AddStudentPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.tipo_documento && (
+                  {errors.codigoTipoDocumento && (
                     <p className="text-sm text-red-500 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.tipo_documento}
+                      {errors.codigoTipoDocumento}
                     </p>
                   )}
                 </div>
@@ -654,119 +610,82 @@ export default function AddStudentPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Província de Emissão
-                  </label>
-                  <Select value={formData.provinciaEmissao} onValueChange={(value) => handleInputChange('provinciaEmissao', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a província" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {provincias.provincias?.filter(p => p.id && p.nome).map((provincia) => (
-                        <SelectItem key={provincia.id} value={provincia.nome}>
-                          {provincia.nome}
-                        </SelectItem>
-                      )) || []}
-                    </SelectContent>
-                  </Select>
-                </div>
+
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="guardian" className="space-y-6">
+                {/* Tab Sistema */}
+        <TabsContent value="system" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Users className="h-5 w-5" />
-                <span>Encarregado de Educação</span>
+                <span>Informações do Sistema</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Nome do Encarregado *
+                    Encarregado *
                   </label>
-                  <Input
-                    placeholder="Nome completo do encarregado"
-                    value={formData.nome_encarregado}
-                    onChange={(e) => handleInputChange('nome_encarregado', e.target.value)}
-                    className={errors.nome_encarregado ? "border-red-500" : ""}
-                  />
-                  {errors.nome_encarregado && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.nome_encarregado}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Telefone do Encarregado *
-                  </label>
-                  <Input
-                    placeholder="9XX XXX XXX"
-                    value={formData.telefone_encarregado}
-                    onChange={(e) => handleInputChange('telefone_encarregado', e.target.value)}
-                    className={errors.telefone_encarregado ? "border-red-500" : ""}
-                  />
-                  {errors.telefone_encarregado && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.telefone_encarregado}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Email do Encarregado
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="exemplo@email.com"
-                    value={formData.email_encarregado}
-                    onChange={(e) => handleInputChange('email_encarregado', e.target.value)}
-                    className={errors.email_encarregado ? "border-red-500" : ""}
-                  />
-                  {errors.email_encarregado && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.email_encarregado}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Profissão
-                  </label>
-                  <Select value={formData.profissao_encarregado} onValueChange={(value) => handleInputChange('profissao_encarregado', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a profissão" />
+                  <Select value={formData.codigo_Encarregado} onValueChange={(value) => handleInputChange('codigo_Encarregado', value)}>
+                    <SelectTrigger className={errors.codigo_Encarregado ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione o encarregado" />
                     </SelectTrigger>
                     <SelectContent>
-                      {professions.map((prof) => (
-                        <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
-                          {prof.designacao}
+                      {encarregados.map((encarregado) => (
+                        <SelectItem key={encarregado.codigo} value={encarregado.codigo.toString()}>
+                          {encarregado.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.codigo_Encarregado && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.codigo_Encarregado}
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Local de Trabalho
+                    Utilizador Responsável *
+                  </label>
+                  <Select value={formData.codigo_Utilizador} onValueChange={(value) => handleInputChange('codigo_Utilizador', value)}>
+                    <SelectTrigger className={errors.codigo_Utilizador ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione o utilizador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {utilizadores.map((utilizador) => (
+                        <SelectItem key={utilizador.codigo} value={utilizador.codigo.toString()}>
+                          {utilizador.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.codigo_Utilizador && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.codigo_Utilizador}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Saldo Inicial
                   </label>
                   <Input
-                    placeholder="Nome da empresa ou local de trabalho"
-                    value={formData.local_trabalho_encarregado}
-                    onChange={(e) => handleInputChange('local_trabalho_encarregado', e.target.value)}
+                    type="number"
+                    placeholder="0.00"
+                    value={formData.saldo}
+                    onChange={(e) => handleInputChange('saldo', e.target.value)}
+                    min="0"
+                    step="0.01"
                   />
                 </div>
               </div>
@@ -774,68 +693,7 @@ export default function AddStudentPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="enrollment" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <GraduationCap className="h-5 w-5" />
-                <span>Informações de Matrícula</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Curso
-                  </label>
-                  <Select value={formData.curso} onValueChange={(value) => handleInputChange('curso', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o curso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courses.map((course) => (
-                        <SelectItem key={course.codigo} value={course.codigo.toString()}>
-                          {course.designacao}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Tipo de Desconto
-                  </label>
-                  <Select value={formData.tipo_desconto} onValueChange={(value) => handleInputChange('tipo_desconto', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o desconto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Sem desconto</SelectItem>
-                      <SelectItem value="10">10%</SelectItem>
-                      <SelectItem value="25">25%</SelectItem>
-                      <SelectItem value="50">50%</SelectItem>
-                      <SelectItem value="100">100% (Bolsa integral)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.tipo_desconto && formData.tipo_desconto !== "0" && (
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Motivo do Desconto
-                    </label>
-                    <Input
-                      placeholder="Descreva o motivo do desconto"
-                      value={formData.motivo_desconto}
-                      onChange={(e) => handleInputChange('motivo_desconto', e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      
       </Tabs>
     </Container>
   );
