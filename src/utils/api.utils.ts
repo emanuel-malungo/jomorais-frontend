@@ -29,12 +29,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado ou inválido
-      if (typeof window !== 'undefined') {
+      // Token expirado ou inválido - apenas para endpoints protegidos
+      const isAuthEndpoint = error.config?.url?.includes('/auth/');
+      
+      if (typeof window !== 'undefined' && !isAuthEndpoint) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // Redirecionar para login se necessário
-        window.location.href = '/login';
+        // Redirecionar apenas se não estivermos já na página de login
+        if (window.location.pathname !== '/' && window.location.pathname !== '/login') {
+          window.location.href = '/';
+        }
       }
     }
     return Promise.reject(error);

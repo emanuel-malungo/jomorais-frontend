@@ -20,7 +20,7 @@ interface AuthFormData {
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading, isInitialized } = useAuth();
 
   const {
 	control,
@@ -36,12 +36,19 @@ export default function LoginPage() {
 
   // Redirecionar se já estiver autenticado
   useEffect(() => {
-    if (isAuthenticated && !loading) {
-      router.push('/admin');
+    if (isInitialized && isAuthenticated && !loading) {
+      // Verificar se já estamos no admin para evitar redirecionamento desnecessário
+      if (window.location.pathname !== '/admin') {
+        console.log('[LoginPage] Usuário já autenticado, redirecionando para /admin');
+        router.push('/admin');
+      }
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, loading, isInitialized, router]);
 
   const onSubmit = async (data: AuthFormData) => {
+	// Evitar múltiplas tentativas enquanto uma já está em andamento
+	if (isSubmitting || loading) return;
+	
 	try {
 	  await login(data.user, data.passe);
 	  // O redirecionamento é feito automaticamente pelo contexto

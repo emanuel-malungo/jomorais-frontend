@@ -156,7 +156,17 @@ export default class authService {
     // Verificar se há token válido
     static hasValidToken(): boolean {
         const token = this.getToken();
-        return !!token;
+        if (!token) return false;
+        
+        try {
+            // Verificar se o token não está expirado
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+            return payload.exp > currentTime;
+        } catch (error) {
+            // Se não conseguir decodificar, considerar inválido
+            return false;
+        }
     }
 
     // Limpar sessão completamente

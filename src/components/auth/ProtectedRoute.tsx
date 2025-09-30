@@ -13,16 +13,24 @@ export default function ProtectedRoute({
   children, 
   redirectTo = "/" 
 }: ProtectedRouteProps) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, isInitialized } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push(redirectTo);
+    console.log('[ProtectedRoute] Estado:', { isAuthenticated, loading, isInitialized, redirectTo, currentPath: window.location.pathname });
+    
+    // Só fazer redirecionamento após a inicialização estar completa
+    if (isInitialized && !loading && !isAuthenticated) {
+      // Verificar se já estamos na página de destino para evitar redirecionamento desnecessário
+      if (window.location.pathname !== redirectTo) {
+        console.log('[ProtectedRoute] Redirecionando para:', redirectTo);
+        router.push(redirectTo);
+      }
     }
-  }, [isAuthenticated, loading, router, redirectTo]);
+  }, [isAuthenticated, loading, isInitialized, router, redirectTo]);
 
-  if (loading) {
+  // Mostrar loading enquanto não inicializou ou ainda está carregando
+  if (!isInitialized || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -34,8 +42,10 @@ export default function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
+    console.log('[ProtectedRoute] Usuário não autenticado, aguardando redirecionamento...');
     return null; // O useEffect já fará o redirecionamento
   }
 
+  console.log('[ProtectedRoute] Usuário autenticado, renderizando children');
   return <>{children}</>;
 }
