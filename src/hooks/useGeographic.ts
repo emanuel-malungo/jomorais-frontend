@@ -19,8 +19,8 @@ export function useNacionalidades() {
     try {
       setLoading(true);
       setError(null);
-      const response = await GeographicService.getAllNacionalidades();
-      setNacionalidades(response.data || []);
+      const nacionalidadesData = await GeographicService.getAllNacionalidades();
+      setNacionalidades(nacionalidadesData || []);
     } catch (err) {
       setError(err);
     } finally {

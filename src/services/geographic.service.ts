@@ -2,8 +2,11 @@ import api from "@/utils/api.utils";
 
 // Tipos para as entidades geográficas
 export interface Nacionalidade {
-  id: number;
-  nome: string;
+  codigo: number;
+  designacao: string;
+  // Campos compatíveis com a interface antiga para não quebrar o código existente
+  id?: number;
+  nome?: string;
 }
 
 export interface EstadoCivil {
@@ -12,21 +15,30 @@ export interface EstadoCivil {
 }
 
 export interface Provincia {
+  codigo?: number;
+  designacao?: string;
+  // Campos compatíveis com a interface antiga
   id: number;
   nome: string;
 }
 
 export interface Municipio {
+  codigo?: number;
+  designacao?: string;
+  provincia_id: number;
+  // Campos compatíveis com a interface antiga
   id: number;
   nome: string;
-  provincia_id: number;
   provincia?: Provincia;
 }
 
 export interface Comuna {
+  codigo?: number;
+  designacao?: string;
+  municipio_id: number;
+  // Campos compatíveis com a interface antiga
   id: number;
   nome: string;
-  municipio_id: number;
   municipio?: Municipio;
 }
 
@@ -52,15 +64,25 @@ export interface ApiResponse<T> {
 }
 
 export default class GeographicService {
-  
+
   // ===============================
   // NACIONALIDADES
   // ===============================
-  
-  static async getAllNacionalidades(): Promise<ApiResponse<Nacionalidade[]>> {
+
+  static async getAllNacionalidades(): Promise<Nacionalidade[]> {
     try {
       const response = await api.get("/api/geographic/nacionalidades");
-      return response.data;
+
+      // A API retorna um array direto ou um objeto com propriedade data?
+      const data = Array.isArray(response.data) ? response.data : response.data.data;
+
+      // Mapear os dados para incluir campos compatíveis
+      return data.map((item: any) => ({
+        codigo: item.codigo,
+        designacao: item.designacao,
+        id: item.codigo, // Compatibilidade
+        nome: item.designacao // Compatibilidade
+      }));
     } catch (error) {
       console.error("Erro ao buscar nacionalidades:", error);
       throw error;
@@ -152,7 +174,7 @@ export default class GeographicService {
   static async getMunicipiosByProvincia(provinciaId: number): Promise<ApiResponse<Municipio[]>> {
     try {
       const response = await api.get(`/api/geographic/provincias/${provinciaId}/municipios`);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error(`Erro ao buscar municípios da província ${provinciaId}:`, error);
       throw error;
@@ -166,7 +188,7 @@ export default class GeographicService {
   static async getAllComunas(): Promise<ApiResponse<Comuna[]>> {
     try {
       const response = await api.get("/api/geographic/comunas");
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error("Erro ao buscar comunas:", error);
       throw error;

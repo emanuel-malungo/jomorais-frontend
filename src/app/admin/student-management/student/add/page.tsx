@@ -7,6 +7,7 @@ import { useForm, Controller } from 'react-hook-form';
 import Container from '@/components/layout/Container';
 import useStudent from '@/hooks/useStudent';
 import { useGeographic } from '@/hooks/useGeographic';
+import { useDocumentTypes } from '@/hooks/useDocument';
 import { addStudentSchema } from '@/validations/student-management.validatios';
 import * as yup from 'yup';
 import { Button } from '@/components/ui/button';
@@ -66,12 +67,7 @@ const useUtilizadores = () => {
   };
 };
 
-// Dados mockados para tipos de documento
-const documentTypes = [
-  { codigo: 1, designacao: "Bilhete de Identidade" },
-  { codigo: 2, designacao: "Passaporte" },
-  { codigo: 3, designacao: "Certidão de Nascimento" },
-];
+
 
 export default function AddStudentPage() {
   const router = useRouter();
@@ -120,6 +116,7 @@ export default function AddStudentPage() {
   // Hooks para dados relacionados
   const { encarregados } = useEncarregados();
   const { utilizadores } = useUtilizadores();
+  const { documentTypes, loading: loadingDocumentTypes } = useDocumentTypes();
 
   // Estados para seleções hierárquicas
   const [selectedProvinciaId, setSelectedProvinciaId] = useState<number | undefined>();
@@ -447,13 +444,20 @@ export default function AddStudentPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {nacionalidades.loading ? (
-                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                              <SelectItem value="loading-nacionalidades" disabled>Carregando...</SelectItem>
+                            ) : nacionalidades.nacionalidades && nacionalidades.nacionalidades.length > 0 ? (
+                              nacionalidades.nacionalidades.filter(n => n.codigo || n.id).map((nacionalidade) => {
+                                const key = nacionalidade.codigo || nacionalidade.id;
+                                const value = nacionalidade.codigo || nacionalidade.id;
+                                const label = nacionalidade.designacao || nacionalidade.nome;
+                                return (
+                                  <SelectItem key={key} value={value?.toString() || ''}>
+                                    {label}
+                                  </SelectItem>
+                                );
+                              })
                             ) : (
-                              nacionalidades.nacionalidades?.filter(n => n.id).map((nacionalidade) => (
-                                <SelectItem key={nacionalidade.id} value={nacionalidade.id.toString()}>
-                                  {nacionalidade.nome}
-                                </SelectItem>
-                              )) || []
+                              <SelectItem value="no-nacionalidades" disabled>Nenhuma nacionalidade disponível</SelectItem>
                             )}
                           </SelectContent>
                         </Select>
@@ -482,13 +486,20 @@ export default function AddStudentPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {provincias.loading ? (
-                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                              <SelectItem value="loading-provincias" disabled>Carregando...</SelectItem>
+                            ) : provincias.provincias && provincias.provincias.length > 0 ? (
+                              provincias.provincias.filter(p => p.codigo || p.id).map((provincia) => {
+                                const key = provincia.codigo || provincia.id;
+                                const value = provincia.codigo || provincia.id;
+                                const label = provincia.designacao || provincia.nome;
+                                return (
+                                  <SelectItem key={key} value={value?.toString() || ''}>
+                                    {label}
+                                  </SelectItem>
+                                );
+                              })
                             ) : (
-                              provincias.provincias?.filter(p => p.id).map((provincia) => (
-                                <SelectItem key={provincia.id} value={provincia.id.toString()}>
-                                  {provincia.nome}
-                                </SelectItem>
-                              )) || []
+                              <SelectItem value="no-provincias" disabled>Nenhuma província disponível</SelectItem>
                             )}
                           </SelectContent>
                         </Select>
@@ -521,15 +532,24 @@ export default function AddStudentPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {municipios.loading ? (
-                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                            ) : (
+                              <SelectItem value="loading-municipios" disabled>Carregando...</SelectItem>
+                            ) : municipios.municipios && municipios.municipios.length > 0 ? (
                               municipios.municipios
-                                ?.filter(municipio => municipio.id && municipio.provincia_id === selectedProvinciaId)
-                                ?.map((municipio) => (
-                                  <SelectItem key={municipio.id} value={municipio.id.toString()}>
-                                    {municipio.nome}
-                                  </SelectItem>
-                                )) || []
+                                .filter(municipio => (municipio.codigo || municipio.id) && municipio.provincia_id === selectedProvinciaId)
+                                .map((municipio) => {
+                                  const key = municipio.codigo || municipio.id;
+                                  const value = municipio.codigo || municipio.id;
+                                  const label = municipio.designacao || municipio.nome;
+                                  return (
+                                    <SelectItem key={key} value={value?.toString() || ''}>
+                                      {label}
+                                    </SelectItem>
+                                  );
+                                })
+                            ) : (
+                              <SelectItem value="no-municipios" disabled>
+                                {!selectedProvinciaId ? "Selecione primeiro uma província" : "Nenhum município disponível"}
+                              </SelectItem>
                             )}
                           </SelectContent>
                         </Select>
@@ -562,15 +582,24 @@ export default function AddStudentPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {comunas.loading ? (
-                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                            ) : (
+                              <SelectItem value="loading-comunas" disabled>Carregando...</SelectItem>
+                            ) : comunas.comunas && comunas.comunas.length > 0 ? (
                               comunas.comunas
-                                ?.filter(comuna => comuna.id && comuna.municipio_id === selectedMunicipioId)
-                                ?.map((comuna) => (
-                                  <SelectItem key={comuna.id} value={comuna.id.toString()}>
-                                    {comuna.nome}
-                                  </SelectItem>
-                                )) || []
+                                .filter(comuna => (comuna.codigo || comuna.id) && comuna.municipio_id === selectedMunicipioId)
+                                .map((comuna) => {
+                                  const key = comuna.codigo || comuna.id;
+                                  const value = comuna.codigo || comuna.id;
+                                  const label = comuna.designacao || comuna.nome;
+                                  return (
+                                    <SelectItem key={key} value={value?.toString() || ''}>
+                                      {label}
+                                    </SelectItem>
+                                  );
+                                })
+                            ) : (
+                              <SelectItem value="no-comunas" disabled>
+                                {!selectedMunicipioId ? "Selecione primeiro um município" : "Nenhuma comuna disponível"}
+                              </SelectItem>
                             )}
                           </SelectContent>
                         </Select>
@@ -629,11 +658,17 @@ export default function AddStudentPage() {
                             <SelectValue placeholder="Selecione o tipo de documento" />
                           </SelectTrigger>
                           <SelectContent>
-                            {documentTypes.map((doc) => (
-                              <SelectItem key={doc.codigo} value={doc.codigo.toString()}>
-                                {doc.designacao}
-                              </SelectItem>
-                            ))}
+                            {loadingDocumentTypes ? (
+                              <SelectItem value="loading-documentos" disabled>Carregando...</SelectItem>
+                            ) : documentTypes.length > 0 ? (
+                              documentTypes.map((doc) => (
+                                <SelectItem key={doc.codigo} value={doc.codigo.toString()}>
+                                  {doc.designacao}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="no-documentos" disabled>Nenhum tipo de documento disponível</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       )}
