@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
+import useStudent from '@/hooks/useStudent';
+import { Student } from '@/types/student.types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -39,108 +41,43 @@ import {
   Share2,
 } from 'lucide-react';
 
-// Dados mockados do aluno (baseado na estrutura do backend)
-const mockStudentDetails = {
-  codigo: 1,
-  nome: "Ana Silva Santos",
-  pai: "João Santos",
-  mae: "Maria Silva",
-  email: "ana.santos@email.com",
-  telefone: "923456789",
-  dataNascimento: "2005-03-15",
-  sexo: "F",
-  n_documento_identificacao: "123456789LA041",
-  morada: "Rua das Flores, 123, Luanda",
-  url_Foto: "/avatars/ana.jpg",
-  codigo_Status: 1,
-  dataCadastro: "2024-01-15",
-  saldo: 15000,
-  motivo_Desconto: "Bolsa de estudos",
-  tipo_desconto: "50%",
-  provinciaEmissao: "Luanda",
-  tb_encarregados: {
-    codigo: 1,
-    nome: "João Santos",
-    telefone: "912345678",
-    email: "joao.santos@email.com",
-    local_Trabalho: "Empresa ABC Lda",
-    tb_profissao: { 
-      codigo: 1,
-      designacao: "Engenheiro Civil" 
-    }
-  },
-  tb_tipo_documento: { 
-    codigo: 1,
-    designacao: "Bilhete de Identidade" 
-  },
-  tb_matriculas: {
-    codigo: 1,
-    data_Matricula: "2024-02-01",
-    codigoStatus: 1,
-    tb_cursos: { 
-      codigo: 1,
-      designacao: "Informática de Gestão",
-      duracao: "3 anos"
-    },
-    tb_confirmacoes: [{
-      codigo: 1,
-      data_Confirmacao: "2024-02-15",
-      classificacao: "Aprovado",
-      codigo_Ano_lectivo: 2024,
-      tb_turmas: {
-        codigo: 1,
-        designacao: "IG-2024-M",
-        tb_classes: { 
-          codigo: 10,
-          designacao: "10ª Classe" 
-        },
-        tb_salas: {
-          codigo: 1,
-          designacao: "Sala 101"
-        },
-        tb_periodos: {
-          codigo: 1,
-          designacao: "Manhã"
-        }
-      }
-    }]
-  },
-  tb_pagamentos: [
-    {
-      codigo: 1,
-      valor: 25000,
-      data_Pagamento: "2024-02-01",
-      tipo: "Propina",
-      status: "Pago"
-    },
-    {
-      codigo: 2,
-      valor: 15000,
-      data_Pagamento: "2024-03-01",
-      tipo: "Propina",
-      status: "Pago"
-    }
-  ],
-  tb_transferencias: []
-};
-
 export default function StudentDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
+  
+  const { student, loading, error, getStudentById } = useStudent();
+  const studentId = params.id as string;
 
-  const studentId = params.id;
-  const student = mockStudentDetails; // Em produção, buscar por ID
 
-  const calculateAge = (birthDate: string) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+  useEffect(() => {
+    if (studentId) {
+      getStudentById(parseInt(studentId));
     }
-    return age;
+  }, [studentId, getStudentById]);
+
+  const calculateAge = (birthDate: any) => {
+    if (!birthDate || typeof birthDate === 'object' && Object.keys(birthDate).length === 0) {
+      return "N/A";
+    }
+    
+    try {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      
+      if (isNaN(birth.getTime())) {
+        return "N/A";
+      }
+      
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age.toString();
+    } catch (error) {
+      return "N/A";
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -150,9 +87,61 @@ export default function StudentDetailsPage() {
     }).format(value);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-AO');
+  const formatDate = (dateString: any) => {
+    if (!dateString || typeof dateString === 'object' && Object.keys(dateString).length === 0) {
+      return "N/A";
+    }
+    
+    try {
+      return new Date(dateString).toLocaleDateString('pt-AO');
+    } catch (error) {
+      return "N/A";
+    }
   };
+
+  // Estados de loading e error
+  if (loading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#182F59]"></div>
+            <span className="text-lg text-gray-600">Carregando detalhes do aluno...</span>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <div className="text-red-500 text-lg font-semibold">Erro ao carregar dados do aluno</div>
+          <p className="text-gray-600">{error}</p>
+          <Button onClick={() => router.back()} variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+        </div>
+      </Container>
+    );
+  }
+
+  if (!student) {
+    return (
+      <Container>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <div className="text-gray-500 text-lg font-semibold">Aluno não encontrado</div>
+          <p className="text-gray-600">Não foi possível encontrar o aluno com ID {studentId}</p>
+          <Button onClick={() => router.back()} variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -259,13 +248,13 @@ export default function StudentDetailsPage() {
               <BookOpen className="h-6 w-6 text-white" />
             </div>
             <Badge variant="outline" className="text-xs">
-              {student.tb_matriculas?.tb_confirmacoes?.[0]?.tb_turmas?.tb_classes?.designacao}
+              {student.tb_matriculas?.tb_cursos?.designacao || "N/A"}
             </Badge>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Classe</p>
+            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Curso</p>
             <p className="text-2xl font-bold text-gray-900">
-              {student.tb_matriculas?.tb_confirmacoes?.[0]?.tb_turmas?.tb_classes?.designacao || "N/A"}
+              {student.tb_matriculas?.tb_cursos?.designacao || "N/A"}
             </p>
           </div>
         </div>
@@ -290,10 +279,9 @@ export default function StudentDetailsPage() {
 
       {/* Tabs Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="academic">Acadêmico</TabsTrigger>
-          <TabsTrigger value="financial">Financeiro</TabsTrigger>
           <TabsTrigger value="documents">Documentos</TabsTrigger>
         </TabsList>
 
@@ -316,7 +304,7 @@ export default function StudentDetailsPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Sexo</label>
                     <p className="text-sm font-semibold text-gray-900">
-                      {student.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                      {student.sexo}
                     </p>
                   </div>
                   <div>
@@ -365,33 +353,33 @@ export default function StudentDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Nome</label>
-                    <p className="text-sm font-semibold text-gray-900">{student.tb_encarregados.nome}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Profissão</label>
-                    <p className="text-sm font-semibold text-gray-900">{student.tb_encarregados.tb_profissao.designacao}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Local de Trabalho</label>
-                    <p className="text-sm font-semibold text-gray-900">{student.tb_encarregados.local_Trabalho}</p>
-                  </div>
-                </div>
-                
-                <div className="pt-4 border-t">
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{student.tb_encarregados.email}</span>
+                {student.tb_encarregados ? (
+                  <>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Nome</label>
+                        <p className="text-sm font-semibold text-gray-900">{student.tb_encarregados.nome}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Código</label>
+                        <p className="text-sm font-semibold text-gray-900">#{student.tb_encarregados.codigo}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{student.tb_encarregados.telefone}</span>
+                    
+                    <div className="pt-4 border-t">
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">{student.tb_encarregados.telefone}</span>
+                        </div>
+                      </div>
                     </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Nenhum encarregado cadastrado</p>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -408,68 +396,66 @@ export default function StudentDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Curso</label>
                     <p className="text-sm font-semibold text-gray-900">{student.tb_matriculas?.tb_cursos.designacao}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Código do Curso</label>
+                    <p className="text-sm font-semibold text-gray-900">#{student.tb_matriculas?.tb_cursos.codigo}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Data de Matrícula</label>
                     <p className="text-sm font-semibold text-gray-900">{formatDate(student.tb_matriculas?.data_Matricula || '')}</p>
                   </div>
                   <div>
+                    <label className="text-sm font-medium text-gray-500">Código da Matrícula</label>
+                    <p className="text-sm font-semibold text-gray-900">#{student.tb_matriculas?.codigo}</p>
+                  </div>
+                  <div className="col-span-2">
                     <label className="text-sm font-medium text-gray-500">Status da Matrícula</label>
-                    <Badge variant="default" className="bg-emerald-100 text-emerald-800">
-                      {student.tb_matriculas?.codigoStatus === 1 ? 'Ativa' : 'Inativa'}
-                    </Badge>
+                    <div className="mt-1">
+                      <Badge variant="default" className="bg-emerald-100 text-emerald-800">
+                        {student.tb_matriculas?.codigoStatus === 1 ? 'Ativa' : 'Inativa'}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Informações da Turma */}
+            {/* Informações Adicionais */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <BookOpen className="h-5 w-5" />
-                  <span>Turma Atual</span>
+                  <span>Informações Adicionais</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {student.tb_matriculas?.tb_confirmacoes?.[0] && (
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Turma</label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {student.tb_matriculas.tb_confirmacoes[0].tb_turmas.designacao}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Classe</label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {student.tb_matriculas.tb_confirmacoes[0].tb_turmas.tb_classes.designacao}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Sala</label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {student.tb_matriculas.tb_confirmacoes[0].tb_turmas.tb_salas.designacao}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Período</label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {student.tb_matriculas.tb_confirmacoes[0].tb_turmas.tb_periodos.designacao}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Data de Confirmação</label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {formatDate(student.tb_matriculas.tb_confirmacoes[0].data_Confirmacao)}
-                      </p>
-                    </div>
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Província de Emissão</label>
+                    <p className="text-sm font-semibold text-gray-900">{student.provinciaEmissao || 'N/A'}</p>
                   </div>
-                )}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Tipo de Desconto</label>
+                    <p className="text-sm font-semibold text-gray-900">{student.tipo_desconto}</p>
+                  </div>
+                  {student.motivo_Desconto && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Motivo do Desconto</label>
+                      <p className="text-sm font-semibold text-gray-900">{student.motivo_Desconto}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Escola de Proveniência</label>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {student.escolaProveniencia ? `Código: ${student.escolaProveniencia}` : 'N/A'}
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -509,30 +495,37 @@ export default function StudentDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Histórico de Pagamentos */}
+            {/* Informações do Utilizador */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Clock className="h-5 w-5" />
-                  <span>Últimos Pagamentos</span>
+                  <span>Informações do Sistema</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {student.tb_pagamentos.map((pagamento) => (
-                    <div key={pagamento.codigo} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="space-y-4">
+                  {student.tb_utilizadores && (
+                    <div className="p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">{pagamento.tipo}</p>
-                        <p className="text-xs text-gray-500">{formatDate(pagamento.data_Pagamento)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-green-600">{formatCurrency(pagamento.valor)}</p>
-                        <Badge variant="default" className="text-xs bg-green-100 text-green-800">
-                          {pagamento.status}
-                        </Badge>
+                        <label className="text-sm font-medium text-gray-500">Criado por</label>
+                        <p className="text-sm font-semibold text-gray-900">{student.tb_utilizadores.nome}</p>
+                        <p className="text-xs text-gray-500">Usuário: {student.tb_utilizadores.user}</p>
                       </div>
                     </div>
-                  ))}
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">ID do Usuário</label>
+                      <p className="text-sm font-semibold text-gray-900">#{student.user_id}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Saldo Anterior</label>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {student.saldo_Anterior ? formatCurrency(student.saldo_Anterior) : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -551,7 +544,7 @@ export default function StudentDetailsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Tipo de Documento</label>
-                  <p className="text-sm font-semibold text-gray-900">{student.tb_tipo_documento.designacao}</p>
+                  <p className="text-sm font-semibold text-gray-900">{student.tb_tipo_documento?.designacao || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Número do Documento</label>

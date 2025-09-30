@@ -28,7 +28,14 @@ export default class StudentService {
     static async getStudentById(id: number): Promise<Student> {
         try {
             const response = await api.get(`/api/student-management/alunos/${id}`);
-            return response.data;
+            
+            const apiResponse = response.data;
+            
+            if (apiResponse.success) {
+                return apiResponse.data;
+            } else {
+                throw new Error(apiResponse.message || 'Erro ao buscar aluno');
+            }
         } catch (error) {
             console.error("Erro ao buscar aluno:", error);
             throw error;
