@@ -50,7 +50,7 @@ export default class authService {
         }
     }
 
-    static async getCurrentUser() {
+    static async getCurrentUser(): Promise<AuthResponse<LegacyUser>> {
         try {
             const response = await api.get("/api/auth/legacy/me");
             return response.data;
@@ -60,7 +60,7 @@ export default class authService {
         }
     }
 
-    static async register(userData: LegacyRegisterData) {
+    static async register(userData: LegacyRegisterData): Promise<AuthResponse<LegacyUser>> {
         try {
             const response = await api.post("/api/auth/legacy/register", userData);
             return response.data;
@@ -81,7 +81,7 @@ export default class authService {
     }
 
     // Método para obter tipos de usuário
-    static async getUserTypes() {
+    static async getUserTypes(): Promise<AuthResponse<UserType[]>> {
         try {
             const response = await api.get("/api/auth/user-types");
             return response.data;
@@ -95,7 +95,7 @@ export default class authService {
     // MÉTODOS PARA SISTEMA MODERNO
     // ===============================
 
-    static async modernLogin(credentials: { login: string; password: string }) {
+    static async modernLogin(credentials: ModernLoginCredentials): Promise<AuthResponse<LoginResponse>> {
         try {
             const response = await api.post("/api/auth/login", credentials);
             
@@ -112,7 +112,7 @@ export default class authService {
         }
     }
 
-    static async modernRegister(userData: { name: string; email: string; password: string; tipo?: number; username?: string }) {
+    static async modernRegister(userData: ModernRegisterData): Promise<AuthResponse<ModernUser>> {
         try {
             const response = await api.post("/api/auth/register", userData);
             return response.data;
@@ -122,7 +122,7 @@ export default class authService {
         }
     }
 
-    static async modernGetCurrentUser() {
+    static async modernGetCurrentUser(): Promise<AuthResponse<ModernUser>> {
         try {
             const response = await api.get("/api/auth/me");
             return response.data;
@@ -145,7 +145,7 @@ export default class authService {
     }
 
     // Obter dados do usuário do localStorage
-    static getStoredUser() {
+    static getStoredUser(): LegacyUser | ModernUser | null {
         if (typeof window !== 'undefined') {
             const userData = localStorage.getItem('user');
             return userData ? JSON.parse(userData) : null;
@@ -160,7 +160,7 @@ export default class authService {
     }
 
     // Limpar sessão completamente
-    static clearSession() {
+    static clearSession(): void {
         if (typeof window !== 'undefined') {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
