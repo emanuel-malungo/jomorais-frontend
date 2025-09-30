@@ -17,16 +17,20 @@ interface FilterOption {
     label: string
 }
 
+interface FilterConfig {
+    label?: string
+    value: string
+    onChange: (value: string) => void
+    options: FilterOption[]
+    width?: string
+}
+
 interface FilterSearchCardProps {
     title?: string
     searchPlaceholder?: string
     searchValue: string
     onSearchChange: (value: string) => void
-
-    filterLabel?: string
-    filterValue: string
-    onFilterChange: (value: string) => void
-    filterOptions: FilterOption[]
+    filters: FilterConfig[]
 }
 
 const FilterSearchCard: React.FC<FilterSearchCardProps> = ({
@@ -34,11 +38,7 @@ const FilterSearchCard: React.FC<FilterSearchCardProps> = ({
     searchPlaceholder = "Buscar...",
     searchValue,
     onSearchChange,
-
-    filterLabel = "Filtro",
-    filterValue,
-    onFilterChange,
-    filterOptions,
+    filters,
 }) => {
     return (
         <Card className="mb-6">
@@ -49,7 +49,7 @@ const FilterSearchCard: React.FC<FilterSearchCardProps> = ({
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex flex-col lg:flex-row gap-4">
                     {/* Campo de busca */}
                     <div className="flex-1">
                         <div className="relative">
@@ -63,20 +63,24 @@ const FilterSearchCard: React.FC<FilterSearchCardProps> = ({
                         </div>
                     </div>
 
-                    {/* Select de filtro */}
-                    <div className="md:w-48">
-                        <Select value={filterValue} onValueChange={onFilterChange}>
-                            <SelectTrigger>
-                                <SelectValue placeholder={filterLabel} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {filterOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    {/* Filtros dinâmicos */}
+                    <div className="flex gap-4">
+                        {filters.map((filter, index) => (
+                            <div key={index} className={filter.width || "w-48"}>
+                                <Select value={filter.value} onValueChange={filter.onChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={filter.label || "Filtro"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {filter.options.map((option: FilterOption) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </CardContent>

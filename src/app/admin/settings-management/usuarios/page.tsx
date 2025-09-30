@@ -64,8 +64,8 @@ interface Usuario {
 
 export default function UsuariosPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTipoUsuario, setSelectedTipoUsuario] = useState<string>('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedTipoUsuario, setSelectedTipoUsuario] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   const { users, meta, loading, error, page, setPage } = useUsersLegacy(1, 10);
 
@@ -106,8 +106,8 @@ export default function UsuariosPage() {
   const filteredUsuarios = (users as Usuario[])?.filter((usuario) => {
     const matchesSearch = usuario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       usuario.user.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTipoUsuario = selectedTipoUsuario === '' || usuario.tb_tipos_utilizador.designacao === selectedTipoUsuario;
-    const matchesStatus = selectedStatus === '' || usuario.estadoActual === selectedStatus;
+    const matchesTipoUsuario = selectedTipoUsuario === 'all' || usuario.tb_tipos_utilizador.designacao === selectedTipoUsuario;
+    const matchesStatus = selectedStatus === 'all' || usuario.estadoActual === selectedStatus;
 
     return matchesSearch && matchesTipoUsuario && matchesStatus;
   }) || [];
@@ -186,13 +186,32 @@ export default function UsuariosPage() {
 
       <FilterSearchCard
         title="Buscar e Filtrar Usuários"
-        searchPlaceholder="Buscar usuário..."
+        searchPlaceholder="Buscar por nome ou username..."
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
-        filterLabel="Tipo de Usuário"
-        filterValue={selectedTipoUsuario}
-        onFilterChange={setSelectedTipoUsuario}
-        filterOptions={getTiposUsuario().map((tipo) => ({ value: tipo, label: tipo }))}
+        filters={[
+          {
+            label: "Tipo de Usuário",
+            value: selectedTipoUsuario,
+            onChange: setSelectedTipoUsuario,
+            options: [
+              { value: "all", label: "Todos os Tipos" },
+              ...getTiposUsuario().map((tipo) => ({ value: tipo, label: tipo }))
+            ],
+            width: "w-48"
+          },
+          {
+            label: "Status",
+            value: selectedStatus,
+            onChange: setSelectedStatus,
+            options: [
+              { value: "all", label: "Todos os Status" },
+              { value: "Activo", label: "Ativo" },
+              { value: "Desactivo", label: "Inativo" }
+            ],
+            width: "w-48"
+          }
+        ]}
       />
 
       <div className="">
