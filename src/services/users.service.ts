@@ -21,6 +21,18 @@ export default class UsersService {
     }
   }
 
+  static async getUserLegacyById(id: number) {
+    try {
+      const response = await api.get(`/api/users/legacy/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao buscar usuário legado com ID ${id}:`, error);
+      throw error;
+    }
+  }
+
+  
+
 
 
 }
