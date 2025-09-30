@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
+import useStudent from '@/hooks/useStudent';
+import { Student } from '@/types/student.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -73,7 +75,7 @@ const professions = [
 export default function AddStudentPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("personal");
-  const [isLoading, setIsLoading] = useState(false);
+  const { createStudent, loading, error } = useStudent();
 
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -153,21 +155,42 @@ export default function AddStudentPage() {
     if (!validateForm()) {
       return;
     }
-
-    setIsLoading(true);
     
     try {
-      // Simular chamada à API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Criar objeto Student baseado no formData
+      const studentData = {
+        nome: formData.nome,
+        pai: formData.pai || undefined,
+        mae: formData.mae || undefined,
+        email: formData.email || undefined,
+        telefone: formData.telefone || undefined,
+        dataNascimento: formData.dataNascimento || undefined,
+        sexo: formData.sexo || undefined,
+        morada: formData.morada || undefined,
+        n_documento_identificacao: formData.n_documento_identificacao || undefined,
+        provinciaEmissao: formData.provinciaEmissao || undefined,
+        tipo_desconto: formData.tipo_desconto || undefined,
+        motivo_Desconto: formData.motivo_desconto || undefined,
+        // Campos obrigatórios
+        codigo_Nacionalidade: 1, // Angola por padrão
+        codigo_Comuna: 1, // Valor padrão
+        codigo_Encarregado: 1, // Valor temporário - deve ser implementado depois
+        codigo_Utilizador: 1, // Valor temporário - deve vir do contexto de auth
+        // Campos com valores padrão
+        codigo_Status: 1,
+        saldo: 0,
+        codigoTipoDocumento: parseInt(formData.tipo_documento) || 1,
+        user_id: BigInt(1)
+      };
       
-      console.log("Dados do aluno:", formData);
+      await createStudent(studentData as any);
       
-      // Redirecionar para lista após sucesso
-      router.push('/admin/student-management/list-student');
+      if (!error) {
+        // Redirecionar para lista após sucesso
+        router.push('/admin/student-management/student');
+      }
     } catch (error) {
       console.error("Erro ao salvar aluno:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -214,11 +237,11 @@ export default function AddStudentPage() {
 
               <Button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={loading}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
                 <Save className="w-5 h-5 mr-2" />
-                {isLoading ? "Salvando..." : "Salvar Aluno"}
+                {loading ? "Salvando..." : "Salvar Aluno"}
               </Button>
             </div>
           </div>
@@ -228,6 +251,17 @@ export default function AddStudentPage() {
         <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#FFC506]/5 rounded-full"></div>
         <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <p className="text-red-700 font-medium">Erro ao salvar aluno</p>
+          </div>
+          <p className="text-red-600 text-sm mt-1">{error}</p>
+        </div>
+      )}
 
       {/* Formulário em Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

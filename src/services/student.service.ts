@@ -45,7 +45,14 @@ export default class StudentService {
     static async createStudent(studentData: Student): Promise<Student> {
         try {
             const response = await api.post("/api/student-management/alunos", studentData);
-            return response.data;
+            
+            const apiResponse = response.data;
+            
+            if (apiResponse.success) {
+                return apiResponse.data;
+            } else {
+                throw new Error(apiResponse.message || 'Erro ao criar aluno');
+            }
         } catch (error) {
             console.error("Erro ao criar aluno:", error);
             throw error;
@@ -55,7 +62,14 @@ export default class StudentService {
     static async updateStudent(id: number, studentData: Student): Promise<Student> {
         try {
             const response = await api.put(`/api/student-management/alunos/${id}`, studentData);
-            return response.data;
+            
+            const apiResponse = response.data;
+            
+            if (apiResponse.success) {
+                return apiResponse.data;
+            } else {
+                throw new Error(apiResponse.message || 'Erro ao atualizar aluno');
+            }
         } catch (error) {
             console.error("Erro ao atualizar aluno:", error);
             throw error;
@@ -64,7 +78,13 @@ export default class StudentService {
 
     static async deleteStudent(id: number): Promise<void> {
         try {
-            await api.delete(`/api/student-management/alunos/${id}`);
+            const response = await api.delete(`/api/student-management/alunos/${id}`);
+            
+            const apiResponse = response.data;
+            
+            if (!apiResponse.success) {
+                throw new Error(apiResponse.message || 'Erro ao deletar aluno');
+            }
         } catch (error) {
             console.error("Erro ao deletar aluno:", error);
             throw error;
