@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -28,17 +27,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import {
   Users,
-  Search,
-  Filter,
   Plus,
   MoreHorizontal,
   Eye,
@@ -77,7 +68,7 @@ const courseOptions = [
 ];
 
 export default function ListStudentPage() {
-  const { students, loading, error, getAllStudents } = useStudent();
+  const { students, loading, error, pagination, getAllStudents } = useStudent();
 
   
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -87,12 +78,12 @@ export default function ListStudentPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  // Carregar estudantes quando o componente for montado
+  // Carregar estudantes quando o componente for montado ou página mudar
   useEffect(() => {
-    getAllStudents();
-  }, [getAllStudents]);
+    getAllStudents(currentPage, itemsPerPage);
+  }, [getAllStudents, currentPage, itemsPerPage]);
 
-  // Filtrar estudantes
+  // Filtrar estudantes (aplicado aos dados da página atual)
   useEffect(() => {
     let filtered = students;
 
@@ -125,14 +116,21 @@ export default function ListStudentPage() {
     }
 
     setFilteredStudents(filtered);
-    setCurrentPage(1);
   }, [searchTerm, statusFilter, courseFilter, students]);
 
-  // Paginação
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentStudents = filteredStudents.slice(startIndex, endIndex);
+  // Resetar para primeira página quando filtros mudarem
+  useEffect(() => {
+    if (searchTerm || statusFilter !== "all" || courseFilter !== "all") {
+      setCurrentPage(1);
+    }
+  }, [searchTerm, statusFilter, courseFilter]);
+
+  // Paginação - usando dados da API
+  const totalPages = pagination?.totalPages || 1;
+  const totalItems = pagination?.totalItems || 0;
+  const currentStudents = filteredStudents; // Já são os dados da página atual
+  const startIndex = pagination ? (pagination.currentPage - 1) * pagination.itemsPerPage + 1 : 1;
+  const endIndex = pagination ? Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems) : filteredStudents.length;
 
   const handleViewStudent = (studentId: number) => {
     window.location.href = `/admin/student-management/student/details/${studentId}`;
@@ -193,7 +191,7 @@ export default function ListStudentPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total de Alunos"
-          value={students.length.toString()}
+          value={totalItems.toString()}
           change="+8.2%"
           changeType="up"
           icon={Users}
@@ -225,9 +223,9 @@ export default function ListStudentPage() {
         />
 
         <StatCard
-          title="Sem Matrícula"
-          value={students.filter(s => !s.tb_matriculas).length.toString()}
-          change="Atenção"
+          title="Página Atual"
+          value={`${currentPage}/${totalPages}`}
+          change="Paginação"
           changeType="neutral"
           icon={UserX}
           color="text-purple-600"
@@ -263,10 +261,10 @@ export default function ListStudentPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Alunos Encontrados ({filteredStudents.length})
+            Alunos da Página {currentPage} ({filteredStudents.length} de {itemsPerPage})
           </CardTitle>
           <CardDescription>
-            Lista de todos os alunos com suas informações principais
+            Página {currentPage} de {totalPages} - Total: {totalItems} alunos
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -290,7 +288,7 @@ export default function ListStudentPage() {
                     <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex items-center justify-center space-x-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#182F59]"></div>
-                        <span>Carregando estudantes...</span>
+                        <span>Carregando página {currentPage}...</span>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -310,7 +308,7 @@ export default function ListStudentPage() {
                   currentStudents.map((student, index) => (
                     <TableRow key={student.codigo || index} className="hover:bg-gray-50">
                       <TableCell className="font-medium">
-                        {startIndex + index + 1}
+                        {startIndex + index}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -423,36 +421,87 @@ export default function ListStudentPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredStudents.length)} de {filteredStudents.length} alunos
+                Mostrando {startIndex} a {endIndex} de {totalItems} alunos
               </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || loading}
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Anterior
                 </Button>
                 <div className="flex items-center space-x-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className={currentPage === page ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
-                    >
-                      {page}
-                    </Button>
-                  ))}
+                  {(() => {
+                    const maxPagesToShow = 5;
+                    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                    const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
+                    
+                    const pages = [];
+                    
+                    // Primeira página
+                    if (adjustedStartPage > 1) {
+                      pages.push(
+                        <Button
+                          key={1}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(1)}
+                          disabled={loading}
+                        >
+                          1
+                        </Button>
+                      );
+                      if (adjustedStartPage > 2) {
+                        pages.push(<span key="ellipsis1" className="px-2">...</span>);
+                      }
+                    }
+                    
+                    // Páginas do meio
+                    for (let i = adjustedStartPage; i <= endPage; i++) {
+                      pages.push(
+                        <Button
+                          key={i}
+                          variant={currentPage === i ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(i)}
+                          disabled={loading}
+                          className={currentPage === i ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
+                        >
+                          {i}
+                        </Button>
+                      );
+                    }
+                    
+                    // Última página
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(<span key="ellipsis2" className="px-2">...</span>);
+                      }
+                      pages.push(
+                        <Button
+                          key={totalPages}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(totalPages)}
+                          disabled={loading}
+                        >
+                          {totalPages}
+                        </Button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || loading}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />
