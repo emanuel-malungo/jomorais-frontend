@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm, Controller } from 'react-hook-form';
@@ -40,6 +40,7 @@ import {
   Users,
   AlertCircle,
 } from 'lucide-react';
+import BIService from '@/services/bi.service';
 
 type AddStudentFormData = yup.InferType<typeof addStudentSchema>;
 
@@ -104,6 +105,14 @@ export default function AddStudentPage() {
       municipio: "",
     }
   });
+
+  useEffect(() => {
+    BIService.fetchBIDetails("007537847LA041").then(data => {
+      console.log("Detalhes do BI:", data);
+    }).catch(error => {
+      console.error("Erro ao buscar detalhes do BI:", error);
+    });
+  }, []);
   
   // Hooks geográficos
   const { 
