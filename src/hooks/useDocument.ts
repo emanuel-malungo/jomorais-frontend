@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react"
 import DocumentService from "@/services/document.service"
+import { IDocumentType, IDocumentNumbering } from "@/types/document.types"
 
 // -----------------------------
 // HOOKS PARA TIPOS DE DOCUMENTO
 // -----------------------------
 export function useDocumentTypes() {
-    const [documentTypes, setDocumentTypes] = useState<{ codigo: number; designacao: string }[]>([])
+    const [documentTypes, setDocumentTypes] = useState<IDocumentType[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -30,7 +31,7 @@ export function useDocumentTypes() {
 }
 
 export function useDocumentType(id?: number) {
-    const [documentType, setDocumentType] = useState<{ codigo: number; designacao: string } | null>(null)
+    const [documentType, setDocumentType] = useState<IDocumentType | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -58,8 +59,36 @@ export function useDocumentType(id?: number) {
 // -----------------------------
 // HOOKS PARA NUMERAÇÃO DOCUMENTOS
 // -----------------------------
+
+// Listar todas as numerações
+export function useDocumentNumberings() {
+    const [numberings, setNumberings] = useState<IDocumentNumbering[]>([])
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const fetchNumberings = useCallback(async () => {
+        try {
+            setLoading(true)
+            setError(null)
+            const data = await DocumentService.getDocumentNumbering()
+            setNumberings(data)
+        } catch (err: any) {
+            setError(err.message || "Erro ao carregar numerações")
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        fetchNumberings()
+    }, [fetchNumberings])
+
+    return { numberings, loading, error, refetch: fetchNumberings }
+}
+
+// Buscar/atualizar uma numeração por ID
 export function useDocumentNumbering(id?: number) {
-    const [numbering, setNumbering] = useState<{ designacao: string; next: number } | null>(null)
+    const [numbering, setNumbering] = useState<IDocumentNumbering | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -78,7 +107,7 @@ export function useDocumentNumbering(id?: number) {
     }, [id])
 
     const updateNumbering = useCallback(
-        async (numberingData: { designacao: string; next: number }) => {
+        async (numberingData: IDocumentNumbering) => {
             if (!id) return
             try {
                 setLoading(true)
@@ -103,11 +132,12 @@ export function useDocumentNumbering(id?: number) {
     return { numbering, loading, error, refetch: fetchNumbering, updateNumbering }
 }
 
+// Criar numeração
 export function useCreateDocumentNumbering() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const createNumbering = useCallback(async (numberingData: { designacao: string; next: number }) => {
+    const createNumbering = useCallback(async (numberingData: IDocumentNumbering) => {
         try {
             setLoading(true)
             setError(null)
@@ -122,4 +152,25 @@ export function useCreateDocumentNumbering() {
     }, [])
 
     return { createNumbering, loading, error }
+}
+
+// Deletar numeração
+export function useDeleteDocumentNumbering() {
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const deleteNumbering = useCallback(async (id: number) => {
+        try {
+            setLoading(true)
+            setError(null)
+            await DocumentService.deleteDocumentNumbering(id)
+        } catch (err: any) {
+            setError(err.message || "Erro ao deletar numeração")
+            throw err
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    return { deleteNumbering, loading, error }
 }
