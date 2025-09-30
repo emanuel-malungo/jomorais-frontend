@@ -12,19 +12,34 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Users,
-  Save,
   Plus,
   Edit,
   Trash2,
-  Search,
   Shield,
   UserCheck,
   UserX,
   Eye,
-  EyeOff,
-  Calendar,
   Settings,
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useUsersLegacy } from '@/hooks/useUsers';
 
@@ -194,81 +209,99 @@ export default function UsuariosPage() {
             <CardContent>
 
               {/* Lista */}
-              <div className="space-y-4">
-                {loading && (
-                  <div className="flex justify-center items-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F9CD1D]"></div>
-                  </div>
-                )}
+              {loading && (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F9CD1D]"></div>
+                </div>
+              )}
 
+              {!loading && !error && filteredUsuarios.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  Nenhum usuário encontrado.
+                </div>
+              )}
 
-                {!loading && !error && filteredUsuarios.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    Nenhum usuário encontrado.
-                  </div>
-                )}
-
-                {!loading && !error && filteredUsuarios.map((usuario: Usuario) => (
-                  <div key={usuario.codigo} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center">
-                          <Users className="h-6 w-6 text-gray-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{usuario.nome}</h3>
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <Users className="h-4 w-4" />
-                            <span>Usuário: {usuario.user}</span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <Shield className="h-4 w-4" />
-                            <span>Código: {usuario.codigo}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end space-y-2">
-                        <div className="flex flex-col space-y-2">
-                          <Badge className={getTipoUsuarioColor(usuario.tb_tipos_utilizador.designacao)}>
-                            {usuario.tb_tipos_utilizador.designacao}
-                          </Badge>
-                          <Badge className={getStatusColor(usuario.estadoActual)}>
-                            {getStatusIcon(usuario.estadoActual)}
-                            <span className="ml-1">{usuario.estadoActual}</span>
-                          </Badge>
-                          <Badge className={getLoginStatusColor(usuario.loginStatus)}>
-                            <span className="ml-1">Login: {usuario.loginStatus}</span>
-                          </Badge>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-red-600">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center space-x-2 text-gray-600">
-                        <Shield className="h-4 w-4" />
-                        <span>Tipo: {usuario.tb_tipos_utilizador.designacao}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-gray-600">
-                        <Calendar className="h-4 w-4" />
-                        <span>Status Login: {usuario.loginStatus}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {!loading && !error && filteredUsuarios.length > 0 && (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Usuário</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Login</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsuarios.map((usuario: Usuario) => (
+                        <TableRow key={usuario.codigo}>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
+                                <Users className="h-5 w-5 text-[#F9CD1D]" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{usuario.nome}</p>
+                                <p className="text-sm text-gray-500">@{usuario.user}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getTipoUsuarioColor(usuario.tb_tipos_utilizador.designacao)}>
+                              <Shield className="mr-1 h-3 w-3" />
+                              {usuario.tb_tipos_utilizador.designacao}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(usuario.estadoActual)}>
+                              {getStatusIcon(usuario.estadoActual)}
+                              <span className="ml-1">{usuario.estadoActual}</span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getLoginStatusColor(usuario.loginStatus)}>
+                              <div className={`w-2 h-2 rounded-full mr-2 ${usuario.loginStatus === 'ON' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                              {usuario.loginStatus}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Visualizar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
               {/* Paginação */}
               {meta && (meta as any).totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                  <div className="text-sm text-gray-700">
+                <div className="flex items-center justify-between space-x-2 py-4">
+                  <div className="text-sm text-gray-500">
                     Mostrando {((page - 1) * 10) + 1} a {Math.min(page * 10, (meta as any).total)} de {(meta as any).total} usuários
                   </div>
                   <div className="flex items-center space-x-2">
@@ -278,10 +311,10 @@ export default function UsuariosPage() {
                       onClick={() => setPage(page - 1)}
                       disabled={page === 1}
                     >
+                      <ChevronLeft className="h-4 w-4" />
                       Anterior
                     </Button>
-
-                    <div className="flex space-x-1">
+                    <div className="flex items-center space-x-1">
                       {Array.from({ length: Math.min(5, (meta as any).totalPages) }, (_, i) => {
                         const pageNum = i + 1;
                         return (
@@ -290,14 +323,13 @@ export default function UsuariosPage() {
                             variant={page === pageNum ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPage(pageNum)}
-                            className={page === pageNum ? "bg-[#F9CD1D] hover:bg-[#F9CD1D]/90" : ""}
+                            className={`w-8 h-8 ${page === pageNum ? "bg-[#F9CD1D] hover:bg-[#F9CD1D]/90" : ""}`}
                           >
                             {pageNum}
                           </Button>
                         );
                       })}
                     </div>
-
                     <Button
                       variant="outline"
                       size="sm"
@@ -305,6 +337,7 @@ export default function UsuariosPage() {
                       disabled={page === (meta as any).totalPages}
                     >
                       Próximo
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
