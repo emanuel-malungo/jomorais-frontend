@@ -1,13 +1,6 @@
 import { useState, useCallback } from 'react';
 import StudentService from '@/services/student.service';
-
-// Interface básica do Student para o frontend
-interface Student {
-    id: number;
-    nome: string;
-    idade: number;
-    turma: string;
-}
+import { Student } from '@/types/student.types';
 
 // Interface completa baseada no backend
 interface StudentCreateData {
@@ -87,7 +80,8 @@ export const useStudent = (): UseStudentReturn => {
             
             setState(prev => ({
                 ...prev,
-                students: response,
+                students: response.students,
+                pagination: response.pagination,
                 loading: false,
                 error: null,
             }));
@@ -146,9 +140,9 @@ export const useStudent = (): UseStudentReturn => {
             setState(prev => ({
                 ...prev,
                 students: prev.students.map(student => 
-                    student.id === id ? updatedStudent : student
+                    student.codigo === id ? updatedStudent : student
                 ),
-                student: prev.student?.id === id ? updatedStudent : prev.student,
+                student: prev.student?.codigo === id ? updatedStudent : prev.student,
                 loading: false,
                 error: null,
             }));
@@ -167,8 +161,8 @@ export const useStudent = (): UseStudentReturn => {
             
             setState(prev => ({
                 ...prev,
-                students: prev.students.filter(student => student.id !== id),
-                student: prev.student?.id === id ? null : prev.student,
+                students: prev.students.filter(student => student.codigo !== id),
+                student: prev.student?.codigo === id ? null : prev.student,
                 loading: false,
                 error: null,
             }));

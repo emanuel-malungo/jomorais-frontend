@@ -1,54 +1,24 @@
 import api from "@/utils/api.utils";
-
-
-
-// Interface básica do Student para o frontend
-interface Student {
-    id: number;
-    nome: string;
-    idade: number;
-    turma: string;
-}
-
-// Interface completa baseada no backend
-interface StudentCreateData {
-    nome: string;
-    pai?: string;
-    mae?: string;
-    codigo_Nacionalidade: number;
-    dataNascimento: string;
-    email?: string;
-    telefone?: string;
-    codigo_Comuna: number;
-    codigo_Encarregado?: number;
-    codigo_Utilizador: number;
-    sexo: 'M' | 'F';
-    n_documento_identificacao?: string;
-    saldo?: number;
-    morada?: string;
-}
-
-// Interface para resposta da API
-interface StudentResponse {
-    success: boolean;
-    message: string;
-    data?: any;
-    pagination?: {
-        currentPage: number;
-        totalPages: number;
-        totalItems: number;
-        itemsPerPage: number;
-    };
-}
+import { Student, StudentCreateData, StudentResponse } from "@/types/student.types";
 
 export default class StudentService {
 
-    static async getAllStudents(page: number, limit: number): Promise<Student[]> {
+    static async getAllStudents(page: number, limit: number): Promise<{ students: Student[], pagination: any }> {
         try {
             const response = await api.get("/api/student-management/alunos", {
                 params: { page, limit },
             });
-            return response.data;
+            
+            const apiResponse: StudentResponse = response.data;
+            
+            if (apiResponse.success) {
+                return {
+                    students: apiResponse.data,
+                    pagination: apiResponse.pagination
+                };
+            } else {
+                throw new Error(apiResponse.message || 'Erro ao buscar alunos');
+            }
         } catch (error) {
             console.error("Erro ao buscar alunos:", error);
             throw error;
@@ -87,7 +57,7 @@ export default class StudentService {
 
     static async deleteStudent(id: number): Promise<void> {
         try {
-            await api.delete(`/api/students/${id}`);
+            await api.delete(`/api/student-management/alunos/${id}`);
         } catch (error) {
             console.error("Erro ao deletar aluno:", error);
             throw error;

@@ -58,159 +58,8 @@ import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
-// Dados mockados baseados na estrutura do backend
-const mockStudents = [
-  {
-    codigo: 1,
-    nome: "Ana Silva Santos",
-    pai: "João Santos",
-    mae: "Maria Silva",
-    email: "ana.santos@email.com",
-    telefone: "923456789",
-    dataNascimento: "2005-03-15",
-    sexo: "F",
-    n_documento_identificacao: "123456789LA041",
-    morada: "Rua das Flores, 123, Luanda",
-    url_Foto: "/avatars/ana.jpg",
-    codigo_Status: 1,
-    dataCadastro: "2024-01-15",
-    tb_encarregados: {
-      nome: "João Santos",
-      telefone: "912345678",
-      tb_profissao: { designacao: "Engenheiro" }
-    },
-    tb_tipo_documento: { designacao: "Bilhete de Identidade" },
-    tb_matriculas: {
-      data_Matricula: "2024-02-01",
-      codigoStatus: 1,
-      tb_cursos: { designacao: "Informática de Gestão" },
-      tb_confirmacoes: [{
-        tb_turmas: {
-          designacao: "IG-2024-M",
-          tb_classes: { designacao: "10ª Classe" }
-        }
-      }]
-    }
-  },
-  {
-    codigo: 2,
-    nome: "Carlos Manuel Ferreira",
-    pai: "Manuel Ferreira",
-    mae: "Rosa Manuel",
-    email: "carlos.ferreira@email.com",
-    telefone: "934567890",
-    dataNascimento: "2004-07-22",
-    sexo: "M",
-    n_documento_identificacao: "987654321LA042",
-    morada: "Av. Marginal, 456, Luanda",
-    url_Foto: "/avatars/carlos.jpg",
-    codigo_Status: 1,
-    dataCadastro: "2024-01-20",
-    tb_encarregados: {
-      nome: "Manuel Ferreira",
-      telefone: "923456789",
-      tb_profissao: { designacao: "Professor" }
-    },
-    tb_tipo_documento: { designacao: "Bilhete de Identidade" },
-    tb_matriculas: {
-      data_Matricula: "2024-02-05",
-      codigoStatus: 1,
-      tb_cursos: { designacao: "Contabilidade e Gestão" },
-      tb_confirmacoes: [{
-        tb_turmas: {
-          designacao: "CG-2024-T",
-          tb_classes: { designacao: "11ª Classe" }
-        }
-      }]
-    }
-  },
-  {
-    codigo: 3,
-    nome: "Beatriz Costa Lima",
-    pai: "António Lima",
-    mae: "Esperança Costa",
-    email: "beatriz.lima@email.com",
-    telefone: "945678901",
-    dataNascimento: "2005-11-08",
-    sexo: "F",
-    n_documento_identificacao: "456789123LA043",
-    morada: "Bairro Operário, 789, Luanda",
-    url_Foto: "/avatars/beatriz.jpg",
-    codigo_Status: 1,
-    dataCadastro: "2024-01-25",
-    tb_encarregados: {
-      nome: "António Lima",
-      telefone: "934567890",
-      tb_profissao: { designacao: "Comerciante" }
-    },
-    tb_tipo_documento: { designacao: "Bilhete de Identidade" },
-    tb_matriculas: {
-      data_Matricula: "2024-02-10",
-      codigoStatus: 1,
-      tb_cursos: { designacao: "Secretariado Executivo" },
-      tb_confirmacoes: [{
-        tb_turmas: {
-          designacao: "SE-2024-M",
-          tb_classes: { designacao: "10ª Classe" }
-        }
-      }]
-    }
-  },
-  {
-    codigo: 4,
-    nome: "David Nunes Pereira",
-    pai: "José Pereira",
-    mae: "Luísa Nunes",
-    email: "david.pereira@email.com",
-    telefone: "956789012",
-    dataNascimento: "2003-12-03",
-    sexo: "M",
-    n_documento_identificacao: "789123456LA044",
-    morada: "Zona Industrial, 321, Luanda",
-    url_Foto: "/avatars/david.jpg",
-    codigo_Status: 1,
-    dataCadastro: "2024-02-01",
-    tb_encarregados: {
-      nome: "José Pereira",
-      telefone: "945678901",
-      tb_profissao: { designacao: "Mecânico" }
-    },
-    tb_tipo_documento: { designacao: "Bilhete de Identidade" },
-    tb_matriculas: {
-      data_Matricula: "2024-02-15",
-      codigoStatus: 1,
-      tb_cursos: { designacao: "Electrónica e Telecomunicações" },
-      tb_confirmacoes: [{
-        tb_turmas: {
-          designacao: "ET-2024-T",
-          tb_classes: { designacao: "12ª Classe" }
-        }
-      }]
-    }
-  },
-  {
-    codigo: 5,
-    nome: "Eduarda Mendes Silva",
-    pai: "Fernando Silva",
-    mae: "Carla Mendes",
-    email: "eduarda.silva@email.com",
-    telefone: "967890123",
-    dataNascimento: "2005-05-18",
-    sexo: "F",
-    n_documento_identificacao: "321654987LA045",
-    morada: "Bairro Azul, 654, Luanda",
-    url_Foto: "/avatars/eduarda.jpg",
-    codigo_Status: 0, // Inativo
-    dataCadastro: "2024-02-05",
-    tb_encarregados: {
-      nome: "Fernando Silva",
-      telefone: "956789012",
-      tb_profissao: { designacao: "Advogado" }
-    },
-    tb_tipo_documento: { designacao: "Bilhete de Identidade" },
-    tb_matriculas: null // Sem matrícula
-  }
-];
+import useStudent from '@/hooks/useStudent';
+import { Student } from '@/types/student.types';
 
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
@@ -220,21 +69,28 @@ const statusOptions = [
 
 const courseOptions = [
   { value: "all", label: "Todos os Cursos" },
-  { value: "informatica", label: "Informática de Gestão" },
-  { value: "contabilidade", label: "Contabilidade e Gestão" },
-  { value: "secretariado", label: "Secretariado Executivo" },
-  { value: "electronica", label: "Electrónica e Telecomunicações" },
+  { value: "ensino primário", label: "Ensino Primário" },
+  { value: "enfermagem geral", label: "Enfermagem Geral" },
+  { value: "i ciclo", label: "I Ciclo" },
+  { value: "analises clinicas", label: "Análises Clínicas" },
+  { value: "iniciação", label: "Iniciação" },
 ];
 
 export default function ListStudentPage() {
-  const [students, setStudents] = useState(mockStudents);
-  const [filteredStudents, setFilteredStudents] = useState(mockStudents);
+  const { students, loading, error, getAllStudents } = useStudent();
+
+  
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Carregar estudantes quando o componente for montado
+  useEffect(() => {
+    getAllStudents();
+  }, [getAllStudents]);
 
   // Filtrar estudantes
   useEffect(() => {
@@ -244,11 +100,11 @@ export default function ListStudentPage() {
     if (searchTerm) {
       filtered = filtered.filter(student =>
         student.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.telefone.includes(searchTerm) ||
-        student.n_documento_identificacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.pai.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.mae.toLowerCase().includes(searchTerm.toLowerCase())
+        student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.telefone?.includes(searchTerm) ||
+        student.n_documento_identificacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.pai?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.mae?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -288,22 +144,37 @@ export default function ListStudentPage() {
 
   const handleDeleteStudent = (studentId: number) => {
     console.log("Excluir aluno:", studentId);
-    // Implementar confirmação e exclusão do aluno
+    // Implementar confirmação e exclusão do aluno com o hook
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-AO');
   };
 
-  const calculateAge = (birthDate: string) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+  const calculateAge = (birthDate: any) => {
+    // Se o birthDate for um objeto vazio ou inválido, retorna "N/A"
+    if (!birthDate || typeof birthDate === 'object' && Object.keys(birthDate).length === 0) {
+      return "N/A";
     }
-    return age;
+    
+    try {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      
+      // Verifica se a data é válida
+      if (isNaN(birth.getTime())) {
+        return "N/A";
+      }
+      
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age.toString();
+    } catch (error) {
+      return "N/A";
+    }
   };
 
   return (
@@ -414,12 +285,12 @@ export default function ListStudentPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
+                {loading ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex items-center justify-center space-x-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#182F59]"></div>
-                        <span>Carregando alunos...</span>
+                        <span>Carregando estudantes...</span>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -437,7 +308,7 @@ export default function ListStudentPage() {
                   </TableRow>
                 ) : (
                   currentStudents.map((student, index) => (
-                    <TableRow key={student.codigo} className="hover:bg-gray-50">
+                    <TableRow key={student.codigo || index} className="hover:bg-gray-50">
                       <TableCell className="font-medium">
                         {startIndex + index + 1}
                       </TableCell>
@@ -451,9 +322,12 @@ export default function ListStudentPage() {
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
                               <span className="flex items-center">
                                 <Calendar className="w-3 h-3 mr-1" />
-                                {calculateAge(student.dataNascimento)} anos
+                                {calculateAge(student.dataNascimento) !== "N/A" 
+                                  ? `${calculateAge(student.dataNascimento)} anos`
+                                  : "Idade N/A"
+                                }
                               </span>
-                              <span>{student.sexo === 'M' ? 'Masculino' : 'Feminino'}</span>
+                              <span>{student.sexo}</span>
                             </div>
                           </div>
                         </div>
@@ -472,16 +346,16 @@ export default function ListStudentPage() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="text-sm font-medium">{student.n_documento_identificacao}</p>
-                          <p className="text-xs text-gray-500">{student.tb_tipo_documento.designacao}</p>
+                          <p className="text-sm font-medium">{student.n_documento_identificacao || 'N/A'}</p>
+                          <p className="text-xs text-gray-500">{student.tb_tipo_documento?.designacao || 'N/A'}</p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="text-sm font-medium">{student.tb_encarregados.nome}</p>
+                          <p className="text-sm font-medium">{student.tb_encarregados?.nome || 'N/A'}</p>
                           <div className="flex items-center text-xs text-gray-500">
                             <Phone className="w-3 h-3 mr-1" />
-                            {student.tb_encarregados.telefone}
+                            {student.tb_encarregados?.telefone || 'N/A'}
                           </div>
                         </div>
                       </TableCell>
@@ -491,11 +365,9 @@ export default function ListStudentPage() {
                             <p className="text-sm font-medium">
                               {student.tb_matriculas.tb_cursos.designacao}
                             </p>
-                            {student.tb_matriculas.tb_confirmacoes?.[0] && (
-                              <Badge variant="outline" className="text-xs">
-                                {student.tb_matriculas.tb_confirmacoes[0].tb_turmas.designacao}
-                              </Badge>
-                            )}
+                            <Badge variant="outline" className="text-xs">
+                              Matrícula #{student.tb_matriculas.codigo}
+                            </Badge>
                           </div>
                         ) : (
                           <Badge variant="destructive" className="text-xs">
@@ -521,17 +393,17 @@ export default function ListStudentPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleViewStudent(student.codigo)}>
+                            <DropdownMenuItem onClick={() => handleViewStudent(student.codigo || 0)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Visualizar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditStudent(student.codigo)}>
+                            <DropdownMenuItem onClick={() => handleEditStudent(student.codigo || 0)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteStudent(student.codigo)}
+                              onClick={() => handleDeleteStudent(student.codigo || 0)}
                               className="text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
