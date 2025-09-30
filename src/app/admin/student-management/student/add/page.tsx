@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { useForm, Controller } from 'react-hook-form';
 import Container from '@/components/layout/Container';
 import useStudent from '@/hooks/useStudent';
 import { useGeographic } from '@/hooks/useGeographic';
+import { addStudentSchema } from '@/validations/student-management.validatios';
+import * as yup from 'yup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -35,6 +39,8 @@ import {
   Users,
   AlertCircle,
 } from 'lucide-react';
+
+type AddStudentFormData = yup.InferType<typeof addStudentSchema>;
 
 // Hooks para dados que ainda não têm API
 const useEncarregados = () => {
@@ -72,6 +78,37 @@ export default function AddStudentPage() {
   const [activeTab, setActiveTab] = useState("personal");
   const { createStudent, loading, error } = useStudent();
   
+  // Configuração do react-hook-form com yupResolver
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting }
+  } = useForm({
+    resolver: yupResolver(addStudentSchema),
+    mode: 'onChange',
+    defaultValues: {
+      nome: "",
+      pai: "",
+      mae: "",
+      codigo_Nacionalidade: "",
+      dataNascimento: "",
+      email: "",
+      telefone: "",
+      codigo_Comuna: "",
+      codigo_Encarregado: "",
+      codigo_Utilizador: "",
+      sexo: "",
+      n_documento_identificacao: "",
+      saldo: 0,
+      morada: "",
+      codigoTipoDocumento: "",
+      provincia: "",
+      municipio: "",
+    }
+  });
+  
   // Hooks geográficos
   const { 
     nacionalidades, 
@@ -88,119 +125,52 @@ export default function AddStudentPage() {
   const [selectedProvinciaId, setSelectedProvinciaId] = useState<number | undefined>();
   const [selectedMunicipioId, setSelectedMunicipioId] = useState<number | undefined>();
 
-  // Estados do formulário baseado nos campos da API
-  const [formData, setFormData] = useState({
-    nome: "",
-    pai: "",
-    mae: "",
-    codigo_Nacionalidade: "",
-    dataNascimento: "",
-    email: "",
-    telefone: "",
-    codigo_Comuna: "",
-    codigo_Encarregado: "",
-    codigo_Utilizador: "",
-    sexo: "",
-    n_documento_identificacao: "",
-    saldo: 0,
-    morada: "",
-    codigoTipoDocumento: "",
-    
-    // Campos auxiliares para hierarquia geográfica
-    provincia: "",
-    municipio: "",
-  });
+  // Observar mudanças nos campos de hierarquia geográfica
+  const watchProvincia = watch("provincia");
+  const watchMunicipio = watch("municipio");
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Lógica para hierarquia geográfica
-    if (field === 'provincia') {
-      const provinciaId = parseInt(value);
+  // Lógica para hierarquia geográfica
+  useEffect(() => {
+    if (watchProvincia) {
+      const provinciaId = parseInt(watchProvincia);
       setSelectedProvinciaId(provinciaId);
       setSelectedMunicipioId(undefined);
-      setFormData(prev => ({
-        ...prev,
-        municipio: "",
-        codigo_Comuna: ""
-      }));
+      setValue("municipio", "");
+      setValue("codigo_Comuna", "");
       // Buscar municípios da província selecionada
       municipios.getMunicipiosByProvincia(provinciaId);
     }
-    
-    if (field === 'municipio') {
-      const municipioId = parseInt(value);
+  }, [watchProvincia, municipios, setValue]);
+
+  useEffect(() => {
+    if (watchMunicipio) {
+      const municipioId = parseInt(watchMunicipio);
       setSelectedMunicipioId(municipioId);
-      setFormData(prev => ({
-        ...prev,
-        codigo_Comuna: ""
-      }));
+      setValue("codigo_Comuna", "");
       // Buscar comunas do município selecionado
       comunas.getComunasByMunicipio(municipioId);
     }
-    
-    // Limpar erro quando o usuário começar a digitar
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ""
-      }));
-    }
-  };
+  }, [watchMunicipio, comunas, setValue]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    // Validações obrigatórias
-    if (!formData.nome.trim()) newErrors.nome = "Nome é obrigatório";
-    if (!formData.email.trim()) newErrors.email = "Email é obrigatório";
-    if (!formData.telefone.trim()) newErrors.telefone = "Telefone é obrigatório";
-    if (!formData.dataNascimento) newErrors.dataNascimento = "Data de nascimento é obrigatória";
-    if (!formData.sexo) newErrors.sexo = "Sexo é obrigatório";
-    if (!formData.codigo_Nacionalidade) newErrors.codigo_Nacionalidade = "Nacionalidade é obrigatória";
-    if (!formData.codigo_Comuna) newErrors.codigo_Comuna = "Comuna é obrigatória";
-    if (!formData.codigoTipoDocumento) newErrors.codigoTipoDocumento = "Tipo de documento é obrigatório";
-    if (!formData.n_documento_identificacao.trim()) newErrors.n_documento_identificacao = "Número do documento é obrigatório";
-    if (!formData.codigo_Encarregado) newErrors.codigo_Encarregado = "Encarregado é obrigatório";
-
-    // Validação de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      newErrors.email = "Email inválido";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-    
+  const onSubmit = async (data: any) => {
     try {
       // Criar objeto Student baseado nos campos esperados pela API
       const studentData = {
-        nome: formData.nome,
-        pai: formData.pai || undefined,
-        mae: formData.mae || undefined,
-        codigo_Nacionalidade: parseInt(formData.codigo_Nacionalidade),
-        dataNascimento: formData.dataNascimento,
-        email: formData.email || undefined,
-        telefone: formData.telefone || undefined,
-        codigo_Comuna: parseInt(formData.codigo_Comuna),
-        codigo_Encarregado: parseInt(formData.codigo_Encarregado),
-        codigo_Utilizador: parseInt(formData.codigo_Utilizador) || 1, // Temporário
-        sexo: formData.sexo,
-        n_documento_identificacao: formData.n_documento_identificacao,
-        saldo: formData.saldo,
-        morada: formData.morada || undefined,
-        codigoTipoDocumento: parseInt(formData.codigoTipoDocumento)
+        nome: data.nome,
+        pai: data.pai || undefined,
+        mae: data.mae || undefined,
+        codigo_Nacionalidade: parseInt(data.codigo_Nacionalidade),
+        dataNascimento: data.dataNascimento,
+        email: data.email || undefined,
+        telefone: data.telefone || undefined,
+        codigo_Comuna: parseInt(data.codigo_Comuna),
+        codigo_Encarregado: parseInt(data.codigo_Encarregado),
+        codigo_Utilizador: parseInt(data.codigo_Utilizador || "1"), // Temporário
+        sexo: data.sexo,
+        n_documento_identificacao: data.n_documento_identificacao,
+        saldo: data.saldo || 0,
+        morada: data.morada || undefined,
+        codigoTipoDocumento: parseInt(data.codigoTipoDocumento)
       };
       
       await createStudent(studentData as any);
@@ -256,12 +226,13 @@ export default function AddStudentPage() {
               </Button>
 
               <Button
-                onClick={handleSubmit}
-                disabled={loading}
+                type="submit"
+                onClick={handleSubmit(onSubmit)}
+                disabled={loading || isSubmitting}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
                 <Save className="w-5 h-5 mr-2" />
-                {loading ? "Salvando..." : "Salvar Aluno"}
+                {loading || isSubmitting ? "Salvando..." : "Salvar Aluno"}
               </Button>
             </div>
           </div>
@@ -284,417 +255,518 @@ export default function AddStudentPage() {
       )}
 
       {/* Formulário em Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
-          <TabsTrigger value="documents">Documentos</TabsTrigger>
-          <TabsTrigger value="system">Sistema</TabsTrigger>
-        </TabsList>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
+            <TabsTrigger value="documents">Documentos</TabsTrigger>
+            <TabsTrigger value="system">Sistema</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="personal" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="h-5 w-5" />
-                <span>Informações Pessoais</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Nome Completo *
-                  </label>
-                  <Input
-                    placeholder="Digite o nome completo"
-                    value={formData.nome}
-                    onChange={(e) => handleInputChange('nome', e.target.value)}
-                    className={errors.nome ? "border-red-500" : ""}
-                  />
-                  {errors.nome && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.nome}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Sexo *
-                  </label>
-                  <Select value={formData.sexo} onValueChange={(value) => handleInputChange('sexo', value)}>
-                    <SelectTrigger className={errors.sexo ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione o sexo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="M">Masculino</SelectItem>
-                      <SelectItem value="F">Feminino</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.sexo && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.sexo}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Data de Nascimento *
-                  </label>
-                  <Input
-                    type="date"
-                    value={formData.dataNascimento}
-                    onChange={(e) => handleInputChange('dataNascimento', e.target.value)}
-                    className={errors.dataNascimento ? "border-red-500" : ""}
-                  />
-                  {errors.dataNascimento && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.dataNascimento}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Email *
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="exemplo@email.com"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    className={errors.email ? "border-red-500" : ""}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.email}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Telefone *
-                  </label>
-                  <Input
-                    placeholder="9XX XXX XXX"
-                    value={formData.telefone}
-                    onChange={(e) => handleInputChange('telefone', e.target.value)}
-                    className={errors.telefone ? "border-red-500" : ""}
-                  />
-                  {errors.telefone && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.telefone}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Nome do Pai
-                  </label>
-                  <Input
-                    placeholder="Nome do pai"
-                    value={formData.pai}
-                    onChange={(e) => handleInputChange('pai', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Nome da Mãe
-                  </label>
-                  <Input
-                    placeholder="Nome da mãe"
-                    value={formData.mae}
-                    onChange={(e) => handleInputChange('mae', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Nacionalidade *
-                  </label>
-                  <Select value={formData.codigo_Nacionalidade} onValueChange={(value) => handleInputChange('codigo_Nacionalidade', value)}>
-                    <SelectTrigger className={errors.codigo_Nacionalidade ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione a nacionalidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {nacionalidades.loading ? (
-                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                      ) : (
-                        nacionalidades.nacionalidades?.filter(n => n.id).map((nacionalidade) => (
-                          <SelectItem key={nacionalidade.id} value={nacionalidade.id.toString()}>
-                            {nacionalidade.nome}
-                          </SelectItem>
-                        )) || []
+          <TabsContent value="personal" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <User className="h-5 w-5" />
+                  <span>Informações Pessoais</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Nome */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Nome Completo *
+                    </label>
+                    <Controller
+                      name="nome"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          placeholder="Digite o nome completo"
+                          {...field}
+                          className={errors.nome ? "border-red-500" : ""}
+                        />
                       )}
-                    </SelectContent>
-                  </Select>
-                  {errors.codigo_Nacionalidade && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.codigo_Nacionalidade}
-                    </p>
-                  )}
-                </div>
+                    />
+                    {errors.nome && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.nome?.message}
+                      </p>
+                    )}
+                  </div>
 
-
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Província *
-                  </label>
-                  <Select value={formData.provincia} onValueChange={(value) => handleInputChange('provincia', value)}>
-                    <SelectTrigger className={errors.provincia ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione a província" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {provincias.loading ? (
-                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                      ) : (
-                        provincias.provincias?.filter(p => p.id).map((provincia) => (
-                          <SelectItem key={provincia.id} value={provincia.id.toString()}>
-                            {provincia.nome}
-                          </SelectItem>
-                        )) || []
+                  {/* Sexo */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Sexo *
+                    </label>
+                    <Controller
+                      name="sexo"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className={errors.sexo ? "border-red-500" : ""}>
+                            <SelectValue placeholder="Selecione o sexo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="M">Masculino</SelectItem>
+                            <SelectItem value="F">Feminino</SelectItem>
+                          </SelectContent>
+                        </Select>
                       )}
-                    </SelectContent>
-                  </Select>
-                  {errors.provincia && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.provincia}
-                    </p>
-                  )}
-                </div>
+                    />
+                    {errors.sexo && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.sexo?.message}
+                      </p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Município *
-                  </label>
-                  <Select 
-                    value={formData.municipio} 
-                    onValueChange={(value) => handleInputChange('municipio', value)}
-                    disabled={!selectedProvinciaId}
-                  >
-                    <SelectTrigger className={errors.municipio ? "border-red-500" : ""}>
-                      <SelectValue placeholder={!selectedProvinciaId ? "Selecione primeiro a província" : "Selecione o município"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {municipios.loading ? (
-                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                      ) : (
-                        municipios.municipios
-                          ?.filter(municipio => municipio.id && municipio.provincia_id === selectedProvinciaId)
-                          ?.map((municipio) => (
-                            <SelectItem key={municipio.id} value={municipio.id.toString()}>
-                              {municipio.nome}
-                            </SelectItem>
-                          )) || []
+                  {/* Data de Nascimento */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Data de Nascimento *
+                    </label>
+                    <Controller
+                      name="dataNascimento"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          type="date"
+                          {...field}
+                          className={errors.dataNascimento ? "border-red-500" : ""}
+                        />
                       )}
-                    </SelectContent>
-                  </Select>
-                  {errors.municipio && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.municipio}
-                    </p>
-                  )}
-                </div>
+                    />
+                    {errors.dataNascimento && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.dataNascimento?.message}
+                      </p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Comuna *
-                  </label>
-                  <Select 
-                    value={formData.codigo_Comuna} 
-                    onValueChange={(value) => handleInputChange('codigo_Comuna', value)}
-                    disabled={!selectedMunicipioId}
-                  >
-                    <SelectTrigger className={errors.codigo_Comuna ? "border-red-500" : ""}>
-                      <SelectValue placeholder={!selectedMunicipioId ? "Selecione primeiro o município" : "Selecione a comuna"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {comunas.loading ? (
-                        <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                      ) : (
-                        comunas.comunas
-                          ?.filter(comuna => comuna.id && comuna.municipio_id === selectedMunicipioId)
-                          ?.map((comuna) => (
-                            <SelectItem key={comuna.id} value={comuna.id.toString()}>
-                              {comuna.nome}
-                            </SelectItem>
-                          )) || []
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Email *
+                    </label>
+                    <Controller
+                      name="email"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          type="email"
+                          placeholder="exemplo@email.com"
+                          {...field}
+                          className={errors.email ? "border-red-500" : ""}
+                        />
                       )}
-                    </SelectContent>
-                  </Select>
-                  {errors.codigo_Comuna && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.codigo_Comuna}
-                    </p>
-                  )}
+                    />
+                    {errors.email && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.email?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Telefone */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Telefone *
+                    </label>
+                    <Controller
+                      name="telefone"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          placeholder="9XX XXX XXX"
+                          {...field}
+                          className={errors.telefone ? "border-red-500" : ""}
+                        />
+                      )}
+                    />
+                    {errors.telefone && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.telefone?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Nome do Pai */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Nome do Pai
+                    </label>
+                    <Controller
+                      name="pai"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          placeholder="Nome do pai"
+                          {...field}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  {/* Nome da Mãe */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Nome da Mãe
+                    </label>
+                    <Controller
+                      name="mae"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          placeholder="Nome da mãe"
+                          {...field}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  {/* Nacionalidade */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Nacionalidade *
+                    </label>
+                    <Controller
+                      name="codigo_Nacionalidade"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className={errors.codigo_Nacionalidade ? "border-red-500" : ""}>
+                            <SelectValue placeholder="Selecione a nacionalidade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {nacionalidades.loading ? (
+                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                            ) : (
+                              nacionalidades.nacionalidades?.filter(n => n.id).map((nacionalidade) => (
+                                <SelectItem key={nacionalidade.id} value={nacionalidade.id.toString()}>
+                                  {nacionalidade.nome}
+                                </SelectItem>
+                              )) || []
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.codigo_Nacionalidade && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.codigo_Nacionalidade?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Província */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Província *
+                    </label>
+                    <Controller
+                      name="provincia"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className={errors.provincia ? "border-red-500" : ""}>
+                            <SelectValue placeholder="Selecione a província" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {provincias.loading ? (
+                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                            ) : (
+                              provincias.provincias?.filter(p => p.id).map((provincia) => (
+                                <SelectItem key={provincia.id} value={provincia.id.toString()}>
+                                  {provincia.nome}
+                                </SelectItem>
+                              )) || []
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.provincia && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.provincia?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Município */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Município *
+                    </label>
+                    <Controller
+                      name="municipio"
+                      control={control}
+                      render={({ field }) => (
+                        <Select 
+                          value={field.value} 
+                          onValueChange={field.onChange}
+                          disabled={!selectedProvinciaId}
+                        >
+                          <SelectTrigger className={errors.municipio ? "border-red-500" : ""}>
+                            <SelectValue placeholder={!selectedProvinciaId ? "Selecione primeiro a província" : "Selecione o município"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {municipios.loading ? (
+                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                            ) : (
+                              municipios.municipios
+                                ?.filter(municipio => municipio.id && municipio.provincia_id === selectedProvinciaId)
+                                ?.map((municipio) => (
+                                  <SelectItem key={municipio.id} value={municipio.id.toString()}>
+                                    {municipio.nome}
+                                  </SelectItem>
+                                )) || []
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.municipio && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.municipio?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Comuna */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Comuna *
+                    </label>
+                    <Controller
+                      name="codigo_Comuna"
+                      control={control}
+                      render={({ field }) => (
+                        <Select 
+                          value={field.value} 
+                          onValueChange={field.onChange}
+                          disabled={!selectedMunicipioId}
+                        >
+                          <SelectTrigger className={errors.codigo_Comuna ? "border-red-500" : ""}>
+                            <SelectValue placeholder={!selectedMunicipioId ? "Selecione primeiro o município" : "Selecione a comuna"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {comunas.loading ? (
+                              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                            ) : (
+                              comunas.comunas
+                                ?.filter(comuna => comuna.id && comuna.municipio_id === selectedMunicipioId)
+                                ?.map((comuna) => (
+                                  <SelectItem key={comuna.id} value={comuna.id.toString()}>
+                                    {comuna.nome}
+                                  </SelectItem>
+                                )) || []
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.codigo_Comuna && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.codigo_Comuna?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Endereço */}
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Endereço
+                    </label>
+                    <Controller
+                      name="morada"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          placeholder="Endereço completo"
+                          {...field}
+                        />
+                      )}
+                    />
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Endereço
-                  </label>
-                  <Input
-                    placeholder="Endereço completo"
-                    value={formData.morada}
-                    onChange={(e) => handleInputChange('morada', e.target.value)}
-                  />
+          <TabsContent value="documents" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5" />
+                  <span>Documentos de Identificação</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Tipo de Documento */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Tipo de Documento *
+                    </label>
+                    <Controller
+                      name="codigoTipoDocumento"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className={errors.codigoTipoDocumento ? "border-red-500" : ""}>
+                            <SelectValue placeholder="Selecione o tipo de documento" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {documentTypes.map((doc) => (
+                              <SelectItem key={doc.codigo} value={doc.codigo.toString()}>
+                                {doc.designacao}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.codigoTipoDocumento && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.codigoTipoDocumento?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Número do Documento */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Número do Documento *
+                    </label>
+                    <Controller
+                      name="n_documento_identificacao"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          placeholder="Número do documento"
+                          {...field}
+                          className={errors.n_documento_identificacao ? "border-red-500" : ""}
+                        />
+                      )}
+                    />
+                    {errors.n_documento_identificacao && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.n_documento_identificacao?.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="documents" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5" />
-                <span>Documentos de Identificação</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Tipo de Documento *
-                  </label>
-                  <Select value={formData.codigoTipoDocumento} onValueChange={(value) => handleInputChange('codigoTipoDocumento', value)}>
-                    <SelectTrigger className={errors.codigoTipoDocumento ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione o tipo de documento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {documentTypes.map((doc) => (
-                        <SelectItem key={doc.codigo} value={doc.codigo.toString()}>
-                          {doc.designacao}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.codigoTipoDocumento && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.codigoTipoDocumento}
-                    </p>
-                  )}
+          {/* Tab Sistema */}
+          <TabsContent value="system" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Informações do Sistema</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Encarregado */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Encarregado *
+                    </label>
+                    <Controller
+                      name="codigo_Encarregado"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className={errors.codigo_Encarregado ? "border-red-500" : ""}>
+                            <SelectValue placeholder="Selecione o encarregado" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {encarregados.map((encarregado) => (
+                              <SelectItem key={encarregado.codigo} value={encarregado.codigo.toString()}>
+                                {encarregado.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.codigo_Encarregado && (
+                      <p className="text-sm text-red-500 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.codigo_Encarregado?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Utilizador Responsável */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Utilizador Responsável
+                    </label>
+                    <Controller
+                      name="codigo_Utilizador"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o utilizador" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {utilizadores.map((utilizador) => (
+                              <SelectItem key={utilizador.codigo} value={utilizador.codigo.toString()}>
+                                {utilizador.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  {/* Saldo Inicial */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Saldo Inicial
+                    </label>
+                    <Controller
+                      name="saldo"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          {...field}
+                          min="0"
+                          step="0.01"
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      )}
+                    />
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Número do Documento *
-                  </label>
-                  <Input
-                    placeholder="Número do documento"
-                    value={formData.n_documento_identificacao}
-                    onChange={(e) => handleInputChange('n_documento_identificacao', e.target.value)}
-                    className={errors.n_documento_identificacao ? "border-red-500" : ""}
-                  />
-                  {errors.n_documento_identificacao && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.n_documento_identificacao}
-                    </p>
-                  )}
-                </div>
-
-
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-                {/* Tab Sistema */}
-        <TabsContent value="system" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="h-5 w-5" />
-                <span>Informações do Sistema</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Encarregado *
-                  </label>
-                  <Select value={formData.codigo_Encarregado} onValueChange={(value) => handleInputChange('codigo_Encarregado', value)}>
-                    <SelectTrigger className={errors.codigo_Encarregado ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione o encarregado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {encarregados.map((encarregado) => (
-                        <SelectItem key={encarregado.codigo} value={encarregado.codigo.toString()}>
-                          {encarregado.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.codigo_Encarregado && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.codigo_Encarregado}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Utilizador Responsável *
-                  </label>
-                  <Select value={formData.codigo_Utilizador} onValueChange={(value) => handleInputChange('codigo_Utilizador', value)}>
-                    <SelectTrigger className={errors.codigo_Utilizador ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione o utilizador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {utilizadores.map((utilizador) => (
-                        <SelectItem key={utilizador.codigo} value={utilizador.codigo.toString()}>
-                          {utilizador.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.codigo_Utilizador && (
-                    <p className="text-sm text-red-500 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.codigo_Utilizador}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Saldo Inicial
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.saldo}
-                    onChange={(e) => handleInputChange('saldo', e.target.value)}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-      
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </form>
     </Container>
   );
 }
