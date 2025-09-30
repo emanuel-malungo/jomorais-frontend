@@ -4,46 +4,51 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import icon from "../assets/images/icon.png";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { User, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm, Controller } from 'react-hook-form';
-import { authSchema } from "@/validations/auth.validations";
-import Link from "next/link";
+import { legacyAuthSchema } from "@/validations/auth.validations";
+import useAuth from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 
 interface AuthFormData {
-  email: string;
-  password: string;
+  user: string;
+  passe: string;
 }
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const { login, isAuthenticated, loading } = useAuth();
 
   const {
 	control,
 	handleSubmit,
 	formState: { errors, isSubmitting }
   } = useForm<AuthFormData>({
-	resolver: yupResolver(authSchema),
+	resolver: yupResolver(legacyAuthSchema),
 	defaultValues: {
-	  email: '',
-	  password: ''
+	  user: '',
+	  passe: ''
 	}
   });
 
+  // Redirecionar se já estiver autenticado
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      router.push('/admin');
+    }
+  }, [isAuthenticated, loading, router]);
+
   const onSubmit = async (data: AuthFormData) => {
-	
 	try {
-	
-	  // Simula delay de autenticação
-	  await new Promise(resolve => setTimeout(resolve, 1500));
-	 
-	  router.push('/admin');
-	
-	} catch (error) {
+	  await login(data.user, data.passe);
+	  // O redirecionamento é feito automaticamente pelo contexto
+	  // As mensagens de sucesso/erro são mostradas pelo contexto via toast
+	} catch (error: any) {
 	  console.error('Erro na autenticação:', error);
+	  // A mensagem de erro já é mostrada pelo contexto
 	}
   };
 
@@ -70,33 +75,34 @@ export default function LoginPage() {
 			  Acessa a tua conta
 			</h1>
 			<p className="text-gray-600 text-base">
-			  Preencha os campos a baixo para acessar o sistema com sucesso.
+			  Use suas credenciais do sistema para acessar a plataforma.
 			</p>
 			
 		  </div>
+
 		  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-			{/* Email input */}
+			{/* Username input */}
 			<div className="space-y-2">
 			  <div className="relative">
-				<Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+				<User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
 				<Controller
-				  name="email"
+				  name="user"
 				  control={control}
 				  render={({ field }) => (
 					<Input
 					  {...field}
-					  id="email"
-					  type="email"
-					  placeholder="Digite teu email"
+					  id="user"
+					  type="text"
+					  placeholder="Digite seu username"
 					  className={`pl-10 h-12 border-gray-200 focus:border-[#2d5016] focus:ring-[#2d5016]/20 ${
-						errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
+						errors.user ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
 					  }`}
 					/>
 				  )}
 				/>
 			  </div>
-			  {errors.email && (
-				<p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+			  {errors.user && (
+				<p className="text-red-500 text-sm mt-1">{errors.user.message}</p>
 			  )}
 			</div>
 
@@ -105,16 +111,16 @@ export default function LoginPage() {
 			  <div className="relative">
 				<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
 				<Controller
-				  name="password"
+				  name="passe"
 				  control={control}
 				  render={({ field }) => (
 					<Input
 					  {...field}
-					  id="password"
+					  id="passe"
 					  type={showPassword ? "text" : "password"}
 					  placeholder="Digite tua senha"
 					  className={`pl-10 pr-10 h-12 border-gray-200 focus:border-[#2d5016] focus:ring-[#2d5016]/20 ${
-						errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
+						errors.passe ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
 					  }`}
 					/>
 				  )}
@@ -131,8 +137,8 @@ export default function LoginPage() {
 				  )}
 				</button>
 			  </div>
-			  {errors.password && (
-				<p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+			  {errors.passe && (
+				<p className="text-red-500 text-sm mt-1">{errors.passe.message}</p>
 			  )}
 			</div>
 
@@ -156,10 +162,15 @@ export default function LoginPage() {
 			{/* Login button */}
 			<Button
 			  type="submit"
-			  disabled={isSubmitting}
+			  disabled={isSubmitting || loading}
 			  className="w-full h-12 mb-8 bg-gradient-to-r from-[#2d5016] to-[#3d6b1f] hover:from-[#3d6b1f] hover:to-[#2d5016] text-white font-semibold rounded-xl shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 			>
-			  {isSubmitting ? 'Entrando...' : 'Entrar'}
+			  {isSubmitting ? (
+				<div className="flex items-center space-x-2">
+				  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+				  <span>Entrando...</span>
+				</div>
+			  ) : 'Entrar'}
 			</Button>
 
 		  </form>

@@ -1,7 +1,10 @@
+"use client";
+
 import authService from "@/services/auth.service";
 import { createContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { LegacyUser, AuthResponse, LoginResponse } from "@/types/auth.types";
+import { toast } from "react-toastify";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -76,14 +79,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         setIsAuthenticated(true);
         setUser(response.data.user as LegacyUser);
+        toast.success(response.message || "Login realizado com sucesso!");
         router.push("/admin"); // Redirect para área administrativa
       } else {
         throw new Error(response.message || "Erro no login");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Falha no login:", error);
       setIsAuthenticated(false);
       setUser(null);
+      
+      // Mostrar mensagem de erro
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Erro ao fazer login. Verifique suas credenciais.";
+      toast.error(errorMessage);
+      
       throw error;
     } finally {
       setLoading(false);
@@ -93,15 +104,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setLoading(true);
-      await authService.logout();
-    } catch (error) {
+      const response = await authService.logout();
+      
+      if (response.success) {
+        toast.success(response.message || "Logout realizado com sucesso!");
+      }
+    } catch (error: any) {
       console.error("Erro no logout:", error);
-      // Mesmo com erro, limpar estado local
+      
+      // Mostrar mensagem de aviso, mas não bloquear o logout
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Erro ao fazer logout no servidor, mas você foi desconectado localmente.";
+      toast.warning(errorMessage);
     } finally {
       setIsAuthenticated(false);
       setUser(null);
       setLoading(false);
-      router.push("/login"); // Redirect para página de login
+      router.push("/"); // Redirect para página de login
     }
   };
 

@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import useAuth from '@/hooks/useAuth';
 import { 
   ChartCard,
   RecentActivity,
@@ -80,21 +82,22 @@ const attendanceData = [
 
 export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const { user, logout } = useAuth();
   
   return (
-    <Container>
+    <ProtectedRoute>
+      <Container>
       {/* Welcome Header */}
       <WelcomeHeader 
         iconMain={<Users className="w-8 h-8 text-white" />}
-        title="Painel Administrativo"
-        description=" Gerencie sua instituição de ensino com eficiência. Acompanhe matrículas, finanças,
-              desempenho acadêmico e muito mais em um só lugar."
+        title={`Bem-vindo, ${user?.nome || 'Usuário'}!`}
+        description={`Painel Administrativo - ${user?.tipoDesignacao || 'Sistema Jomorais'}`}
         titleBtnRight="Adicionar Estudante"
         iconBtnRight={<Users className="w-5 h-5 mr-2" />}
         onClickBtnRight={() => alert('Função de adicionar estudante acionada!')}
-        titleBtnLeft="Exportar Relatório"
-        iconBtnLeft={<Download className="w-5 h-5 mr-2" />}
-        onClickBtnLeft={() => alert('Função de exportar relatório acionada!')}
+        titleBtnLeft="Logout"
+        iconBtnLeft={<Settings className="w-5 h-5 mr-2" />}
+        onClickBtnLeft={logout}
       />
 
       {/* KPI Cards principais */}
@@ -334,5 +337,6 @@ export default function Dashboard() {
         <SystemStatus />
       </div>
     </Container>
+    </ProtectedRoute>
   );
 }
