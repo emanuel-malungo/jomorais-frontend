@@ -35,6 +35,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   FileText,
   Search,
   Filter,
@@ -55,93 +63,11 @@ import {
   ChevronRight,
   TrendingUp,
   Activity,
+  Loader2,
 } from 'lucide-react';
+import { useTransfers, useDeleteTransfer } from '@/hooks/useTransfer';
 
-// Dados mockados baseados na estrutura do backend
-const mockTransfers = [
-  {
-    codigo: 1,
-    codigoAluno: 1,
-    dataTransferencia: "2024-02-20",
-    escolaDestino: "Escola Secundária do Cazenga",
-    motivoTransferencia: "Mudança de residência",
-    obs: "Transferência por motivos familiares",
-    status: "Aprovada",
-    dataActualizacao: "2024-02-21",
-    tb_alunos: {
-      codigo: 1,
-      nome: "Ana Silva Santos",
-      dataNascimento: "2005-03-15",
-      sexo: "F",
-      url_Foto: "/avatars/ana.jpg",
-      tb_encarregados: {
-        nome: "João Santos",
-        telefone: "912345678"
-      },
-      tb_matriculas: {
-        codigo: 1,
-        tb_cursos: {
-          designacao: "Informática de Gestão"
-        }
-      }
-    }
-  },
-  {
-    codigo: 2,
-    codigoAluno: 3,
-    dataTransferencia: "2024-02-18",
-    escolaDestino: "Instituto Médio Politécnico de Luanda",
-    motivoTransferencia: "Mudança de curso",
-    obs: "Aluno deseja seguir área técnica diferente",
-    status: "Pendente",
-    dataActualizacao: "2024-02-19",
-    tb_alunos: {
-      codigo: 3,
-      nome: "Maria João Francisco",
-      dataNascimento: "2005-11-10",
-      sexo: "F",
-      url_Foto: "/avatars/maria.jpg",
-      tb_encarregados: {
-        nome: "António Francisco",
-        telefone: "923456789"
-      },
-      tb_matriculas: {
-        codigo: 3,
-        tb_cursos: {
-          designacao: "Contabilidade"
-        }
-      }
-    }
-  },
-  {
-    codigo: 3,
-    codigoAluno: 4,
-    dataTransferencia: "2024-02-15",
-    escolaDestino: "Colégio São José",
-    motivoTransferencia: "Problemas disciplinares",
-    obs: "Transferência por decisão administrativa",
-    status: "Rejeitada",
-    dataActualizacao: "2024-02-16",
-    tb_alunos: {
-      codigo: 4,
-      nome: "Pedro António Silva",
-      dataNascimento: "2004-08-18",
-      sexo: "M",
-      url_Foto: "/avatars/pedro.jpg",
-      tb_encarregados: {
-        nome: "Manuel Silva",
-        telefone: "934567890"
-      },
-      tb_matriculas: {
-        codigo: 4,
-        tb_cursos: {
-          designacao: "Administração"
-        }
-      }
-    }
-  }
-];
-
+// Status options para filtros
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
   { value: "Aprovada", label: "Aprovada" },
@@ -149,42 +75,46 @@ const statusOptions = [
   { value: "Rejeitada", label: "Rejeitada" },
 ];
 
+
 export default function TransfersListPage() {
-  const [transfers, setTransfers] = useState(mockTransfers);
-  const [filteredTransfers, setFilteredTransfers] = useState(mockTransfers);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: number; nome: string } | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Filtrar transferências
-  useEffect(() => {
-    let filtered = transfers;
+  // Hooks da API
+  const { transfers, pagination, loading, error, refetch } = useTransfers(currentPage, itemsPerPage, searchTerm);
+  const { deleteTransfer, loading: deleteLoading } = useDeleteTransfer();
 
-    if (searchTerm) {
-      filtered = filtered.filter(transfer =>
-        transfer.tb_alunos.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transfer.escolaDestino.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transfer.motivoTransferencia.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  // Funções de manipulação
+  const handleDeleteClick = (transfer: any) => {
+    setItemToDelete({ id: transfer.codigo, nome: transfer.tb_alunos.nome });
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    try {
+      setDeletingId(itemToDelete.id);
+      await deleteTransfer(itemToDelete.id);
+      await refetch(); // Recarrega a lista
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+    } catch (error) {
+      console.error('Erro ao excluir transferência:', error);
+    } finally {
+      setDeletingId(null);
     }
+  };
 
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(transfer => 
-        transfer.status === statusFilter
-      );
-    }
-
-    setFilteredTransfers(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, transfers]);
-
-  // Paginação
-  const totalPages = Math.ceil(filteredTransfers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentTransfers = filteredTransfers.slice(startIndex, endIndex);
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
+  };
 
   const handleViewTransfer = (transferId: number) => {
     window.location.href = `/admin/student-management/transfers/details/${transferId}`;
@@ -195,23 +125,39 @@ export default function TransfersListPage() {
   };
 
   const handleDeleteTransfer = (transferId: number) => {
-    console.log("Excluir transferência:", transferId);
-    // Implementar confirmação e exclusão
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-AO');
-  };
-
-  const calculateAge = (birthDate: string) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+    const transfer = transfers.find(t => t.codigo === transferId);
+    if (transfer) {
+      handleDeleteClick(transfer);
     }
-    return age;
+  };
+
+  const formatDate = (dateString: string | object) => {
+    if (!dateString || typeof dateString === 'object') {
+      return 'Data não informada';
+    }
+    try {
+      return new Date(dateString).toLocaleDateString('pt-AO');
+    } catch {
+      return 'Data inválida';
+    }
+  };
+
+  const calculateAge = (birthDate: string | object | null) => {
+    if (!birthDate || typeof birthDate === 'object') {
+      return 'N/A';
+    }
+    try {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    } catch {
+      return 'N/A';
+    }
   };
 
   return (
@@ -286,7 +232,7 @@ export default function TransfersListPage() {
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Transferências</p>
-            <p className="text-3xl font-bold text-gray-900">{transfers.length}</p>
+            <p className="text-3xl font-bold text-gray-900">{pagination?.totalItems || 0}</p>
           </div>
           
           {/* Decorative elements */}
@@ -308,7 +254,7 @@ export default function TransfersListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-emerald-600">Aprovadas</p>
             <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => t.status === "Aprovada").length}
+              {transfers.filter(t => t.tb_motivos?.designacao === "Aprovada").length}
             </p>
           </div>
           
@@ -331,7 +277,7 @@ export default function TransfersListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-[#FFD002]">Pendentes</p>
             <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => t.status === "Pendente").length}
+              {transfers.filter(t => t.tb_motivos?.designacao === "Pendente").length}
             </p>
           </div>
           
@@ -354,7 +300,7 @@ export default function TransfersListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-red-600">Rejeitadas</p>
             <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => t.status === "Rejeitada").length}
+              {transfers.filter(t => t.tb_motivos?.designacao === "Rejeitada").length}
             </p>
           </div>
           
@@ -412,26 +358,43 @@ export default function TransfersListPage() {
               <span>Lista de Transferências</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {filteredTransfers.length} transferências encontradas
+              {pagination?.totalItems || 0} transferências encontradas
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Aluno</TableHead>
-                  <TableHead>Curso Atual</TableHead>
-                  <TableHead>Escola Destino</TableHead>
-                  <TableHead>Data Transferência</TableHead>
-                  <TableHead>Motivo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentTransfers.map((transfer) => (
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Carregando transferências...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button onClick={refetch} variant="outline">
+                Tentar novamente
+              </Button>
+            </div>
+          ) : transfers.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Nenhuma transferência encontrada.</p>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aluno</TableHead>
+                    <TableHead>Curso Atual</TableHead>
+                    <TableHead>Escola Destino</TableHead>
+                    <TableHead>Data Transferência</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transfers.map((transfer) => (
                   <TableRow key={transfer.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -441,16 +404,16 @@ export default function TransfersListPage() {
                         <div>
                           <p className="font-medium text-gray-900">{transfer.tb_alunos.nome}</p>
                           <p className="text-sm text-gray-500">
-                            {calculateAge(transfer.tb_alunos.dataNascimento)} anos • {transfer.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                            {calculateAge(transfer.tb_alunos.dataNascimento)} anos • {transfer.tb_alunos.sexo === 'Masculino' ? 'Masculino' : 'Feminino'}
                           </p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium text-gray-900">{transfer.tb_alunos.tb_matriculas.tb_cursos.designacao}</p>
+                      <p className="font-medium text-gray-900">{transfer.tb_alunos.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</p>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium text-gray-900">{transfer.escolaDestino}</p>
+                      <p className="font-medium text-gray-900">{transfer.tb_escolas?.nome || 'N/A'}</p>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
@@ -459,24 +422,24 @@ export default function TransfersListPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="text-sm text-gray-600 max-w-xs truncate" title={transfer.motivoTransferencia}>
-                        {transfer.motivoTransferencia}
+                      <p className="text-sm text-gray-600 max-w-xs truncate" title={transfer.tb_motivos?.designacao || transfer.obs || ''}>
+                        {transfer.tb_motivos?.designacao || transfer.obs || 'N/A'}
                       </p>
                     </TableCell>
                     <TableCell>
                       <Badge 
                         variant={
-                          transfer.status === "Aprovada" ? "default" : 
-                          transfer.status === "Pendente" ? "secondary" : 
+                          transfer.tb_motivos?.designacao === "Aprovada" ? "default" : 
+                          transfer.tb_motivos?.designacao === "Pendente" ? "secondary" : 
                           "destructive"
                         }
                         className={
-                          transfer.status === "Aprovada" ? "bg-green-100 text-green-800" :
-                          transfer.status === "Pendente" ? "bg-yellow-100 text-yellow-800" :
+                          transfer.tb_motivos?.designacao === "Aprovada" ? "bg-green-100 text-green-800" :
+                          transfer.tb_motivos?.designacao === "Pendente" ? "bg-yellow-100 text-yellow-800" :
                           "bg-red-100 text-red-800"
                         }
                       >
-                        {transfer.status}
+                        {transfer.tb_motivos?.designacao || 'N/A'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -501,8 +464,13 @@ export default function TransfersListPage() {
                           <DropdownMenuItem 
                             onClick={() => handleDeleteTransfer(transfer.codigo)}
                             className="text-red-600"
+                            disabled={deletingId === transfer.codigo}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            {deletingId === transfer.codigo ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="mr-2 h-4 w-4" />
+                            )}
                             Excluir
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -510,22 +478,23 @@ export default function TransfersListPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableBody>
+              </Table>
+            </div>
+          )}
 
           {/* Paginação */}
-          {totalPages > 1 && (
+          {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredTransfers.length)} de {filteredTransfers.length} transferências
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, pagination.totalItems)} de {pagination.totalItems} transferências
               </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || loading}
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Anterior
@@ -533,6 +502,7 @@ export default function TransfersListPage() {
                 <div className="flex items-center space-x-1">
                   {(() => {
                     const maxPagesToShow = 5;
+                    const totalPages = pagination.totalPages;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
@@ -564,7 +534,8 @@ export default function TransfersListPage() {
                           variant={currentPage === i ? "default" : "outline"}
                           size="sm"
                           onClick={() => setCurrentPage(i)}
-                          className={currentPage === i ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
+                          className={currentPage === i ? "bg-[#F9CD1D] hover:bg-[#F9CD1D]" : ""}
+                          disabled={loading}
                         >
                           {i}
                         </Button>
@@ -594,8 +565,8 @@ export default function TransfersListPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                  disabled={currentPage === pagination.totalPages || loading}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />
@@ -605,6 +576,44 @@ export default function TransfersListPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <span>Confirmar Exclusão</span>
+            </DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir a transferência do aluno <strong>{itemToDelete?.nome}</strong>?
+              <br />
+              <span className="text-red-600 font-medium">Esta ação não pode ser desfeita.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete} disabled={deleteLoading}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }

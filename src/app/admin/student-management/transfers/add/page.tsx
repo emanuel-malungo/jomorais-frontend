@@ -24,85 +24,83 @@ import {
   ArrowRightLeft,
   ArrowLeft,
   Save,
-  User,
-  Building,
-  AlertCircle,
-  Search,
+  Loader2,
   GraduationCap,
+  Search,
+  AlertCircle,
 } from 'lucide-react';
+import { useCreateTransfer } from '@/hooks/useTransfer';
+import { useStudent } from '@/hooks/useStudent';
+import { ITransferInput } from '@/types/transfer.types';
 
-// Dados mockados para selects
-const mockStudents = [
-  { 
-    codigo: 1, 
-    nome: "Ana Silva Santos", 
-    email: "ana.santos@email.com",
-    tb_matriculas: {
-      tb_cursos: { designacao: "Informática de Gestão" }
-    },
-    dataNascimento: "2005-03-15"
-  },
-  { 
-    codigo: 2, 
-    nome: "Carlos Manuel Pereira", 
-    email: "carlos.pereira@email.com",
-    tb_matriculas: {
-      tb_cursos: { designacao: "Contabilidade" }
-    },
-    dataNascimento: "2004-07-22"
-  },
-  { 
-    codigo: 3, 
-    nome: "Maria João Francisco", 
-    email: "maria.francisco@email.com",
-    tb_matriculas: {
-      tb_cursos: { designacao: "Informática de Gestão" }
-    },
-    dataNascimento: "2005-11-10"
-  },
+// Interface para o formulário (inclui campos adicionais da UI)
+interface ITransferFormData extends Partial<ITransferInput> {
+  escolaDestino?: string
+  motivoTransferencia?: string
+  status?: string
+}
+
+// Dados estruturados do sistema (baseados na realidade angolana)
+const TRANSFER_MOTIVOS = [
+  { codigo: 1, designacao: "Mudança de residência" },
+  { codigo: 2, designacao: "Mudança de curso" },
+  { codigo: 3, designacao: "Problemas disciplinares" },
+  { codigo: 4, designacao: "Motivos familiares" },
+  { codigo: 5, designacao: "Transferência administrativa" },
+  { codigo: 6, designacao: "Transferência por trabalho dos pais" },
+  { codigo: 7, designacao: "Problemas de saúde" },
+  { codigo: 8, designacao: "Outros motivos" },
 ];
 
-const transferReasons = [
-  "Mudança de residência",
-  "Mudança de curso",
-  "Problemas disciplinares",
-  "Motivos familiares",
-  "Transferência por trabalho dos pais",
-  "Problemas de saúde",
-  "Outros motivos"
+const ESCOLAS_DESTINO = [
+  { codigo: 1, nome: "Escola Secundária do Cazenga", provincia: "Luanda" },
+  { codigo: 2, nome: "Instituto Médio Politécnico de Luanda", provincia: "Luanda" },
+  { codigo: 3, nome: "Colégio São José", provincia: "Luanda" },
+  { codigo: 4, nome: "Escola Secundária da Maianga", provincia: "Luanda" },
+  { codigo: 5, nome: "Instituto Médio Industrial de Luanda", provincia: "Luanda" },
+  { codigo: 6, nome: "Escola Secundária de Viana", provincia: "Luanda" },
+  { codigo: 7, nome: "Instituto Médio de Economia", provincia: "Luanda" },
+  { codigo: 8, nome: "Escola Secundária do Sambizanga", provincia: "Luanda" },
 ];
 
 export default function AddTransferPage() {
   const router = useRouter();
+  const [studentSearch, setStudentSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [studentSearch, setStudentSearch] = useState("");
-  const [filteredStudents, setFilteredStudents] = useState(mockStudents);
-
-  // Estados do formulário
-  const [formData, setFormData] = useState({
-    codigoAluno: "",
+  const [formData, setFormData] = useState<ITransferFormData>({
+    codigoAluno: 0,
+    codigoEscola: 0,
     dataTransferencia: new Date().toISOString().split('T')[0],
-    escolaDestino: "",
-    motivoTransferencia: "",
-    obs: "",
-    status: "Pendente",
+    codigoMotivo: 0,
+    obs: '',
+    escolaDestino: '',
+    motivoTransferencia: '',
+    status: 'Pendente'
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Filtrar alunos baseado na busca
+  // Hooks da API
+  const { createTransfer, loading: createLoading, error } = useCreateTransfer();
+  const { students, getAllStudents, loading: studentsLoading } = useStudent();
+
+  // Carregar alunos ao montar o componente
   React.useEffect(() => {
+    getAllStudents(1, 100); // Carregar até 100 alunos para o select
+  }, [getAllStudents]);
+
+  // Filtrar alunos baseado na busca (usando dados da API)
+  const filteredStudents = React.useMemo(() => {
+    if (!students || students.length === 0) return [];
+    
     if (studentSearch) {
-      const filtered = mockStudents.filter(student =>
-        student.nome.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.tb_matriculas.tb_cursos.designacao.toLowerCase().includes(studentSearch.toLowerCase())
+      return students.filter(student =>
+        student.nome?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+        student.email?.toLowerCase().includes(studentSearch.toLowerCase())
       );
-      setFilteredStudents(filtered);
-    } else {
-      setFilteredStudents(mockStudents);
     }
-  }, [studentSearch]);
+    return students;
+  }, [students, studentSearch]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -123,21 +121,23 @@ export default function AddTransferPage() {
     const newErrors: Record<string, string> = {};
 
     // Validações obrigatórias
-    if (!formData.codigoAluno) newErrors.codigoAluno = "Aluno é obrigatório";
+    if (!formData.codigoAluno || formData.codigoAluno === 0) newErrors.codigoAluno = "Aluno é obrigatório";
     if (!formData.dataTransferencia) newErrors.dataTransferencia = "Data de transferência é obrigatória";
     if (!formData.escolaDestino) newErrors.escolaDestino = "Escola destino é obrigatória";
     if (!formData.motivoTransferencia) newErrors.motivoTransferencia = "Motivo da transferência é obrigatório";
 
     // Validar se a data não é futura
-    const today = new Date();
-    const transferDate = new Date(formData.dataTransferencia);
-    if (transferDate > today) {
-      newErrors.dataTransferencia = "Data de transferência não pode ser futura";
+    if (formData.dataTransferencia) {
+      const today = new Date();
+      const transferDate = new Date(formData.dataTransferencia);
+      if (transferDate > today) {
+        newErrors.dataTransferencia = "Data de transferência não pode ser futura";
+      }
     }
 
     // Validar escola destino
-    if (formData.escolaDestino && formData.escolaDestino.trim().length < 5) {
-      newErrors.escolaDestino = "Nome da escola deve ter pelo menos 5 caracteres";
+    if (formData.escolaDestino && !ESCOLAS_DESTINO.find(escola => escola.nome === formData.escolaDestino)) {
+      newErrors.escolaDestino = "Selecione uma escola válida da lista";
     }
 
     setErrors(newErrors);
@@ -145,17 +145,36 @@ export default function AddTransferPage() {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
     
     try {
-      // Simular chamada à API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Mapear escola destino para código
+      const selectedSchoolCode = ESCOLAS_DESTINO.find(school => 
+        school.nome === formData.escolaDestino
+      )?.codigo || 1;
+
+      // Mapear motivo para código
+      const selectedMotivoCode = TRANSFER_MOTIVOS.find(motivo => 
+        motivo.designacao === formData.motivoTransferencia
+      )?.codigo || 1;
+
+      // Preparar dados para a API conforme estrutura esperada
+      const transferData: ITransferInput = {
+        codigoAluno: Number(formData.codigoAluno),
+        codigoEscola: selectedSchoolCode,
+        dataTransferencia: formData.dataTransferencia ? 
+          new Date(formData.dataTransferencia + 'T10:00:00.000Z').toISOString() : 
+          new Date().toISOString(),
+        codigoMotivo: selectedMotivoCode,
+        obs: formData.obs || ''
+      };
       
-      console.log("Dados da transferência:", formData);
+      // Usar hook da API real
+      await createTransfer(transferData);
+      
+      console.log("Dados da transferência:", transferData);
       
       // Redirecionar para lista após sucesso
       router.push('/admin/student-management/transfers');
@@ -166,7 +185,8 @@ export default function AddTransferPage() {
     }
   };
 
-  const selectedStudent = mockStudents.find(s => s.codigo.toString() === formData.codigoAluno);
+  // Encontrar aluno selecionado
+  const currentSelectedStudent = students?.find(student => student.codigo.toString() === formData.codigoAluno?.toString());
 
   const calculateAge = (birthDate: string) => {
     const today = new Date();
@@ -269,23 +289,36 @@ export default function AddTransferPage() {
                   Aluno *
                 </label>
                 <Select 
-                  value={formData.codigoAluno} 
+                  value={formData.codigoAluno?.toString() || ''} 
                   onValueChange={(value) => handleInputChange('codigoAluno', value)}
                 >
                   <SelectTrigger className={errors.codigoAluno ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Selecione o aluno" />
+                    <SelectValue placeholder={studentsLoading ? "Carregando alunos..." : "Selecione o aluno"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredStudents.map((student) => (
-                      <SelectItem key={student.codigo} value={student.codigo.toString()}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{student.nome}</span>
-                          <span className="text-xs text-gray-500">
-                            {student.tb_matriculas.tb_cursos.designacao} • {calculateAge(student.dataNascimento)} anos
-                          </span>
+                    {studentsLoading ? (
+                      <SelectItem value="loading" disabled>
+                        <div className="flex items-center">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Carregando alunos...
                         </div>
                       </SelectItem>
-                    ))}
+                    ) : filteredStudents.length > 0 ? (
+                      filteredStudents.map((student) => (
+                        <SelectItem key={student.codigo} value={student.codigo.toString()}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{student.nome}</span>
+                            <span className="text-xs text-gray-500">
+                              {student.email || 'Email não informado'} • {student.dataNascimento ? calculateAge(student.dataNascimento) : 'N/A'} anos
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-students" disabled>
+                        Nenhum aluno encontrado
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.codigoAluno && (
@@ -349,12 +382,24 @@ export default function AddTransferPage() {
                   <label className="text-sm font-medium text-gray-700">
                     Escola Destino *
                   </label>
-                  <Input
-                    placeholder="Digite o nome da escola destino..."
-                    value={formData.escolaDestino}
-                    onChange={(e) => handleInputChange('escolaDestino', e.target.value)}
-                    className={errors.escolaDestino ? "border-red-500" : ""}
-                  />
+                  <Select 
+                    value={formData.escolaDestino} 
+                    onValueChange={(value) => handleInputChange('escolaDestino', value)}
+                  >
+                    <SelectTrigger className={errors.escolaDestino ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione a escola destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ESCOLAS_DESTINO.map((escola) => (
+                        <SelectItem key={escola.codigo} value={escola.nome}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{escola.nome}</span>
+                            <span className="text-xs text-gray-500">{escola.provincia}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {errors.escolaDestino && (
                     <p className="text-sm text-red-500 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
@@ -375,9 +420,9 @@ export default function AddTransferPage() {
                       <SelectValue placeholder="Selecione o motivo da transferência" />
                     </SelectTrigger>
                     <SelectContent>
-                      {transferReasons.map((reason) => (
-                        <SelectItem key={reason} value={reason}>
-                          {reason}
+                      {TRANSFER_MOTIVOS.map((motivo) => (
+                        <SelectItem key={motivo.codigo} value={motivo.designacao}>
+                          {motivo.designacao}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -416,12 +461,14 @@ export default function AddTransferPage() {
               <CardTitle>Resumo da Transferência</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {selectedStudent ? (
+              {currentSelectedStudent ? (
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h4 className="font-medium text-blue-900 mb-2">Aluno Selecionado</h4>
-                  <p className="text-sm font-semibold text-blue-800">{selectedStudent.nome}</p>
-                  <p className="text-xs text-blue-600">{selectedStudent.tb_matriculas.tb_cursos.designacao}</p>
-                  <p className="text-xs text-blue-600">{calculateAge(selectedStudent.dataNascimento)} anos</p>
+                  <p className="text-sm font-semibold text-blue-800">{currentSelectedStudent.nome}</p>
+                  <p className="text-xs text-blue-600">{currentSelectedStudent.email || 'Email não informado'}</p>
+                  <p className="text-xs text-blue-600">
+                    {currentSelectedStudent.dataNascimento ? calculateAge(currentSelectedStudent.dataNascimento) : 'N/A'} anos
+                  </p>
                 </div>
               ) : (
                 <div className="p-4 bg-gray-50 rounded-lg">
