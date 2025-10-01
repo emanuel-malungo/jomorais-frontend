@@ -132,7 +132,7 @@ export default function EditClassPage({ params }: EditClassPageProps) {
       console.log('Dados atualizados da turma:', formData);
       
       // Redirecionar para detalhes da turma
-      router.push(`/admin/academic-management/classes/details/${params.id}`);
+      router.push(`/admin/academic-management/turmas/details/${params.id}`);
     } catch (error) {
       console.error('Erro ao atualizar turma:', error);
     } finally {

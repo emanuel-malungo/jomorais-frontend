@@ -63,7 +63,7 @@ const menuItems: MenuItem[] = [
     title: "Gestão Acadêmica",
     icon: BookOpen,
     children: [
-      { title: "Disciplinas", icon: BookOpen, href: "/admin/academic-management/disciplines" },
+      { title: "Disciplinas", icon: BookOpen, href: "/admin/academic-management/discipline" },
       { title: "Classes", icon: GraduationCap, href: "/admin/academic-management/classes" },
       { title: "Turmas", icon: School, href: "/admin/academic-management/turmas" },
       { title: "Horários", icon: Clock, href: "/admin/academic-management/hours" },
@@ -71,10 +71,17 @@ const menuItems: MenuItem[] = [
     ]
   },
   {
+    title: "Gestão de Cursos",
+    icon: School,
+    children: [
+      { title: "Cursos", icon: School, href: "/admin/course-management/course" }
+    ]
+  },
+  {
     title: "Professores",
     icon: GraduationCap,
     children: [
-      { title: "Lista de Professores", icon: GraduationCap, href: "/admin/teacher-management/list" },
+      { title: "Professores", icon: GraduationCap, href: "/admin/teacher-management/teacher" },
       { title: "Disciplinas do Docente", icon: BookOpen, href: "/admin/teacher-management/discpline-teacher" },
       { title: "Diretores de Turma", icon: UserCheck, href: "/admin/teacher-management/director-turma" }
     ]

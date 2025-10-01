@@ -54,7 +54,7 @@ import {
   Activity,
   CreditCard,
   Receipt,
-  settings,
+  Settings,
 } from 'lucide-react';
 
 // Dados mockados dos serviços
@@ -365,10 +365,10 @@ export default function ServicesPage() {
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-sm">
-              <settings className="h-6 w-6 text-white" />
+              <Settings className="h-6 w-6 text-white" />
             </div>
             <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <settings className="h-3 w-3 text-red-500" />
+              <Settings className="h-3 w-3 text-red-500" />
               <span className="font-bold text-xs text-red-600">Atraso</span>
             </div>
           </div>
@@ -564,17 +564,65 @@ export default function ServicesPage() {
                   Anterior
                 </Button>
                 <div className="flex items-center space-x-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className="w-8 h-8"
-                    >
-                      {page}
-                    </Button>
-                  ))}
+                  {(() => {
+                    const maxPagesToShow = 5;
+                    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                    const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
+                    
+                    const pages = [];
+                    
+                    // Primeira página
+                    if (adjustedStartPage > 1) {
+                      pages.push(
+                        <Button
+                          key={1}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(1)}
+                        >
+                          1
+                        </Button>
+                      );
+                      if (adjustedStartPage > 2) {
+                        pages.push(<span key="ellipsis1" className="px-2">...</span>);
+                      }
+                    }
+                    
+                    // Páginas do meio
+                    for (let i = adjustedStartPage; i <= endPage; i++) {
+                      pages.push(
+                        <Button
+                          key={i}
+                          variant={currentPage === i ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(i)}
+                          className={currentPage === i ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
+                        >
+                          {i}
+                        </Button>
+                      );
+                    }
+                    
+                    // Última página
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(<span key="ellipsis2" className="px-2">...</span>);
+                      }
+                      pages.push(
+                        <Button
+                          key={totalPages}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(totalPages)}
+                        >
+                          {totalPages}
+                        </Button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
                 </div>
                 <Button
                   variant="outline"

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -189,6 +190,7 @@ const statusOptions = [
 ];
 
 export default function DirectorTurmaPage() {
+  const router = useRouter();
   const [directors, setDirectors] = useState(mockDirectors);
   const [filteredDirectors, setFilteredDirectors] = useState(mockDirectors);
   const [searchTerm, setSearchTerm] = useState("");
@@ -241,11 +243,11 @@ export default function DirectorTurmaPage() {
   const currentDirectors = filteredDirectors.slice(startIndex, endIndex);
 
   const handleViewDirector = (directorId: number) => {
-    window.location.href = `/admin/teacher-management/director-turma/details/${directorId}`;
+    router.push(`/admin/teacher-management/director-turma/details/${directorId}`);
   };
 
   const handleEditDirector = (directorId: number) => {
-    window.location.href = `/admin/teacher-management/director-turma/edit/${directorId}`;
+    router.push(`/admin/teacher-management/director-turma/edit/${directorId}`);
   };
 
   const handleDeleteDirector = (directorId: number) => {
@@ -621,17 +623,65 @@ export default function DirectorTurmaPage() {
                   Anterior
                 </Button>
                 <div className="flex items-center space-x-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className="w-8 h-8"
-                    >
-                      {page}
-                    </Button>
-                  ))}
+                  {(() => {
+                    const maxPagesToShow = 5;
+                    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                    const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
+                    
+                    const pages = [];
+                    
+                    // Primeira página
+                    if (adjustedStartPage > 1) {
+                      pages.push(
+                        <Button
+                          key={1}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(1)}
+                        >
+                          1
+                        </Button>
+                      );
+                      if (adjustedStartPage > 2) {
+                        pages.push(<span key="ellipsis1" className="px-2">...</span>);
+                      }
+                    }
+                    
+                    // Páginas do meio
+                    for (let i = adjustedStartPage; i <= endPage; i++) {
+                      pages.push(
+                        <Button
+                          key={i}
+                          variant={currentPage === i ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(i)}
+                          className={currentPage === i ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
+                        >
+                          {i}
+                        </Button>
+                      );
+                    }
+                    
+                    // Última página
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(<span key="ellipsis2" className="px-2">...</span>);
+                      }
+                      pages.push(
+                        <Button
+                          key={totalPages}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(totalPages)}
+                        >
+                          {totalPages}
+                        </Button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
                 </div>
                 <Button
                   variant="outline"

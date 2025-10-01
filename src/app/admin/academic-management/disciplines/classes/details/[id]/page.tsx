@@ -72,7 +72,7 @@ export default function ClassDetailsPage({ params }: ClassDetailsPageProps) {
   const turma = mockTurma; // Em produção, buscar pela API usando params.id
 
   const handleEdit = () => {
-    router.push(`/admin/academic-management/classes/edit/${params.id}`);
+    router.push(`/admin/academic-management/turmas/edit/${params.id}`);
   };
 
   const handleBack = () => {

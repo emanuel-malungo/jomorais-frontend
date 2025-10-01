@@ -99,7 +99,7 @@ export default function AddClassPage() {
       console.log('Dados da turma:', formData);
       
       // Redirecionar para lista de turmas
-      router.push('/admin/academic-management/classes');
+      router.push('/admin/academic-management/turmas');
     } catch (error) {
       console.error('Erro ao criar turma:', error);
     } finally {
