@@ -1,3 +1,5 @@
+import { ICourse } from './course.types'
+
 export interface IMatriculaInput {
   codigo_Aluno: number
   data_Matricula: string // formato ISO: "2024-01-15T10:30:00.000Z"
@@ -37,13 +39,6 @@ export interface IStudentDetailed extends IStudent {
   }
 }
 
-export interface ICourse {
-  codigo: number
-  designacao: string
-  codigo_Status: number
-  duracao?: number
-  descricao?: string | null
-}
 
 export interface IUser {
   codigo: number

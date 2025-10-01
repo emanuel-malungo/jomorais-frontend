@@ -27,30 +27,35 @@ import {
   BookOpen,
   AlertCircle,
   Search,
+  Loader2,
 } from 'lucide-react';
+import { useCreateMatricula } from '@/hooks/useMatricula';
+import { useStudent } from '@/hooks/useStudent';
+import { useCourses } from '@/hooks/useCourse';
+import { IMatriculaInput } from '@/types/matricula.types';
 
-// Dados mockados para selects
-const mockStudents = [
-  { codigo: 1, nome: "Ana Silva Santos", email: "ana.santos@email.com" },
-  { codigo: 2, nome: "Carlos Manuel Pereira", email: "carlos.pereira@email.com" },
-  { codigo: 3, nome: "Maria João Francisco", email: "maria.francisco@email.com" },
-  { codigo: 4, nome: "Pedro António Silva", email: "pedro.silva@email.com" },
-  { codigo: 5, nome: "Joana Cristina Lopes", email: "joana.lopes@email.com" },
-];
-
-const mockCourses = [
-  { codigo: 1, designacao: "Informática de Gestão", duracao: "3 anos" },
-  { codigo: 2, designacao: "Contabilidade", duracao: "3 anos" },
-  { codigo: 3, designacao: "Administração", duracao: "3 anos" },
-  { codigo: 4, designacao: "Marketing", duracao: "2 anos" },
-  { codigo: 5, designacao: "Recursos Humanos", duracao: "2 anos" },
-];
 
 export default function AddEnrollmentPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
-  const [filteredStudents, setFilteredStudents] = useState(mockStudents);
+  
+  // Hooks da API
+  const { createMatricula, loading: createLoading } = useCreateMatricula();
+  const { students, loading: studentsLoading, getAllStudents } = useStudent();
+  const { courses, loading: coursesLoading } = useCourses(1, 100); // Carregar mais cursos para o select
+  
+  // Carregar dados iniciais
+  React.useEffect(() => {
+    getAllStudents(1, 100); // Carregar mais estudantes para o select
+  }, [getAllStudents]);
+  
+  // Filtrar alunos baseado na busca
+  const filteredStudents = studentSearch 
+    ? students?.filter((student: any) =>
+        student.nome.toLowerCase().includes(studentSearch.toLowerCase()) ||
+        student.email?.toLowerCase().includes(studentSearch.toLowerCase())
+      ) || []
+    : students || [];
 
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -62,18 +67,6 @@ export default function AddEnrollmentPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Filtrar alunos baseado na busca
-  React.useEffect(() => {
-    if (studentSearch) {
-      const filtered = mockStudents.filter(student =>
-        student.nome.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.email.toLowerCase().includes(studentSearch.toLowerCase())
-      );
-      setFilteredStudents(filtered);
-    } else {
-      setFilteredStudents(mockStudents);
-    }
-  }, [studentSearch]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -114,25 +107,26 @@ export default function AddEnrollmentPage() {
       return;
     }
 
-    setIsLoading(true);
-    
     try {
-      // Simular chamada à API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const matriculaData: IMatriculaInput = {
+        codigo_Aluno: parseInt(formData.codigo_Aluno),
+        codigo_Curso: parseInt(formData.codigo_Curso),
+        data_Matricula: formData.data_Matricula,
+        codigoStatus: parseInt(formData.codigoStatus),
+        codigo_Utilizador: 1 // TODO: Pegar do contexto de autenticação
+      };
       
-      console.log("Dados da matrícula:", formData);
+      await createMatricula(matriculaData);
       
       // Redirecionar para lista após sucesso
       router.push('/admin/student-management/enrolls');
     } catch (error) {
       console.error("Erro ao salvar matrícula:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const selectedStudent = mockStudents.find(s => s.codigo.toString() === formData.codigo_Aluno);
-  const selectedCourse = mockCourses.find(c => c.codigo.toString() === formData.codigo_Curso);
+  const selectedStudent = students?.find((s: any) => s.codigo.toString() === formData.codigo_Aluno);
+  const selectedCourse = courses?.find((c: any) => c.codigo.toString() === formData.codigo_Curso);
 
   return (
     <Container>
@@ -177,11 +171,20 @@ export default function AddEnrollmentPage() {
 
               <Button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={createLoading || studentsLoading || coursesLoading}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
-                <Save className="w-5 h-5 mr-2" />
-                {isLoading ? "Salvando..." : "Salvar Matrícula"}
+                {createLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5 mr-2" />
+                    Salvar Matrícula
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -273,11 +276,18 @@ export default function AddEnrollmentPage() {
                       <SelectValue placeholder="Selecione o curso" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockCourses.map((course) => (
+                      {coursesLoading ? (
+                        <SelectItem value="loading" disabled>
+                          <div className="flex items-center">
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Carregando cursos...
+                          </div>
+                        </SelectItem>
+                      ) : courses?.map((course: any) => (
                         <SelectItem key={course.codigo} value={course.codigo.toString()}>
                           <div className="flex flex-col">
                             <span className="font-medium">{course.designacao}</span>
-                            <span className="text-xs text-gray-500">{course.duracao}</span>
+                            <span className="text-xs text-gray-500">{course.duracao || 'Duração não informada'}</span>
                           </div>
                         </SelectItem>
                       ))}

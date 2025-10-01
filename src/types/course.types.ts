@@ -7,6 +7,8 @@ export interface ICourse {
   codigo: number
   designacao: string
   codigo_Status: number
+  duracao?: number
+  descricao?: string | null
 }
 
 export interface IPagination {

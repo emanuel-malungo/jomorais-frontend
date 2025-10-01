@@ -35,6 +35,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   GraduationCap,
   Search,
   Filter,
@@ -55,117 +63,14 @@ import {
   ChevronRight,
   TrendingUp,
   Activity,
+  Loader2,
+  Save,
+  X,
 } from 'lucide-react';
+import { useMatriculas, useCreateMatricula, useUpdateMatricula, useDeleteMatricula } from '@/hooks/useMatricula';
+import { IMatriculaInput } from '@/types/matricula.types';
 
-// Dados mockados baseados na estrutura do backend
-const mockEnrollments = [
-  {
-    codigo: 1,
-    data_Matricula: "2024-02-01",
-    codigoStatus: 1,
-    codigo_Aluno: 1,
-    codigo_Curso: 1,
-    tb_alunos: {
-      codigo: 1,
-      nome: "Ana Silva Santos",
-      dataNascimento: "2005-03-15",
-      sexo: "F",
-      url_Foto: "/avatars/ana.jpg"
-    },
-    tb_cursos: {
-      codigo: 1,
-      designacao: "Informática de Gestão",
-      duracao: "3 anos"
-    },
-    tb_utilizadores: {
-      codigo: 1,
-      nome: "Admin",
-      user: "admin"
-    },
-    tb_confirmacoes: [
-      {
-        codigo: 1,
-        data_Confirmacao: "2024-02-15",
-        classificacao: "Aprovado",
-        codigo_Ano_lectivo: 2024,
-        tb_turmas: {
-          codigo: 1,
-          designacao: "IG-2024-M",
-          tb_classes: {
-            codigo: 10,
-            designacao: "10ª Classe"
-          }
-        }
-      }
-    ]
-  },
-  {
-    codigo: 2,
-    data_Matricula: "2024-02-03",
-    codigoStatus: 1,
-    codigo_Aluno: 2,
-    codigo_Curso: 2,
-    tb_alunos: {
-      codigo: 2,
-      nome: "Carlos Manuel Pereira",
-      dataNascimento: "2004-07-22",
-      sexo: "M",
-      url_Foto: "/avatars/carlos.jpg"
-    },
-    tb_cursos: {
-      codigo: 2,
-      designacao: "Contabilidade",
-      duracao: "3 anos"
-    },
-    tb_utilizadores: {
-      codigo: 1,
-      nome: "Admin",
-      user: "admin"
-    },
-    tb_confirmacoes: []
-  },
-  {
-    codigo: 3,
-    data_Matricula: "2024-01-28",
-    codigoStatus: 0,
-    codigo_Aluno: 3,
-    codigo_Curso: 1,
-    tb_alunos: {
-      codigo: 3,
-      nome: "Maria João Francisco",
-      dataNascimento: "2005-11-10",
-      sexo: "F",
-      url_Foto: "/avatars/maria.jpg"
-    },
-    tb_cursos: {
-      codigo: 1,
-      designacao: "Informática de Gestão",
-      duracao: "3 anos"
-    },
-    tb_utilizadores: {
-      codigo: 1,
-      nome: "Admin",
-      user: "admin"
-    },
-    tb_confirmacoes: [
-      {
-        codigo: 2,
-        data_Confirmacao: "2024-02-10",
-        classificacao: "Aprovado",
-        codigo_Ano_lectivo: 2024,
-        tb_turmas: {
-          codigo: 2,
-          designacao: "IG-2024-T",
-          tb_classes: {
-            codigo: 10,
-            designacao: "10ª Classe"
-          }
-        }
-      }
-    ]
-  }
-];
-
+// Dados de configuração para filtros
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
   { value: "1", label: "Ativa" },
@@ -181,47 +86,51 @@ const courseOptions = [
 ];
 
 export default function EnrollmentsListPage() {
-  const [enrollments, setEnrollments] = useState(mockEnrollments);
-  const [filteredEnrollments, setFilteredEnrollments] = useState(mockEnrollments);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [courseFilter, setCourseFilter] = useState("all");
+  // Hooks da API
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { matriculas, pagination, loading, error, refetch } = useMatriculas(currentPage, itemsPerPage, searchTerm);
+  const { createMatricula, loading: createLoading } = useCreateMatricula();
+  const { deleteMatricula, loading: deleteLoading } = useDeleteMatricula();
+  
+  // Estados para filtros
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [courseFilter, setCourseFilter] = useState("all");
+  
+  // Estados para modal de confirmação de exclusão
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{id: number, nome: string} | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Filtrar matrículas
-  useEffect(() => {
-    let filtered = enrollments;
+  // Funções para gerenciar matrículas
+  const handleDeleteClick = (matricula: any) => {
+    setItemToDelete({ id: matricula.codigo, nome: matricula.tb_alunos.nome });
+    setShowDeleteModal(true);
+  };
 
-    if (searchTerm) {
-      filtered = filtered.filter(enrollment =>
-        enrollment.tb_alunos.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        enrollment.tb_cursos.designacao.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    setDeletingId(itemToDelete.id);
+    setShowDeleteModal(false);
+    
+    try {
+      await deleteMatricula(itemToDelete.id);
+      await refetch();
+    } catch (error: any) {
+      console.error('Erro ao excluir matrícula:', error);
+      alert(`Erro ao excluir matrícula: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setDeletingId(null);
+      setItemToDelete(null);
     }
+  };
 
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(enrollment => 
-        enrollment.codigoStatus.toString() === statusFilter
-      );
-    }
-
-    if (courseFilter !== "all") {
-      filtered = filtered.filter(enrollment => 
-        enrollment.codigo_Curso.toString() === courseFilter
-      );
-    }
-
-    setFilteredEnrollments(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, courseFilter, enrollments]);
-
-  // Paginação
-  const totalPages = Math.ceil(filteredEnrollments.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentEnrollments = filteredEnrollments.slice(startIndex, endIndex);
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
+  };
 
   const handleViewEnrollment = (enrollmentId: number) => {
     window.location.href = `/admin/student-management/enrolls/details/${enrollmentId}`;
@@ -232,8 +141,10 @@ export default function EnrollmentsListPage() {
   };
 
   const handleDeleteEnrollment = (enrollmentId: number) => {
-    console.log("Excluir matrícula:", enrollmentId);
-    // Implementar confirmação e exclusão
+    const matricula = matriculas.find(m => m.codigo === enrollmentId);
+    if (matricula) {
+      handleDeleteClick(matricula);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -323,7 +234,7 @@ export default function EnrollmentsListPage() {
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Matrículas</p>
-            <p className="text-3xl font-bold text-gray-900">{enrollments.length}</p>
+            <p className="text-3xl font-bold text-gray-900">{matriculas.length}</p>
           </div>
           
           {/* Decorative elements */}
@@ -345,7 +256,7 @@ export default function EnrollmentsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-emerald-600">Matrículas Ativas</p>
             <p className="text-3xl font-bold text-gray-900">
-              {enrollments.filter(e => e.codigoStatus === 1).length}
+              {matriculas.filter(e => e.codigoStatus === 1).length}
             </p>
           </div>
           
@@ -368,7 +279,7 @@ export default function EnrollmentsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-[#FFD002]">Com Confirmação</p>
             <p className="text-3xl font-bold text-gray-900">
-              {enrollments.filter(e => e.tb_confirmacoes.length > 0).length}
+              {matriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length}
             </p>
           </div>
           
@@ -391,7 +302,7 @@ export default function EnrollmentsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-red-600">Sem Confirmação</p>
             <p className="text-3xl font-bold text-gray-900">
-              {enrollments.filter(e => e.tb_confirmacoes.length === 0).length}
+              {matriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length}
             </p>
           </div>
           
@@ -463,7 +374,7 @@ export default function EnrollmentsListPage() {
               <span>Lista de Matrículas</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {filteredEnrollments.length} matrículas encontradas
+              {pagination?.totalItems || 0} matrículas encontradas
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -482,7 +393,30 @@ export default function EnrollmentsListPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentEnrollments.map((enrollment) => (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#F9CD1D]" />
+                      <p className="mt-2 text-gray-600">Carregando matrículas...</p>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <p className="text-red-600 mb-4">{error}</p>
+                      <Button onClick={() => refetch()} variant="outline">
+                        Tentar novamente
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ) : matriculas.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <p className="text-gray-600">Nenhuma matrícula encontrada.</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  matriculas.map((enrollment) => (
                   <TableRow key={enrollment.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -492,7 +426,7 @@ export default function EnrollmentsListPage() {
                         <div>
                           <p className="font-medium text-gray-900">{enrollment.tb_alunos.nome}</p>
                           <p className="text-sm text-gray-500">
-                            {calculateAge(enrollment.tb_alunos.dataNascimento)} anos • {enrollment.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                            {enrollment.tb_alunos.dataNascimento ? calculateAge(enrollment.tb_alunos.dataNascimento) : 'N/A'} anos • {enrollment.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
                           </p>
                         </div>
                       </div>
@@ -518,7 +452,7 @@ export default function EnrollmentsListPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {enrollment.tb_confirmacoes.length > 0 ? (
+                      {enrollment.tb_confirmacoes && enrollment.tb_confirmacoes.length > 0 ? (
                         <Badge variant="default" className="bg-blue-100 text-blue-800">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Confirmada
@@ -531,7 +465,7 @@ export default function EnrollmentsListPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {enrollment.tb_confirmacoes.length > 0 ? (
+                      {enrollment.tb_confirmacoes && enrollment.tb_confirmacoes.length > 0 ? (
                         <div>
                           <p className="text-sm font-medium">{enrollment.tb_confirmacoes[0].tb_turmas.designacao}</p>
                           <p className="text-xs text-gray-500">{enrollment.tb_confirmacoes[0].tb_turmas.tb_classes.designacao}</p>
@@ -570,16 +504,17 @@ export default function EnrollmentsListPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
 
           {/* Paginação */}
-          {totalPages > 1 && (
+          {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredEnrollments.length)} de {filteredEnrollments.length} matrículas
+                Mostrando {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} a {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} de {pagination.totalItems} matrículas
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -595,7 +530,7 @@ export default function EnrollmentsListPage() {
                   {(() => {
                     const maxPagesToShow = 5;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                    const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
                     
                     const pages = [];
@@ -633,18 +568,18 @@ export default function EnrollmentsListPage() {
                     }
                     
                     // Última página
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
+                    if (endPage < pagination.totalPages) {
+                      if (endPage < pagination.totalPages - 1) {
                         pages.push(<span key="ellipsis2" className="px-2">...</span>);
                       }
                       pages.push(
                         <Button
-                          key={totalPages}
+                          key={pagination.totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(totalPages)}
+                          onClick={() => setCurrentPage(pagination.totalPages)}
                         >
-                          {totalPages}
+                          {pagination.totalPages}
                         </Button>
                       );
                     }
@@ -655,8 +590,8 @@ export default function EnrollmentsListPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                  disabled={currentPage === pagination.totalPages || loading}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />
@@ -666,6 +601,59 @@ export default function EnrollmentsListPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <span>Confirmar Exclusão</span>
+            </DialogTitle>
+            <DialogDescription className="text-left">
+              Tem certeza que deseja excluir a matrícula de{' '}
+              <span className="font-semibold text-gray-900">
+                {itemToDelete?.nome}
+              </span>
+              ?
+              <br />
+              <br />
+              <span className="text-red-600 font-medium">
+                Esta ação não pode ser desfeita.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelDelete}
+              disabled={deletingId !== null}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deletingId !== null}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deletingId === itemToDelete?.id ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }

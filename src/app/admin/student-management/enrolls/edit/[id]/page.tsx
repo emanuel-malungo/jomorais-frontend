@@ -28,80 +28,67 @@ import {
   AlertCircle,
   Search,
   Edit,
+  Loader2,
 } from 'lucide-react';
+import { useMatricula, useUpdateMatricula } from '@/hooks/useMatricula';
+import { useStudent } from '@/hooks/useStudent';
+import { useCourses } from '@/hooks/useCourse';
+import { IMatriculaInput } from '@/types/matricula.types';
 
-// Dados mockados
-const mockStudents = [
-  { codigo: 1, nome: "Ana Silva Santos", email: "ana.santos@email.com" },
-  { codigo: 2, nome: "Carlos Manuel Pereira", email: "carlos.pereira@email.com" },
-  { codigo: 3, nome: "Maria João Francisco", email: "maria.francisco@email.com" },
-  { codigo: 4, nome: "Pedro António Silva", email: "pedro.silva@email.com" },
-  { codigo: 5, nome: "Joana Cristina Lopes", email: "joana.lopes@email.com" },
-];
 
-const mockCourses = [
-  { codigo: 1, designacao: "Informática de Gestão", duracao: "3 anos" },
-  { codigo: 2, designacao: "Contabilidade", duracao: "3 anos" },
-  { codigo: 3, designacao: "Administração", duracao: "3 anos" },
-  { codigo: 4, designacao: "Marketing", duracao: "2 anos" },
-  { codigo: 5, designacao: "Recursos Humanos", duracao: "2 anos" },
-];
-
-// Dados mockados da matrícula para edição
-const mockEnrollmentData = {
-  codigo: 1,
-  codigo_Aluno: "1",
-  codigo_Curso: "1",
-  data_Matricula: "2024-02-01",
-  codigoStatus: "1",
-  tb_alunos: {
-    codigo: 1,
-    nome: "Ana Silva Santos",
-    email: "ana.santos@email.com"
-  },
-  tb_cursos: {
-    codigo: 1,
-    designacao: "Informática de Gestão",
-    duracao: "3 anos"
-  }
-};
 
 export default function EditEnrollmentPage() {
   const params = useParams();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
-  const [filteredStudents, setFilteredStudents] = useState(mockStudents);
-
-  const enrollmentId = params.id;
-
+  
+  const enrollmentId = parseInt(params.id as string);
+  
+  // Hooks da API
+  const { matricula, loading: matriculaLoading, error: matriculaError } = useMatricula(enrollmentId);
+  const { updateMatricula, loading: updateLoading } = useUpdateMatricula(enrollmentId);
+  const { students, loading: studentsLoading, getAllStudents } = useStudent();
+  const { courses, loading: coursesLoading } = useCourses(1, 100); // Carregar mais cursos para o select
+  
   // Estados do formulário
   const [formData, setFormData] = useState({
-    codigo_Aluno: mockEnrollmentData.codigo_Aluno,
-    codigo_Curso: mockEnrollmentData.codigo_Curso,
-    data_Matricula: mockEnrollmentData.data_Matricula,
-    codigoStatus: mockEnrollmentData.codigoStatus,
+    codigo_Aluno: "",
+    codigo_Curso: "",
+    data_Matricula: "",
+    codigoStatus: "1",
   });
+  
+  // Carregar dados iniciais
+  React.useEffect(() => {
+    getAllStudents(1, 100); // Carregar mais estudantes para o select
+  }, [getAllStudents]);
+  
+  // Preencher formulário quando matrícula carregar
+  React.useEffect(() => {
+    if (matricula) {
+      // Converter data para formato YYYY-MM-DD para o input date
+      const dataFormatada = matricula.data_Matricula 
+        ? new Date(matricula.data_Matricula).toISOString().split('T')[0]
+        : '';
+        
+      setFormData({
+        codigo_Aluno: matricula.codigo_Aluno.toString(),
+        codigo_Curso: matricula.codigo_Curso.toString(),
+        data_Matricula: dataFormatada,
+        codigoStatus: matricula.codigoStatus.toString(),
+      });
+    }
+  }, [matricula]);
+  
+  // Filtrar alunos baseado na busca
+  const filteredStudents = studentSearch 
+    ? students?.filter((student: any) =>
+        student.nome.toLowerCase().includes(studentSearch.toLowerCase()) ||
+        student.email?.toLowerCase().includes(studentSearch.toLowerCase())
+      ) || []
+    : students || [];
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    // Em produção, buscar dados da matrícula pela API
-    console.log("Carregando dados da matrícula:", enrollmentId);
-  }, [enrollmentId]);
-
-  // Filtrar alunos baseado na busca
-  useEffect(() => {
-    if (studentSearch) {
-      const filtered = mockStudents.filter(student =>
-        student.nome.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.email.toLowerCase().includes(studentSearch.toLowerCase())
-      );
-      setFilteredStudents(filtered);
-    } else {
-      setFilteredStudents(mockStudents);
-    }
-  }, [studentSearch]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -136,31 +123,61 @@ export default function EditEnrollmentPage() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = async () => {
     if (!validateForm()) {
       return;
     }
 
-    setIsLoading(true);
-    
     try {
-      // Simular chamada à API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const matriculaData: IMatriculaInput = {
+        codigo_Aluno: parseInt(formData.codigo_Aluno),
+        codigo_Curso: parseInt(formData.codigo_Curso),
+        data_Matricula: formData.data_Matricula,
+        codigoStatus: parseInt(formData.codigoStatus),
+        codigo_Utilizador: 1 // TODO: Pegar do contexto de autenticação
+      };
       
-      console.log("Dados atualizados da matrícula:", formData);
+      await updateMatricula(matriculaData);
       
       // Redirecionar para lista após sucesso
       router.push('/admin/student-management/enrolls');
     } catch (error) {
       console.error("Erro ao atualizar matrícula:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const selectedStudent = mockStudents.find(s => s.codigo.toString() === formData.codigo_Aluno);
-  const selectedCourse = mockCourses.find(c => c.codigo.toString() === formData.codigo_Curso);
+  const selectedStudent = students?.find((s: any) => s.codigo.toString() === formData.codigo_Aluno);
+  const selectedCourse = courses?.find((c: any) => c.codigo.toString() === formData.codigo_Curso);
+  
+  // Loading state
+  if (matriculaLoading || studentsLoading || coursesLoading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#F9CD1D] mb-4" />
+            <p className="text-gray-600">Carregando dados da matrícula...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+  
+  // Error state
+  if (matriculaError) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Erro ao carregar matrícula: {matriculaError}</p>
+            <Button onClick={() => router.back()} variant="outline">
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -185,7 +202,7 @@ export default function EditEnrollmentPage() {
                   <h1 className="text-4xl font-bold text-gray-900">
                     Editar Matrícula
                   </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">#{mockEnrollmentData.codigo}</p>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">#{matricula?.codigo || enrollmentId}</p>
                 </div>
               </div>
               <p className="text-gray-600 text-sm max-w-2xl">
@@ -204,11 +221,20 @@ export default function EditEnrollmentPage() {
 
               <Button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={updateLoading || matriculaLoading || studentsLoading || coursesLoading}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
-                <Save className="w-5 h-5 mr-2" />
-                {isLoading ? "Salvando..." : "Salvar Alterações"}
+                {updateLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Atualizando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5 mr-2" />
+                    Atualizar Matrícula
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -234,18 +260,18 @@ export default function EditEnrollmentPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-blue-700">Aluno Atual</label>
-                  <p className="text-sm font-semibold text-blue-900">{mockEnrollmentData.tb_alunos.nome}</p>
-                  <p className="text-xs text-blue-600">{mockEnrollmentData.tb_alunos.email}</p>
+                  <p className="text-sm font-semibold text-blue-900">{matricula?.tb_alunos?.nome || 'Carregando...'}</p>
+                  <p className="text-xs text-blue-600">{matricula?.tb_alunos?.email || ''}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-blue-700">Curso Atual</label>
-                  <p className="text-sm font-semibold text-blue-900">{mockEnrollmentData.tb_cursos.designacao}</p>
-                  <p className="text-xs text-blue-600">{mockEnrollmentData.tb_cursos.duracao}</p>
+                  <p className="text-sm font-semibold text-blue-900">{matricula?.tb_cursos?.designacao || 'Carregando...'}</p>
+                  <p className="text-xs text-blue-600">{matricula?.tb_cursos?.duracao || 'Duração não informada'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-blue-700">Data de Matrícula</label>
                   <p className="text-sm font-semibold text-blue-900">
-                    {new Date(mockEnrollmentData.data_Matricula).toLocaleDateString('pt-AO')}
+                    {matricula?.data_Matricula ? new Date(matricula.data_Matricula).toLocaleDateString('pt-AO') : 'Carregando...'}
                   </p>
                 </div>
                 <div>
@@ -254,7 +280,7 @@ export default function EditEnrollmentPage() {
                     variant="default"
                     className="bg-blue-100 text-blue-800"
                   >
-                    {mockEnrollmentData.codigoStatus === "1" ? "Ativa" : "Inativa"}
+                    {matricula?.codigoStatus === 1 ? "Ativa" : "Inativa"}
                   </Badge>
                 </div>
               </div>
@@ -339,11 +365,18 @@ export default function EditEnrollmentPage() {
                       <SelectValue placeholder="Selecione o curso" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockCourses.map((course) => (
+                      {coursesLoading ? (
+                        <SelectItem value="loading" disabled>
+                          <div className="flex items-center">
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Carregando cursos...
+                          </div>
+                        </SelectItem>
+                      ) : courses?.map((course: any) => (
                         <SelectItem key={course.codigo} value={course.codigo.toString()}>
                           <div className="flex flex-col">
                             <span className="font-medium">{course.designacao}</span>
-                            <span className="text-xs text-gray-500">{course.duracao}</span>
+                            <span className="text-xs text-gray-500">{course.duracao || 'Duração não informada'}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -409,7 +442,7 @@ export default function EditEnrollmentPage() {
                   <h4 className="font-medium text-blue-900 mb-2">Novo Aluno</h4>
                   <p className="text-sm font-semibold text-blue-800">{selectedStudent.nome}</p>
                   <p className="text-xs text-blue-600">{selectedStudent.email}</p>
-                  {selectedStudent.codigo.toString() !== mockEnrollmentData.codigo_Aluno && (
+                  {selectedStudent.codigo.toString() !== matricula?.codigo_Aluno.toString() && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -426,7 +459,7 @@ export default function EditEnrollmentPage() {
                   <h4 className="font-medium text-green-900 mb-2">Novo Curso</h4>
                   <p className="text-sm font-semibold text-green-800">{selectedCourse.designacao}</p>
                   <p className="text-xs text-green-600">Duração: {selectedCourse.duracao}</p>
-                  {selectedCourse.codigo.toString() !== mockEnrollmentData.codigo_Curso && (
+                  {selectedCourse.codigo.toString() !== matricula?.codigo_Curso.toString() && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -444,7 +477,7 @@ export default function EditEnrollmentPage() {
                   <p className="text-sm font-semibold text-yellow-800">
                     {new Date(formData.data_Matricula).toLocaleDateString('pt-AO')}
                   </p>
-                  {formData.data_Matricula !== mockEnrollmentData.data_Matricula && (
+                  {formData.data_Matricula !== matricula?.data_Matricula && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -460,7 +493,7 @@ export default function EditEnrollmentPage() {
                 >
                   {formData.codigoStatus === "1" ? "Ativa" : "Inativa"}
                 </Badge>
-                {formData.codigoStatus !== mockEnrollmentData.codigoStatus && (
+                {formData.codigoStatus !== matricula?.codigoStatus.toString() && (
                   <Badge variant="outline" className="mt-2 ml-2 text-xs border-orange-300 text-orange-700">
                     Alterado
                   </Badge>
