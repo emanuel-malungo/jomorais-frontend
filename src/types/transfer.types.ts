@@ -12,6 +12,8 @@ export interface IStudent {
   dataNascimento: string | null
   sexo: string
   url_Foto: string | null
+  telefone?: string
+  morada?: string
   tb_encarregados?: {
     codigo: number
     nome: string

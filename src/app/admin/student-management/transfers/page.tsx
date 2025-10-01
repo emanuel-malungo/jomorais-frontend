@@ -64,6 +64,7 @@ import {
   TrendingUp,
   Activity,
   Loader2,
+  MapPin,
 } from 'lucide-react';
 import { useTransfers, useDeleteTransfer } from '@/hooks/useTransfer';
 
@@ -449,7 +450,6 @@ export default function TransfersListPage() {
                     <TableHead>Aluno</TableHead>
                     <TableHead>Escola Destino</TableHead>
                     <TableHead>Motivo</TableHead>
-                    <TableHead>Data Transferência</TableHead>
                     <TableHead>Observações</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -480,17 +480,6 @@ export default function TransfersListPage() {
                       <div>
                         <p className="font-medium text-gray-900">{getMotivoDesignacao(transfer.codigoMotivo)}</p>
                         <p className="text-sm text-gray-500">Código: {transfer.codigoMotivo}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <div>
-                          <p className="text-sm font-medium">{formatDate(transfer.dataTransferencia)}</p>
-                          {typeof transfer.dataTransferencia === 'object' && (
-                            <p className="text-xs text-amber-600">Aguardando processamento</p>
-                          )}
-                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
