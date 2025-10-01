@@ -52,9 +52,11 @@ import {
   Activity,
 } from 'lucide-react';
 import { Disciplina, Curso } from '@/types/academic-management.types';
+import { Discipline } from '@/types/discipline.types';
 import StatCard from '@/components/layout/StatCard';
+import { useDiscipline } from '@/hooks';
 
-// Dados mockados baseados na estrutura do backend
+// Dados mockados baseados na estrutura do backend - mantidos como fallback
 const mockDisciplinas: Disciplina[] = [
   {
     codigo: 1,
@@ -130,34 +132,41 @@ const cursoOptions = [
 ];
 
 export default function DisciplinesListPage() {
-  const [disciplinas, setDisciplinas] = useState<Disciplina[]>(mockDisciplinas);
-  const [filteredDisciplinas, setFilteredDisciplinas] = useState<Disciplina[]>(mockDisciplinas);
+  const { disciplines, loading, error, pagination, getAllDisciplines } = useDiscipline();
+  const [filteredDisciplinas, setFilteredDisciplinas] = useState<Discipline[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [cursoFilter, setCursoFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Carregar disciplinas quando o componente for montado
+  useEffect(() => {
+    getAllDisciplines(currentPage, itemsPerPage);
+  }, [getAllDisciplines, currentPage, itemsPerPage]);
 
   // Filtrar disciplinas
   useEffect(() => {
-    let filtered = disciplinas;
+    let filtered = disciplines;
 
     if (searchTerm) {
-      filtered = filtered.filter(disciplina =>
+      filtered = filtered.filter((disciplina: Discipline) =>
         disciplina.designacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        disciplina.tb_cursos?.designacao.toLowerCase().includes(searchTerm.toLowerCase())
+        disciplina.codigo_disciplina?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        disciplina.descricao?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
+    // Filtro por curso - usando as classes relacionadas como proxy
     if (cursoFilter !== "all") {
-      filtered = filtered.filter(disciplina => 
-        disciplina.codigo_Curso.toString() === cursoFilter
+      filtered = filtered.filter((disciplina: Discipline) => 
+        disciplina.tb_disciplinas_classes?.some(dc => 
+          dc.tb_classes.codigo.toString() === cursoFilter
+        )
       );
     }
 
     setFilteredDisciplinas(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, cursoFilter, disciplinas]);
+  }, [searchTerm, cursoFilter, disciplines]);
 
   // Paginação
   const totalPages = Math.ceil(filteredDisciplinas.length / itemsPerPage);
@@ -178,10 +187,12 @@ export default function DisciplinesListPage() {
     // Implementar confirmação e exclusão
   };
 
-  // Estatísticas por curso
+  // Estatísticas por curso - usando dados do hook
   const disciplinasPorCurso = mockCursos.map(curso => ({
     curso: curso.designacao,
-    count: disciplinas.filter(d => d.codigo_Curso === curso.codigo).length
+    count: disciplines.filter((d: Discipline) => 
+      d.tb_disciplinas_classes?.some(dc => dc.tb_classes.codigo === curso.codigo)
+    ).length
   }));
 
   return (
@@ -256,7 +267,7 @@ export default function DisciplinesListPage() {
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Disciplinas</p>
-            <p className="text-3xl font-bold text-gray-900">{disciplinas.length}</p>
+            <p className="text-3xl font-bold text-gray-900">{disciplines.length}</p>
           </div>
           
           {/* Decorative elements */}
@@ -378,17 +389,19 @@ export default function DisciplinesListPage() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <GraduationCap className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">{disciplina.tb_cursos?.designacao}</span>
+                        <span className="font-medium text-gray-900">
+                          {disciplina.tb_disciplinas_classes?.[0]?.tb_classes?.designacao || "N/A"}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-gray-50">
-                        {disciplina.codigo_Curso}
+                        {disciplina.codigo_disciplina}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <p className="text-sm text-gray-600 max-w-xs truncate" title={disciplina.tb_cursos?.observacoes}>
-                        {disciplina.tb_cursos?.observacoes || "Sem observações"}
+                      <p className="text-sm text-gray-600 max-w-xs truncate" title={disciplina.descricao}>
+                        {disciplina.descricao || disciplina.observacoes || "Sem observações"}
                       </p>
                     </TableCell>
                     <TableCell className="text-right">
@@ -401,17 +414,17 @@ export default function DisciplinesListPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewDisciplina(disciplina.codigo)}>
+                          <DropdownMenuItem onClick={() => handleViewDisciplina(disciplina.codigo || 0)}>
                             <Eye className="mr-2 h-4 w-4" />
                             Visualizar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditDisciplina(disciplina.codigo)}>
+                          <DropdownMenuItem onClick={() => handleEditDisciplina(disciplina.codigo || 0)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            onClick={() => handleDeleteDisciplina(disciplina.codigo)}
+                            onClick={() => handleDeleteDisciplina(disciplina.codigo || 0)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
