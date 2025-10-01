@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useDisciplinaDocente } from '@/hooks/useDisciplineTeacher';
+import { IDisciplinaDocente } from '@/types/disciplineTeacher.types';
 import {
   Card,
   CardContent,
@@ -43,31 +45,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 
-interface DisciplineTeacher {
-  id: number;
-  professor: string;
-  email: string;
-  telefone: string;
-  disciplina: string;
-  codigo: string;
-  turma: string;
-  classe: string;
-  curso: string;
-  sala: string;
-  periodo: string;
-  cargaHoraria: number;
-  diasSemana: string[];
-  horarioInicio: string;
-  horarioFim: string;
-  anoLetivo: string;
-  status: string;
-  dataInicio: string;
-  totalAlunos: number;
-  mediaGeral: number;
-  frequenciaMedia: number;
-  formacao: string;
-  especialidade: string;
-}
+// Removido - usando IDisciplinaDocente da API
 
 interface Aluno {
   id: number;
@@ -91,63 +69,19 @@ interface Aula {
 export default function DisciplineTeacherDetails() {
   const params = useParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  const [assignment, setAssignment] = useState<DisciplineTeacher | null>(null);
+  
+  // Hook da API real
+  const disciplinaId = parseInt(params.id as string);
+  const { data: assignment, loading, error } = useDisciplinaDocente(disciplinaId);
 
-  // Dados mockados da atribuição
-  const assignmentsData: DisciplineTeacher[] = [
-    {
-      id: 1,
-      professor: "Prof. Maria Silva Santos",
-      email: "maria.santos@jomorais.edu.ao",
-      telefone: "+244 923 456 789",
-      disciplina: "Matemática",
-      codigo: "MAT",
-      turma: "IG-10A-2024",
-      classe: "10ª Classe",
-      curso: "Informática de Gestão",
-      sala: "A1",
-      periodo: "Manhã",
-      cargaHoraria: 6,
-      diasSemana: ["segunda", "terca", "quinta"],
-      horarioInicio: "07:30",
-      horarioFim: "09:00",
-      anoLetivo: "2024/2025",
-      status: "Ativo",
-      dataInicio: "2024-02-15",
-      totalAlunos: 35,
-      mediaGeral: 14.2,
-      frequenciaMedia: 92,
-      formacao: "Licenciatura em Matemática",
-      especialidade: "Análise Matemática"
-    },
-    {
-      id: 2,
-      professor: "Prof. João Manuel Costa",
-      email: "joao.costa@jomorais.edu.ao",
-      telefone: "+244 924 567 890",
-      disciplina: "Português",
-      codigo: "PORT",
-      turma: "CG-11B-2024",
-      classe: "11ª Classe",
-      curso: "Contabilidade e Gestão",
-      sala: "B2",
-      periodo: "Tarde",
-      cargaHoraria: 5,
-      diasSemana: ["segunda", "quarta", "sexta"],
-      horarioInicio: "13:30",
-      horarioFim: "15:00",
-      anoLetivo: "2024/2025",
-      status: "Ativo",
-      dataInicio: "2024-01-20",
-      totalAlunos: 32,
-      mediaGeral: 15.1,
-      frequenciaMedia: 88,
-      formacao: "Licenciatura em Língua Portuguesa",
-      especialidade: "Literatura Angolana"
-    }
-  ];
+  // Dados mockados para demonstração (enquanto não há endpoints específicos)
+  const mockStats = {
+    totalAlunos: 35,
+    mediaGeral: 14.2,
+    frequenciaMedia: 92,
+    taxaAprovacao: 85
+  };
 
   // Dados mockados dos alunos
   const alunosData: Aluno[] = [
@@ -166,24 +100,7 @@ export default function DisciplineTeacherDetails() {
     { id: 4, data: "2024-09-23", topico: "Revisão Geral", presentes: 34, ausentes: 1, conteudo: "Revisão dos conteúdos do trimestre", observacoes: "Preparação para avaliação" }
   ];
 
-  useEffect(() => {
-    const loadAssignment = async () => {
-      setLoading(true);
-      // Simular carregamento
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const assignmentId = parseInt(params.id as string);
-      const foundAssignment = assignmentsData.find(a => a.id === assignmentId);
-      
-      if (foundAssignment) {
-        setAssignment(foundAssignment);
-      }
-      
-      setLoading(false);
-    };
-
-    loadAssignment();
-  }, [params.id]);
+  // Dados carregados automaticamente pelo hook useDisciplinaDocente
 
   const handleEdit = () => {
     router.push(`/admin/teacher-management/discpline-teacher/edit/${params.id}`);
@@ -193,17 +110,7 @@ export default function DisciplineTeacherDetails() {
     router.back();
   };
 
-  const getDiaSemanaNome = (dia: string) => {
-    const dias = {
-      'segunda': 'Segunda-feira',
-      'terca': 'Terça-feira',
-      'quarta': 'Quarta-feira',
-      'quinta': 'Quinta-feira',
-      'sexta': 'Sexta-feira',
-      'sabado': 'Sábado'
-    };
-    return dias[dia as keyof typeof dias] || dia;
-  };
+  // Função removida - não necessária com dados da API
 
   if (loading) {
     return (
@@ -213,6 +120,21 @@ export default function DisciplineTeacherDetails() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
             <p className="text-gray-600">Carregando detalhes da atribuição...</p>
           </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Erro ao carregar</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Button onClick={handleBack} variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
         </div>
       </Container>
     );
@@ -233,8 +155,8 @@ export default function DisciplineTeacherDetails() {
     );
   }
 
+  // Estatísticas calculadas dos dados mockados para demonstração
   const aprovados = alunosData.filter(aluno => aluno.situacao === "Aprovado").length;
-  const taxaAprovacao = Math.round((aprovados / alunosData.length) * 100);
 
   return (
     <Container>
@@ -257,7 +179,7 @@ export default function DisciplineTeacherDetails() {
                 Detalhes da Atribuição
               </h1>
               <p className="text-sm text-gray-600">
-                {assignment.disciplina} - {assignment.turma}
+                {assignment.tb_disciplinas.designacao} - {assignment.tb_cursos.designacao}
               </p>
             </div>
           </div>
@@ -275,7 +197,7 @@ export default function DisciplineTeacherDetails() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total de Alunos</p>
-                <p className="text-2xl font-bold text-gray-900">{assignment.totalAlunos}</p>
+                <p className="text-2xl font-bold text-gray-900">{mockStats.totalAlunos}</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-lg">
                 <Users className="h-6 w-6 text-blue-600" />
@@ -289,7 +211,7 @@ export default function DisciplineTeacherDetails() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Média Geral</p>
-                <p className="text-2xl font-bold text-gray-900">{assignment.mediaGeral.toFixed(1)}</p>
+                <p className="text-2xl font-bold text-gray-900">{mockStats.mediaGeral.toFixed(1)}</p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
                 <Award className="h-6 w-6 text-green-600" />
@@ -303,7 +225,7 @@ export default function DisciplineTeacherDetails() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Frequência Média</p>
-                <p className="text-2xl font-bold text-gray-900">{assignment.frequenciaMedia}%</p>
+                <p className="text-2xl font-bold text-gray-900">{mockStats.frequenciaMedia}%</p>
               </div>
               <div className="p-3 bg-purple-100 rounded-lg">
                 <BarChart3 className="h-6 w-6 text-purple-600" />
@@ -317,7 +239,7 @@ export default function DisciplineTeacherDetails() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Taxa de Aprovação</p>
-                <p className="text-2xl font-bold text-gray-900">{taxaAprovacao}%</p>
+                <p className="text-2xl font-bold text-gray-900">{mockStats.taxaAprovacao}%</p>
               </div>
               <div className="p-3 bg-orange-100 rounded-lg">
                 <Target className="h-6 w-6 text-orange-600" />
@@ -350,27 +272,27 @@ export default function DisciplineTeacherDetails() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Disciplina</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.disciplina}</p>
+                    <p className="text-lg font-semibold text-gray-900">{assignment.tb_disciplinas.designacao}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Código</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.codigo}</p>
+                    <p className="text-lg font-semibold text-gray-900">{assignment.tb_disciplinas.codigo}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Turma</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.turma}</p>
+                    <p className="text-lg font-semibold text-gray-900">Turma (não disponível na API)</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Classe</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.classe}</p>
+                    <p className="text-lg font-semibold text-gray-900">Classe (não disponível na API)</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Curso</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.curso}</p>
+                    <p className="text-lg font-semibold text-gray-900">{assignment.tb_cursos.designacao}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Carga Horária</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.cargaHoraria}h/semana</p>
+                    <p className="text-lg font-semibold text-gray-900">Carga horária (não disponível na API)</p>
                   </div>
                 </div>
               </CardContent>
@@ -388,27 +310,24 @@ export default function DisciplineTeacherDetails() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Sala</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.sala}</p>
+                    <p className="text-lg font-semibold text-gray-900">Não disponível na API</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Período</p>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                      {assignment.periodo}
+                    <Badge variant="outline" className="bg-gray-50 text-gray-700">
+                      Não disponível
                     </Badge>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Horário</p>
                     <p className="text-lg font-semibold text-gray-900">
-                      {assignment.horarioInicio} - {assignment.horarioFim}
+                      Não disponível na API
                     </p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Status</p>
-                    <Badge 
-                      variant={assignment.status === "Ativo" ? "default" : "secondary"}
-                      className={assignment.status === "Ativo" ? "bg-emerald-100 text-emerald-800" : ""}
-                    >
-                      {assignment.status}
+                    <Badge variant="outline" className="bg-gray-50 text-gray-700">
+                      Não disponível
                     </Badge>
                   </div>
                 </div>
@@ -416,11 +335,9 @@ export default function DisciplineTeacherDetails() {
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-2">Dias da Semana</p>
                   <div className="flex flex-wrap gap-2">
-                    {assignment.diasSemana.map((dia) => (
-                      <Badge key={dia} variant="outline" className="bg-gray-50">
-                        {getDiaSemanaNome(dia)}
-                      </Badge>
-                    ))}
+                    <Badge variant="outline" className="bg-gray-50 text-gray-700">
+                      Não disponível na API
+                    </Badge>
                   </div>
                 </div>
               </CardContent>
@@ -441,20 +358,20 @@ export default function DisciplineTeacherDetails() {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Nome Completo</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.professor}</p>
+                    <p className="text-lg font-semibold text-gray-900">{assignment.tb_docente.nome}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Formação</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.formacao}</p>
+                    <p className="text-lg font-semibold text-gray-900">Não disponível na API</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Especialidade</p>
-                    <p className="text-lg font-semibold text-gray-900">{assignment.especialidade}</p>
+                    <p className="text-lg font-semibold text-gray-900">Não disponível na API</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Data de Início</p>
                     <p className="text-lg font-semibold text-gray-900">
-                      {new Date(assignment.dataInicio).toLocaleDateString('pt-AO')}
+                      Não disponível na API
                     </p>
                   </div>
                 </div>
@@ -464,21 +381,21 @@ export default function DisciplineTeacherDetails() {
                     <Mail className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm font-medium text-gray-600">Email</p>
-                      <p className="text-lg font-semibold text-gray-900">{assignment.email}</p>
+                      <p className="text-lg font-semibold text-gray-900">Não disponível na API</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Phone className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm font-medium text-gray-600">Telefone</p>
-                      <p className="text-lg font-semibold text-gray-900">{assignment.telefone}</p>
+                      <p className="text-lg font-semibold text-gray-900">Não disponível na API</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Calendar className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm font-medium text-gray-600">Ano Letivo</p>
-                      <p className="text-lg font-semibold text-gray-900">{assignment.anoLetivo}</p>
+                      <p className="text-lg font-semibold text-gray-900">Não disponível na API</p>
                     </div>
                   </div>
                 </div>

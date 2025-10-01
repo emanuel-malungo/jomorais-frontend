@@ -50,8 +50,8 @@ import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
-import useTeacher from '@/hooks/useTeacher';
-import { Teacher } from '@/types/teacher.types';
+import { useDocentes, useDeleteDocente, useEspecialidades } from '@/hooks/useTeacher';
+import { IDocente } from '@/types/teacher.types';
 
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
@@ -59,66 +59,52 @@ const statusOptions = [
   { value: "0", label: "Inativo" },
 ];
 
-const especialidadeOptions = [
-  { value: "all", label: "Todas as Especialidades" },
-  { value: "matemática", label: "Matemática" },
-  { value: "língua portuguesa", label: "Língua Portuguesa" },
-  { value: "física", label: "Física" },
-  { value: "química", label: "Química" },
-  { value: "biologia", label: "Biologia" },
-  { value: "história", label: "História" },
-  { value: "geografia", label: "Geografia" },
-  { value: "inglês", label: "Inglês" },
-  { value: "educação física", label: "Educação Física" },
-];
+// Opções de especialidades serão geradas dinamicamente
 
 export default function ListTeacherPage() {
-  const { teachers, loading, error, pagination, getAllTeachers } = useTeacher();
-
-  const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [especialidadeFilter, setEspecialidadeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  // Carregar professores quando o componente for montado ou página mudar
-  useEffect(() => {
-    getAllTeachers(currentPage, itemsPerPage);
-  }, [getAllTeachers, currentPage, itemsPerPage]);
+  // Usar os novos hooks
+  const { docentes, loading, error, pagination, refetch } = useDocentes(currentPage, itemsPerPage, searchTerm);
+  const { deleteDocente, loading: deleteLoading } = useDeleteDocente();
+  const { especialidades } = useEspecialidades();
 
-  // Filtrar professores (aplicado aos dados da página atual)
-  useEffect(() => {
-    let filtered = teachers;
+  const [filteredDocentes, setFilteredDocentes] = useState<IDocente[]>([]);
 
-    // Filtro por busca
-    if (searchTerm) {
-      filtered = filtered.filter(teacher =>
-        teacher.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.telefone?.includes(searchTerm) ||
-        teacher.n_documento_identificacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.especialidade?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  // Gerar opções de especialidades dinamicamente
+  const especialidadeOptions = [
+    { value: "all", label: "Todas as Especialidades" },
+    ...especialidades.map(esp => ({
+      value: esp.codigo.toString(),
+      label: esp.designacao
+    }))
+  ];
+
+  // Filtrar docentes (aplicado aos dados da página atual)
+  useEffect(() => {
+    let filtered = docentes;
 
     // Filtro por status
     if (statusFilter !== "all") {
-      filtered = filtered.filter(teacher => 
-        teacher.codigo_Status.toString() === statusFilter
+      filtered = filtered.filter((docente: IDocente) => 
+        docente.status.toString() === statusFilter
       );
     }
 
     // Filtro por especialidade
     if (especialidadeFilter !== "all") {
-      filtered = filtered.filter(teacher => {
-        if (!teacher.especialidade) return false;
-        return teacher.especialidade.toLowerCase().includes(especialidadeFilter);
+      filtered = filtered.filter((docente: IDocente) => {
+        if (!docente.tb_especialidade) return false;
+        return docente.tb_especialidade.codigo.toString() === especialidadeFilter;
       });
     }
 
-    setFilteredTeachers(filtered);
-  }, [searchTerm, statusFilter, especialidadeFilter, teachers]);
+    setFilteredDocentes(filtered);
+  }, [statusFilter, especialidadeFilter, docentes]);
 
   // Resetar para primeira página quando filtros mudarem
   useEffect(() => {
@@ -130,9 +116,9 @@ export default function ListTeacherPage() {
   // Paginação - usando dados da API
   const totalPages = pagination?.totalPages || 1;
   const totalItems = pagination?.totalItems || 0;
-  const currentTeachers = filteredTeachers; // Já são os dados da página atual
+  const currentDocentes = filteredDocentes; // Já são os dados da página atual
   const startIndex = pagination ? (pagination.currentPage - 1) * pagination.itemsPerPage + 1 : 1;
-  const endIndex = pagination ? Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems) : filteredTeachers.length;
+  const endIndex = pagination ? Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems) : filteredDocentes.length;
 
   const handleViewTeacher = (teacherId: number) => {
     window.location.href = `/admin/teacher-management/teacher/details/${teacherId}`;
@@ -142,9 +128,13 @@ export default function ListTeacherPage() {
     window.location.href = `/admin/teacher-management/teacher/edit/${teacherId}`;
   };
 
-  const handleDeleteTeacher = (teacherId: number) => {
-    console.log("Excluir professor:", teacherId);
-    // Implementar confirmação e exclusão do professor com o hook
+  const handleDeleteTeacher = async (teacherId: number) => {
+    if (confirm('Tem certeza que deseja excluir este docente?')) {
+      const success = await deleteDocente(teacherId);
+      if (success) {
+        refetch(); // Recarregar a lista
+      }
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -190,13 +180,30 @@ export default function ListTeacherPage() {
     <Container>
       {/* Header seguindo padrão do Dashboard */}
       <WelcomeHeader
-        title="Gestão de Professores"
-        description="Gerencie todos os professores da instituição. Visualize informações detalhadas, acompanhe especialidades e mantenha os dados sempre atualizados."
-        titleBtnRight='Novo Professor'
+        title="Gestão de Docentes"
+        titleBtnRight='Novo Docente'
         iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
         onClickBtnRight={() => window.location.href = '/admin/teacher-management/teacher/add'}
       />
 
+      {/* Estados de Loading e Erro */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <div className="text-red-500 mr-2">⚠️</div>
+            <div>
+              <span className="text-red-700 font-medium">Erro ao carregar docentes:</span>
+              <p className="text-red-600 text-sm mt-1">{error}</p>
+              <button 
+                onClick={refetch}
+                className="text-red-600 underline text-sm mt-2 hover:text-red-800"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Stats Cards usando componente StatCard */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
@@ -211,8 +218,8 @@ export default function ListTeacherPage() {
         />
 
         <StatCard
-          title="Professores Ativos"
-          value={teachers.filter(t => t.codigo_Status === 1).length.toString()}
+          title="Docentes Ativos"
+          value={docentes.filter((d: IDocente) => d.status === 1).length.toString()}
           change="+2.1%"
           changeType="up"
           icon={UserCheck}
@@ -223,7 +230,7 @@ export default function ListTeacherPage() {
 
         <StatCard
           title="Com Disciplinas"
-          value={teachers.filter(t => t.tb_disciplinas_professores && t.tb_disciplinas_professores.length > 0).length.toString()}
+          value={docentes.filter((d: IDocente) => d.tb_disciplinas_docente && d.tb_disciplinas_docente.length > 0).length.toString()}
           change="+1.8%"
           changeType="up"
           icon={BookOpen}
@@ -271,10 +278,10 @@ export default function ListTeacherPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Professores da Página {currentPage} ({filteredTeachers.length} de {itemsPerPage})
+            Docentes da Página {currentPage} ({filteredDocentes.length} de {itemsPerPage})
           </CardTitle>
           <CardDescription>
-            Página {currentPage} de {totalPages} - Total: {totalItems} professores
+            Página {currentPage} de {totalPages} - Total: {totalItems} docentes
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -302,12 +309,12 @@ export default function ListTeacherPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : currentTeachers.length === 0 ? (
+                ) : currentDocentes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
                         <Users className="h-12 w-12 text-gray-400" />
-                        <p className="text-gray-500">Nenhum professor encontrado</p>
+                        <p className="text-gray-500">Nenhum docente encontrado</p>
                         <p className="text-sm text-gray-400">
                           Tente ajustar os filtros de busca
                         </p>
@@ -315,7 +322,7 @@ export default function ListTeacherPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentTeachers.map((teacher, index) => (
+                  currentDocentes.map((teacher: IDocente, index: number) => (
                     <TableRow key={teacher.codigo || index} className="hover:bg-gray-50">
                       <TableCell className="font-medium">
                         {startIndex + index}
@@ -330,12 +337,9 @@ export default function ListTeacherPage() {
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
                               <span className="flex items-center">
                                 <Calendar className="w-3 h-3 mr-1" />
-                                {calculateAge(teacher.dataNascimento) !== "N/A" 
-                                  ? `${calculateAge(teacher.dataNascimento)} anos`
-                                  : "Idade N/A"
-                                }
+                                ID: {teacher.user_id || 'N/A'}
                               </span>
-                              <span>{teacher.sexo === 'M' ? 'Masculino' : 'Feminino'}</span>
+                              <span>Status: {teacher.status === 1 ? 'Ativo' : 'Inativo'}</span>
                             </div>
                           </div>
                         </div>
@@ -348,38 +352,40 @@ export default function ListTeacherPage() {
                           </div>
                           <div className="flex items-center text-sm">
                             <Phone className="w-3 h-3 mr-2 text-gray-400" />
-                            <span className="text-gray-600">{teacher.telefone}</span>
+                            <span className="text-gray-600">{teacher.contacto || 'N/A'}</span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="text-sm font-medium">{teacher.n_documento_identificacao || 'N/A'}</p>
-                          <p className="text-xs text-gray-500">Bilhete de Identidade</p>
+                          <p className="text-sm font-medium">Código: {teacher.codigo}</p>
+                          <p className="text-xs text-gray-500">ID Utilizador: {teacher.codigo_Utilizador}</p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="text-sm font-medium">{teacher.especialidade || 'N/A'}</p>
-                          <p className="text-xs text-gray-500">{teacher.grau_academico || 'N/A'}</p>
+                          <p className="text-sm font-medium">{teacher.tb_especialidade?.designacao || 'N/A'}</p>
+                          <p className="text-xs text-gray-500">
+                            {teacher.tb_disciplinas_docente?.length || 0} disciplina(s)
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
                           <p className="text-sm font-medium">
-                            {teacher.experiencia_anos ? `${teacher.experiencia_anos} anos` : 'N/A'}
+                            {teacher.tb_disciplinas_docente?.length || 0} disciplina(s)
                           </p>
                           <p className="text-xs text-gray-500">
-                            {teacher.data_contratacao ? `Desde ${formatDate(teacher.data_contratacao)}` : 'N/A'}
+                            {teacher.tb_directores_turmas?.length || 0} turma(s) dirigida(s)
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge 
-                          variant={teacher.codigo_Status === 1 ? "default" : "secondary"}
-                          className={teacher.codigo_Status === 1 ? "bg-emerald-100 text-emerald-800" : ""}
+                          variant={teacher.status === 1 ? "default" : "secondary"}
+                          className={teacher.status === 1 ? "bg-emerald-100 text-emerald-800" : ""}
                         >
-                          {teacher.codigo_Status === 1 ? "Ativo" : "Inativo"}
+                          {teacher.status === 1 ? "Ativo" : "Inativo"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -422,7 +428,7 @@ export default function ListTeacherPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex} a {endIndex} de {totalItems} professores
+                Mostrando {startIndex} a {endIndex} de {totalItems} docentes
               </div>
               <div className="flex items-center space-x-2">
                 <Button

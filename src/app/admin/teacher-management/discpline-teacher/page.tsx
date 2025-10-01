@@ -3,6 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
+import { useDisciplinasDocente, useDeleteDisciplinaDocente } from '@/hooks/useDisciplineTeacher';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -58,100 +67,7 @@ import {
   School,
 } from 'lucide-react';
 
-// Dados mockados das atribuições de disciplinas
-const mockTeacherDisciplines = [
-  {
-    id: 1,
-    professor: "João Silva Santos",
-    disciplina: "Matemática",
-    turma: "10ª A",
-    cargaHoraria: 4,
-    periodo: "Manhã",
-    sala: "Sala A1",
-    horario: "08:00 - 09:30",
-    diasSemana: ["Segunda", "Quarta"],
-    anoLetivo: "2024/2025",
-    status: "Ativo"
-  },
-  {
-    id: 2,
-    professor: "João Silva Santos",
-    disciplina: "Física",
-    turma: "11ª B",
-    cargaHoraria: 3,
-    periodo: "Manhã",
-    sala: "Lab. Física",
-    horario: "09:45 - 11:15",
-    diasSemana: ["Terça", "Quinta"],
-    anoLetivo: "2024/2025",
-    status: "Ativo"
-  },
-  {
-    id: 3,
-    professor: "Maria Santos Costa",
-    disciplina: "Português",
-    turma: "10ª A",
-    cargaHoraria: 5,
-    periodo: "Manhã",
-    sala: "Sala A2",
-    horario: "11:30 - 13:00",
-    diasSemana: ["Segunda", "Terça", "Quinta"],
-    anoLetivo: "2024/2025",
-    status: "Ativo"
-  },
-  {
-    id: 4,
-    professor: "Maria Santos Costa",
-    disciplina: "Literatura",
-    turma: "12ª C",
-    cargaHoraria: 2,
-    periodo: "Tarde",
-    sala: "Sala B1",
-    horario: "14:00 - 15:30",
-    diasSemana: ["Sexta"],
-    anoLetivo: "2024/2025",
-    status: "Ativo"
-  },
-  {
-    id: 5,
-    professor: "Carlos Mendes Lima",
-    disciplina: "Informática",
-    turma: "11ª A",
-    cargaHoraria: 4,
-    periodo: "Tarde",
-    sala: "Lab. Informática",
-    horario: "15:45 - 17:15",
-    diasSemana: ["Segunda", "Quarta"],
-    anoLetivo: "2024/2025",
-    status: "Ativo"
-  },
-  {
-    id: 6,
-    professor: "Carlos Mendes Lima",
-    disciplina: "Programação",
-    turma: "12ª B",
-    cargaHoraria: 3,
-    periodo: "Tarde",
-    sala: "Lab. Informática",
-    horario: "17:30 - 19:00",
-    diasSemana: ["Terça", "Quinta"],
-    anoLetivo: "2024/2025",
-    status: "Ativo"
-  },
-  {
-    id: 7,
-    professor: "Ana Costa Ferreira",
-    disciplina: "História",
-    turma: "9ª A",
-    cargaHoraria: 3,
-    periodo: "Manhã",
-    sala: "Sala B2",
-    horario: "08:00 - 09:30",
-    diasSemana: ["Segunda", "Sexta"],
-    anoLetivo: "2024/2025",
-    status: "Inativo"
-  }
-];
+// Dados removidos - agora usando API real
 
 const professorOptions = [
   { value: "all", label: "Todos os Professores" },
@@ -176,68 +92,51 @@ const statusOptions = [
 
 export default function TeacherDisciplinesPage() {
   const router = useRouter();
-  const [disciplines, setDisciplines] = useState(mockTeacherDisciplines);
-  const [filteredDisciplines, setFilteredDisciplines] = useState(mockTeacherDisciplines);
   const [searchTerm, setSearchTerm] = useState("");
   const [professorFilter, setProfessorFilter] = useState("all");
   const [periodoFilter, setPeriodoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // Estados para modal de confirmação de exclusão
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: number; nome: string } | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Filtrar atribuições
-  useEffect(() => {
-    let filtered = disciplines;
+  // Hooks da API
+  const { data: disciplines, pagination, loading, error, refetch } = useDisciplinasDocente(currentPage, itemsPerPage, searchTerm);
+  const { deleteDisciplinaDocente, loading: deleteLoading } = useDeleteDisciplinaDocente();
 
-    if (searchTerm) {
-      filtered = filtered.filter(discipline =>
-        discipline.professor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        discipline.disciplina.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        discipline.turma.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        discipline.sala.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  // Funções de manipulação
+  const handleDeleteClick = (discipline: any) => {
+    setItemToDelete({
+      id: discipline.codigo,
+      nome: `${discipline.tb_docente.nome} - ${discipline.tb_disciplinas.designacao}`
+    });
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      setDeletingId(itemToDelete.id);
+      await deleteDisciplinaDocente(itemToDelete.id);
+      await refetch(); // Recarregar dados
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+    } catch (error) {
+      console.error('Erro ao excluir disciplina do docente:', error);
+    } finally {
+      setDeletingId(null);
     }
+  };
 
-    if (professorFilter !== "all") {
-      filtered = filtered.filter(discipline => {
-        const professorName = discipline.professor.toLowerCase();
-        switch (professorFilter) {
-          case "joao":
-            return professorName.includes("joão");
-          case "maria":
-            return professorName.includes("maria");
-          case "carlos":
-            return professorName.includes("carlos");
-          case "ana":
-            return professorName.includes("ana");
-          default:
-            return true;
-        }
-      });
-    }
-
-    if (periodoFilter !== "all") {
-      filtered = filtered.filter(discipline => 
-        discipline.periodo.toLowerCase() === periodoFilter
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(discipline => 
-        discipline.status.toLowerCase() === statusFilter
-      );
-    }
-
-    setFilteredDisciplines(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, professorFilter, periodoFilter, statusFilter, disciplines]);
-
-  // Paginação
-  const totalPages = Math.ceil(filteredDisciplines.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentDisciplines = filteredDisciplines.slice(startIndex, endIndex);
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
+  };
 
   const handleViewAssignment = (assignmentId: number) => {
     router.push(`/admin/teacher-management/discpline-teacher/details/${assignmentId}`);
@@ -248,19 +147,17 @@ export default function TeacherDisciplinesPage() {
   };
 
   const handleDeleteAssignment = (assignmentId: number) => {
-    console.log("Excluir atribuição:", assignmentId);
-    // Implementar confirmação e exclusão
+    const discipline = disciplines?.find(d => d.codigo === assignmentId);
+    if (discipline) {
+      handleDeleteClick(discipline);
+    }
   };
 
-  // Estatísticas das atribuições
-  const estatisticasAtribuicoes = [
-    { periodo: "Manhã", count: disciplines.filter(d => d.periodo === "Manhã").length },
-    { periodo: "Tarde", count: disciplines.filter(d => d.periodo === "Tarde").length },
-    { periodo: "Noite", count: disciplines.filter(d => d.periodo === "Noite").length }
-  ];
-
-  const totalCargaHoraria = disciplines.reduce((sum, discipline) => sum + discipline.cargaHoraria, 0);
-  const professoresUnicos = [...new Set(disciplines.map(d => d.professor))].length;
+  // Estatísticas baseadas nos dados reais da API
+  const totalAtribuicoes = disciplines?.length || 0;
+  const professoresUnicos = disciplines ? [...new Set(disciplines.map(d => d.tb_docente.nome))].length : 0;
+  const cursosUnicos = disciplines ? [...new Set(disciplines.map(d => d.tb_cursos.designacao))].length : 0;
+  const disciplinasUnicas = disciplines ? [...new Set(disciplines.map(d => d.tb_disciplinas.designacao))].length : 0;
 
   return (
     <Container>
@@ -334,7 +231,7 @@ export default function TeacherDisciplinesPage() {
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Atribuições</p>
-            <p className="text-3xl font-bold text-gray-900">{disciplines.length}</p>
+            <p className="text-3xl font-bold text-gray-900">{totalAtribuicoes}</p>
           </div>
           
           {/* Decorative elements */}
@@ -375,8 +272,8 @@ export default function TeacherDisciplinesPage() {
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Carga Horária Total</p>
-            <p className="text-3xl font-bold text-gray-900">{totalCargaHoraria}h</p>
+            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Cursos Únicos</p>
+            <p className="text-3xl font-bold text-gray-900">{cursosUnicos}</p>
           </div>
           
           {/* Decorative elements */}
@@ -396,10 +293,8 @@ export default function TeacherDisciplinesPage() {
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-purple-600">Atribuições Ativas</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {disciplines.filter(d => d.status === "Ativo").length}
-            </p>
+            <p className="text-sm font-semibold mb-2 text-purple-600">Disciplinas Únicas</p>
+            <p className="text-3xl font-bold text-gray-900">{disciplinasUnicas}</p>
           </div>
           
           {/* Decorative elements */}
@@ -482,121 +377,112 @@ export default function TeacherDisciplinesPage() {
               <span>Atribuições de Disciplinas</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {filteredDisciplines.length} atribuições encontradas
+              {pagination.totalItems} atribuições encontradas
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Professor</TableHead>
-                  <TableHead>Disciplina</TableHead>
-                  <TableHead>Turma</TableHead>
-                  <TableHead>Sala</TableHead>
-                  <TableHead>Horário</TableHead>
-                  <TableHead>Carga Horária</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentDisciplines.map((discipline) => (
-                  <TableRow key={discipline.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
-                          <GraduationCap className="h-5 w-5 text-[#F9CD1D]" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{discipline.professor}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <BookOpen className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">{discipline.disciplina}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        {discipline.turma}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <School className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">{discipline.sala}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900">{discipline.horario}</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {discipline.diasSemana.map((dia, index) => (
-                            <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                              {dia}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">{discipline.cargaHoraria}h</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={discipline.status === "Ativo" ? "default" : "secondary"}
-                        className={discipline.status === "Ativo" ? "bg-emerald-100 text-emerald-800" : ""}
-                      >
-                        {discipline.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewAssignment(discipline.id)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditAssignment(discipline.id)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteAssignment(discipline.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F9CD1D]"></div>
+              <span className="ml-2 text-gray-600">Carregando disciplinas do docente...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button onClick={refetch} variant="outline">
+                Tentar novamente
+              </Button>
+            </div>
+          ) : !disciplines || disciplines.length === 0 ? (
+            <div className="text-center py-8">
+              <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">Nenhuma disciplina do docente encontrada</p>
+              <p className="text-sm text-gray-500">Comece criando uma nova atribuição</p>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Professor</TableHead>
+                    <TableHead>Disciplina</TableHead>
+                    <TableHead>Curso</TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
-                ))}
+                </TableHeader>
+                <TableBody>
+                  {disciplines.map((discipline) => (
+                    <TableRow key={discipline.codigo}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
+                            <GraduationCap className="h-5 w-5 text-[#F9CD1D]" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{discipline.tb_docente.nome}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <BookOpen className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium text-gray-900">{discipline.tb_disciplinas.designacao}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {discipline.tb_cursos.designacao}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0"
+                              disabled={deletingId === discipline.codigo}
+                            >
+                              {deletingId === discipline.codigo ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-300"></div>
+                              ) : (
+                                <MoreHorizontal className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleViewAssignment(discipline.codigo)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditAssignment(discipline.codigo)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteAssignment(discipline.codigo)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </div>
+          )}
 
-          {/* Paginação */}
-          {totalPages > 1 && (
+          {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredDisciplines.length)} de {filteredDisciplines.length} atribuições
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, pagination.totalItems)} de {pagination.totalItems} atribuições
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -612,7 +498,7 @@ export default function TeacherDisciplinesPage() {
                   {(() => {
                     const maxPagesToShow = 5;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                    const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
                     
                     const pages = [];
@@ -650,18 +536,18 @@ export default function TeacherDisciplinesPage() {
                     }
                     
                     // Última página
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
+                    if (endPage < pagination.totalPages) {
+                      if (endPage < pagination.totalPages - 1) {
                         pages.push(<span key="ellipsis2" className="px-2">...</span>);
                       }
                       pages.push(
                         <Button
-                          key={totalPages}
+                          key={pagination.totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(totalPages)}
+                          onClick={() => setCurrentPage(pagination.totalPages)}
                         >
-                          {totalPages}
+                          {pagination.totalPages}
                         </Button>
                       );
                     }
@@ -672,8 +558,8 @@ export default function TeacherDisciplinesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                  disabled={currentPage === pagination.totalPages}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />
@@ -683,6 +569,44 @@ export default function TeacherDisciplinesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <span>Confirmar Exclusão</span>
+            </DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir a atribuição de disciplina: <strong>{itemToDelete?.nome}</strong>?
+              <br />
+              <span className="text-red-600 text-sm mt-2 block">Esta ação não pode ser desfeita.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete} disabled={deleteLoading}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }

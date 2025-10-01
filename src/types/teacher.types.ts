@@ -1,83 +1,103 @@
-// types/teacher.types.ts
-export interface Teacher {
-  codigo?: number;
+// Interface para especialidade
+export interface IEspecialidade {
+  codigo: number;
+  designacao: string;
+}
+
+// Interface para disciplina docente
+export interface IDisciplinaDocente {
+  codigo: number;
+  codigoCurso: number;
+  codigoDisciplina: number;
+  tb_disciplinas?: {
+    codigo: number;
+    designacao: string;
+  };
+  tb_cursos?: {
+    codigo: number;
+    designacao: string;
+  };
+}
+
+// Interface para diretor de turma
+export interface IDiretorTurma {
+  codigo: number;
+  codigoTurma: number;
+  anoLectivo: string;
+}
+
+// Interface completa para docente (baseada na API real)
+export interface IDocente {
+  codigo: number;
   nome: string;
-  email?: string;
-  telefone?: string;
-  sexo: 'M' | 'F';
-  dataNascimento?: string;
-  n_documento_identificacao?: string;
-  codigo_Status: number;
-  codigo_Nacionalidade?: number;
-  codigo_Comuna?: number;
-  codigo_Utilizador?: number;
-  morada?: string;
-  especialidade?: string;
-  grau_academico?: string;
-  experiencia_anos?: number;
-  salario?: number;
-  data_contratacao?: string;
-  observacoes?: string;
+  status: number;
+  codigo_disciplina?: number | null;
+  codigo_Utilizador: number;
+  codigo_Especialidade: number;
+  contacto: string;
+  email: string;
+  user_id: string;
   
   // Relacionamentos
-  tb_nacionalidades?: {
+  tb_disciplinas?: {
     codigo: number;
     designacao: string;
-  };
-  tb_comunas?: {
-    codigo: number;
-    designacao: string;
-    tb_municipios: {
-      codigo: number;
-      designacao: string;
-      tb_provincias: {
-        codigo: number;
-        designacao: string;
-      };
-    };
-  };
+  } | null;
   tb_utilizadores?: {
     codigo: number;
     nome: string;
     email: string;
-  };
-  tb_disciplinas_professores?: Array<{
-    codigo: number;
-    tb_disciplinas: {
-      codigo: number;
-      designacao: string;
-      codigo_disciplina: string;
-      carga_horaria: number;
-    };
-  }>;
+  } | null;
+  tb_especialidade: IEspecialidade;
+  tb_disciplinas_docente: IDisciplinaDocente[];
+  tb_directores_turmas: IDiretorTurma[];
 }
 
-export interface TeacherFormData {
+// Interface para input de criação/atualização de docente
+export interface IDocenteInput {
   nome: string;
-  email?: string;
-  telefone?: string;
-  sexo: 'M' | 'F';
-  dataNascimento?: string;
-  n_documento_identificacao?: string;
-  codigo_Nacionalidade?: number;
-  codigo_Comuna?: number;
-  morada?: string;
-  especialidade?: string;
-  grau_academico?: string;
-  experiencia_anos?: number;
-  salario?: number;
-  observacoes?: string;
-  disciplinas?: number[];
+  status?: number;
+  codigo_disciplina?: number | null;
+  codigo_Utilizador?: number;
+  codigo_Especialidade: number;
+  contacto: string;
+  email: string;
+  user_id?: string;
 }
 
-export interface TeacherPagination {
+// Interface para paginação
+export interface IDocentePagination {
   currentPage: number;
   totalPages: number;
   totalItems: number;
   itemsPerPage: number;
 }
 
-export interface TeacherResponse {
-  teachers: Teacher[];
-  pagination: TeacherPagination;
+// Interface para resposta da API
+export interface IDocenteResponse {
+  success: boolean;
+  message: string;
+  data: IDocente;
+}
+
+// Interface para lista de docentes
+export interface IDocenteListResponse {
+  success: boolean;
+  message: string;
+  data: IDocente[];
+  pagination?: IDocentePagination;
+}
+
+// Interface para resposta de especialidades
+export interface IEspecialidadeResponse {
+  success: boolean;
+  message: string;
+  data: IEspecialidade[];
+}
+
+// Interface para resposta de disciplinas docente
+export interface IDisciplinaDocenteResponse {
+  success: boolean;
+  message: string;
+  data: IDisciplinaDocente[];
 }
