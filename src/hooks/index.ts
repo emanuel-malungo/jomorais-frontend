@@ -6,6 +6,7 @@ export { default as useStudent } from './useStudent';
 export { default as useTeacher } from './useTeacher';
 
 // Named exports from hooks with multiple functions
+export * from './useClass';
 export * from './useConfirmation';
 export * from './useDocument';
 export * from './useEnrollment';
