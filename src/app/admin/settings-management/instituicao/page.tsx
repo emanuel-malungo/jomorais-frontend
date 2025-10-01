@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,33 +22,152 @@ import {
   FileText,
   Building,
   Calendar,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
+import { useInstitution, useUpdateInstitution, useCreateInstitution, useUploadLogo } from '@/hooks/useInstitution';
+import { IInstitutionInput } from '@/types/institution.types';
 
 export default function InstituicaoPage() {
-  const [formData, setFormData] = useState({
-    nome: "Escola Secundária JoMorais",
-    sigla: "ESJM",
-    nif: "5417039144",
-    endereco: "Rua da Educação, 123",
-    bairro: "Maianga",
-    cidade: "Luanda",
-    provincia: "Luanda",
-    telefone: "+244 923 456 789",
-    email: "info@jomorais.edu.ao",
-    website: "www.jomorais.edu.ao",
-    diretor: "Dr. João Morais",
-    fundacao: "2010",
-    missao: "Formar cidadãos íntegros e competentes para o desenvolvimento de Angola.",
-    visao: "Ser uma instituição de referência no ensino secundário em Angola.",
-    valores: "Excelência, Integridade, Inovação, Responsabilidade Social"
+  const { institution, loading: fetchLoading, error: fetchError, refetch } = useInstitution();
+  const { updateInstitutionData, loading: updateLoading, error: updateError } = useUpdateInstitution();
+  const { createInstitution, loading: createLoading, error: createError } = useCreateInstitution();
+  const { uploadLogo, loading: uploadLoading, error: uploadError } = useUploadLogo();
+
+  const [formData, setFormData] = useState<IInstitutionInput>({
+    nome: "",
+    n_Escola: "",
+    director: "",
+    subDirector: "",
+    telefone_Fixo: "",
+    telefone_Movel: "",
+    email: "",
+    site: "",
+    localidade: "",
+    contribuinte: "",
+    nif: "",
+    logotipo: "",
+    provincia: "",
+    municipio: "",
+    nescola: "",
+    contaBancaria1: "",
+    contaBancaria2: "",
+    contaBancaria3: "",
+    contaBancaria4: "",
+    contaBancaria5: "",
+    contaBancaria6: "",
+    regime_Iva: "",
+    taxaIva: 0
   });
+
+  const [hasData, setHasData] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Carregar dados da API quando disponível
+  useEffect(() => {
+    if (institution) {
+      setFormData({
+        nome: institution.nome || "",
+        n_Escola: institution.n_Escola || "",
+        director: institution.director || "",
+        subDirector: institution.subDirector || "",
+        telefone_Fixo: institution.telefone_Fixo || "",
+        telefone_Movel: institution.telefone_Movel || "",
+        email: institution.email || "",
+        site: institution.site || "",
+        localidade: institution.localidade || "",
+        contribuinte: institution.contribuinte || "",
+        nif: institution.nif || "",
+        logotipo: institution.logotipo || "",
+        provincia: institution.provincia || "",
+        municipio: institution.municipio || "",
+        nescola: institution.nescola || "",
+        contaBancaria1: institution.contaBancaria1 || "",
+        contaBancaria2: institution.contaBancaria2 || "",
+        contaBancaria3: institution.contaBancaria3 || "",
+        contaBancaria4: institution.contaBancaria4 || "",
+        contaBancaria5: institution.contaBancaria5 || "",
+        contaBancaria6: institution.contaBancaria6 || "",
+        regime_Iva: institution.regime_Iva || "",
+        taxaIva: institution.taxaIva || 0
+      });
+      setHasData(true);
+    }
+  }, [institution]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    // Limpar mensagens de sucesso/erro ao editar
+    setSaveSuccess(false);
+    setSaveError(null);
   };
+
+  const handleSave = async () => {
+    try {
+      setSaveError(null);
+      setSaveSuccess(false);
+      
+      // Validação básica
+      if (!formData.nome || !formData.director || !formData.email) {
+        setSaveError('Por favor, preencha os campos obrigatórios: Nome, Diretor e Email');
+        return;
+      }
+
+      let result;
+      
+      if (hasData && institution) {
+        // Atualizar dados existentes
+        console.log('Atualizando dados existentes:', { id: institution.codigo, data: formData });
+        result = await updateInstitutionData(institution.codigo, formData);
+      } else {
+        // Criar novos dados
+        console.log('Criando novos dados:', formData);
+        result = await createInstitution(formData);
+      }
+
+      if (result) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 5000); // Remove mensagem após 5s
+        refetch(); // Recarregar dados
+      } else {
+        setSaveError('Erro: Nenhum resultado retornado da API');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar dados institucionais:', error);
+      setSaveError(error instanceof Error ? error.message : 'Erro ao salvar dados institucionais');
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      setSaveError('Por favor, selecione um arquivo de imagem');
+      return;
+    }
+
+    // Validar tamanho (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setSaveError('O arquivo deve ter no máximo 2MB');
+      return;
+    }
+
+    const logoUrl = await uploadLogo(file);
+    if (logoUrl) {
+      setSaveSuccess(true);
+      // Atualizar formData com URL do logo se necessário
+      setFormData(prev => ({ ...prev, logo: logoUrl }));
+    }
+  };
+
+  const isLoading = fetchLoading || updateLoading || createLoading || uploadLoading;
 
   return (
     <Container>
@@ -63,20 +182,39 @@ export default function InstituicaoPage() {
                 </div>
                 <div>
                   <h1 className="text-4xl font-bold text-gray-900">
-                    Dados Institucionais
+                    {institution?.nome || "Dados Institucionais"}
                   </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">Informações da Escola</p>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">
+                    {institution?.localidade || "Informações da Escola"}
+                  </p>
                 </div>
               </div>
-              <p className="text-gray-600 text-sm max-w-2xl">
-                Configure as informações básicas da instituição de ensino, 
-                incluindo dados de contato, localização e informações institucionais.
-              </p>
+              <div className="space-y-2">
+                <p className="text-gray-600 text-sm max-w-2xl">
+                  Configure as informações básicas da instituição de ensino, 
+                  incluindo dados de contato, localização e informações bancárias.
+                </p>
+                {institution && (
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                    <span>Diretor: {institution.director}</span>
+                    <span>NIF: {institution.contribuinte}</span>
+                    <span>Email: {institution.email}</span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white">
-                <Save className="w-4 h-4 mr-2" />
-                Salvar Alterações
+              <Button 
+                onClick={handleSave}
+                disabled={isLoading}
+                className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                {isLoading ? 'Salvando...' : 'Salvar Alterações'}
               </Button>
             </div>
           </div>
@@ -86,6 +224,73 @@ export default function InstituicaoPage() {
         <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#FFC506]/5 rounded-full"></div>
         <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
       </div>
+
+      {/* Estados de Loading, Erro e Sucesso */}
+      {fetchLoading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-[#F9CD1D]" />
+          <span className="ml-2 text-gray-600">Carregando dados institucionais...</span>
+        </div>
+      )}
+
+      {fetchError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+            <span className="text-red-700">Erro ao carregar dados: {fetchError}</span>
+          </div>
+        </div>
+      )}
+
+      {saveSuccess && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+              <span className="text-green-700">
+                Dados salvos com sucesso! {hasData ? '(Atualização)' : '(Criação)'}
+              </span>
+            </div>
+            <button 
+              onClick={() => setSaveSuccess(false)}
+              className="text-green-500 hover:text-green-700"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+              <div>
+                <span className="text-red-700 font-medium">Erro ao salvar:</span>
+                <p className="text-red-600 text-sm mt-1">{saveError}</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setSaveError(null)}
+              className="text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(updateError || createError) && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-orange-500 mr-2" />
+            <span className="text-orange-700">
+              Erro nos hooks: {updateError || createError}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Informações Básicas */}
@@ -99,24 +304,25 @@ export default function InstituicaoPage() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Nome da Instituição
+                Nome da Instituição <span className="text-red-500">*</span>
               </label>
               <Input
                 value={formData.nome}
                 onChange={(e) => handleInputChange('nome', e.target.value)}
                 placeholder="Nome completo da escola"
+                className={!formData.nome ? 'border-red-300' : ''}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Sigla
+                  Número da Escola
                 </label>
                 <Input
-                  value={formData.sigla}
-                  onChange={(e) => handleInputChange('sigla', e.target.value)}
-                  placeholder="Sigla da escola"
+                  value={formData.n_Escola}
+                  onChange={(e) => handleInputChange('n_Escola', e.target.value)}
+                  placeholder="Número da escola"
                 />
               </div>
               <div>
@@ -133,24 +339,24 @@ export default function InstituicaoPage() {
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Diretor Geral
+                Diretor <span className="text-red-500">*</span>
               </label>
               <Input
-                value={formData.diretor}
-                onChange={(e) => handleInputChange('diretor', e.target.value)}
+                value={formData.director}
+                onChange={(e) => handleInputChange('director', e.target.value)}
                 placeholder="Nome do diretor"
+                className={!formData.director ? 'border-red-300' : ''}
               />
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Ano de Fundação
+                Subdiretor
               </label>
               <Input
-                value={formData.fundacao}
-                onChange={(e) => handleInputChange('fundacao', e.target.value)}
-                placeholder="Ano de fundação"
-                type="number"
+                value={formData.subDirector}
+                onChange={(e) => handleInputChange('subDirector', e.target.value)}
+                placeholder="Nome do subdiretor"
               />
             </div>
 
@@ -159,10 +365,26 @@ export default function InstituicaoPage() {
               <label className="text-sm font-medium text-gray-700 mb-2 block">
                 Logo da Instituição
               </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">Clique para fazer upload do logo</p>
-                <p className="text-xs text-gray-500 mt-1">PNG, JPG até 2MB</p>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                  id="logo-upload"
+                  disabled={uploadLoading}
+                />
+                <label htmlFor="logo-upload" className="cursor-pointer">
+                  {uploadLoading ? (
+                    <Loader2 className="h-8 w-8 text-gray-400 mx-auto mb-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  )}
+                  <p className="text-sm text-gray-600">
+                    {uploadLoading ? 'Fazendo upload...' : 'Clique para fazer upload do logo'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">PNG, JPG até 2MB</p>
+                </label>
               </div>
             </div>
           </CardContent>
@@ -179,71 +401,85 @@ export default function InstituicaoPage() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Endereço
+                Localidade
               </label>
               <Input
-                value={formData.endereco}
-                onChange={(e) => handleInputChange('endereco', e.target.value)}
-                placeholder="Rua, número"
+                value={formData.localidade}
+                onChange={(e) => handleInputChange('localidade', e.target.value)}
+                placeholder="Localidade da instituição"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Bairro
+                  Província
                 </label>
                 <Input
-                  value={formData.bairro}
-                  onChange={(e) => handleInputChange('bairro', e.target.value)}
-                  placeholder="Bairro"
+                  value={formData.provincia}
+                  onChange={(e) => handleInputChange('provincia', e.target.value)}
+                  placeholder="Província"
                 />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Cidade
+                  Município
                 </label>
                 <Input
-                  value={formData.cidade}
-                  onChange={(e) => handleInputChange('cidade', e.target.value)}
-                  placeholder="Cidade"
+                  value={formData.municipio}
+                  onChange={(e) => handleInputChange('municipio', e.target.value)}
+                  placeholder="Município"
                 />
               </div>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Província
+                Contribuinte
               </label>
               <Input
-                value={formData.provincia}
-                onChange={(e) => handleInputChange('provincia', e.target.value)}
-                placeholder="Província"
+                value={formData.contribuinte}
+                onChange={(e) => handleInputChange('contribuinte', e.target.value)}
+                placeholder="Número de contribuinte"
               />
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                <Phone className="h-4 w-4 inline mr-1" />
-                Telefone
-              </label>
-              <Input
-                value={formData.telefone}
-                onChange={(e) => handleInputChange('telefone', e.target.value)}
-                placeholder="+244 xxx xxx xxx"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <Phone className="h-4 w-4 inline mr-1" />
+                  Telefone Fixo
+                </label>
+                <Input
+                  value={formData.telefone_Fixo}
+                  onChange={(e) => handleInputChange('telefone_Fixo', e.target.value)}
+                  placeholder="+244 xxx xxx xxx"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <Phone className="h-4 w-4 inline mr-1" />
+                  Telefone Móvel
+                </label>
+                <Input
+                  value={formData.telefone_Movel}
+                  onChange={(e) => handleInputChange('telefone_Movel', e.target.value)}
+                  placeholder="+244 9xx xxx xxx"
+                />
+              </div>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
                 <Mail className="h-4 w-4 inline mr-1" />
-                Email
+                Email <span className="text-red-500">*</span>
               </label>
               <Input
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="email@escola.com"
                 type="email"
+                className={!formData.email ? 'border-red-300' : ''}
               />
             </div>
 
@@ -253,64 +489,122 @@ export default function InstituicaoPage() {
                 Website
               </label>
               <Input
-                value={formData.website}
-                onChange={(e) => handleInputChange('website', e.target.value)}
+                value={formData.site}
+                onChange={(e) => handleInputChange('site', e.target.value)}
                 placeholder="www.escola.com"
               />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Regime de IVA
+              </label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  value={formData.regime_Iva}
+                  onChange={(e) => handleInputChange('regime_Iva', e.target.value)}
+                  placeholder="Regime de IVA"
+                />
+                {institution?.tb_regime_iva && (
+                  <span className="text-sm text-gray-500">
+                    ({institution.tb_regime_iva.designacao})
+                  </span>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Missão, Visão e Valores */}
+      {/* Contas Bancárias */}
       <Card className="mt-8">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileText className="h-5 w-5" />
-            <span>Missão, Visão e Valores</span>
+            <span>Informações Bancárias</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Missão
-            </label>
-            <Textarea
-              value={formData.missao}
-              onChange={(e) => handleInputChange('missao', e.target.value)}
-              placeholder="Descreva a missão da instituição"
-              rows={3}
-            />
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Conta Bancária 1
+              </label>
+              <Input
+                value={formData.contaBancaria1}
+                onChange={(e) => handleInputChange('contaBancaria1', e.target.value)}
+                placeholder="Primeira conta bancária"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Conta Bancária 2
+              </label>
+              <Input
+                value={formData.contaBancaria2}
+                onChange={(e) => handleInputChange('contaBancaria2', e.target.value)}
+                placeholder="Segunda conta bancária"
+              />
+            </div>
           </div>
 
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Visão
+              IBAN BFA
             </label>
-            <Textarea
-              value={formData.visao}
-              onChange={(e) => handleInputChange('visao', e.target.value)}
-              placeholder="Descreva a visão da instituição"
-              rows={3}
+            <Input
+              value={formData.contaBancaria3}
+              onChange={(e) => handleInputChange('contaBancaria3', e.target.value)}
+              placeholder="IBAN do BFA"
             />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Conta BAI
+              </label>
+              <Input
+                value={formData.contaBancaria4}
+                onChange={(e) => handleInputChange('contaBancaria4', e.target.value)}
+                placeholder="Conta do BAI"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                IBAN BAI
+              </label>
+              <Input
+                value={formData.contaBancaria5}
+                onChange={(e) => handleInputChange('contaBancaria5', e.target.value)}
+                placeholder="IBAN do BAI"
+              />
+            </div>
           </div>
 
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Valores
+              Conta Bancária Adicional
             </label>
-            <Textarea
-              value={formData.valores}
-              onChange={(e) => handleInputChange('valores', e.target.value)}
-              placeholder="Liste os valores da instituição"
-              rows={3}
+            <Input
+              value={formData.contaBancaria6}
+              onChange={(e) => handleInputChange('contaBancaria6', e.target.value)}
+              placeholder="Conta bancária adicional"
             />
           </div>
 
           <div className="pt-4 border-t">
-            <Button className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white w-full">
-              <Save className="w-4 h-4 mr-2" />
-              Salvar Informações Institucionais
+            <Button 
+              onClick={handleSave}
+              disabled={isLoading}
+              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white w-full disabled:opacity-50"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {isLoading ? 'Salvando...' : 'Salvar Informações Institucionais'}
             </Button>
           </div>
         </CardContent>
