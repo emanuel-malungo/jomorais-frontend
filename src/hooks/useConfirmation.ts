@@ -71,13 +71,26 @@ export function useCreateConfirmation() {
     try {
       setLoading(true)
       setError(null)
-      return await ConfirmationService.createConfirmation(payload)
+      console.log('Hook: Enviando payload para service:', payload)
+      const result = await ConfirmationService.createConfirmation(payload)
+      console.log('Hook: Resposta do service:', result)
+      return result
     } catch (err: any) {
+      console.error('Hook: Erro capturado:', err)
+      console.error('Hook: Status da resposta:', err.response?.status)
+      console.error('Hook: Dados da resposta:', err.response?.data)
+      
       const errorMessage = err.response?.status === 409 
         ? "Já existe uma confirmação para esta matrícula neste ano letivo"
         : err.response?.status === 404
         ? "Matrícula, turma ou utilizador não encontrado"
+        : err.response?.status === 400
+        ? err.response?.data?.message === "Já existe uma confirmação para esta matrícula neste ano letivo"
+          ? "Esta matrícula já possui confirmação para o ano letivo selecionado"
+          : `Dados inválidos: ${err.response?.data?.message || err.message}`
         : err.message || "Erro ao criar confirmação"
+      
+      console.error('Hook: Mensagem de erro final:', errorMessage)
       setError(errorMessage)
       throw new Error(errorMessage)
     } finally {

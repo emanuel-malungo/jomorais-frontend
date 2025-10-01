@@ -73,6 +73,34 @@ export default function AddConfirmationPage() {
   useEffect(() => {
     const loadData = async () => {
       console.log('Iniciando carregamento de dados...');
+      
+      // Testar conectividade com o backend
+      try {
+        console.log('Testando conectividade com backend...');
+        console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
+        const testResponse = await api.get('/api/student-management/test-data');
+        console.log('Backend está respondendo:', testResponse.data);
+        
+        // Testar uma requisição POST simples
+        console.log('Testando POST simples...');
+        try {
+          const testPost = await api.post('/api/student-management/confirmacoes', {
+            codigo_Matricula: 2,
+            codigo_Turma: 185,
+            data_Confirmacao: "2025-10-01T00:00:00.000Z",
+            codigo_Ano_lectivo: 4,
+            codigo_Utilizador: 1,
+            codigo_Status: 1,
+            classificacao: "Teste"
+          });
+          console.log('POST teste funcionou:', testPost.data);
+        } catch (postError: any) {
+          console.log('POST teste falhou:', postError.response?.data);
+        }
+      } catch (error) {
+        console.error('Erro ao conectar com backend:', error);
+      }
+      
       await loadAcademicYears();
       console.log('Dados carregados!');
     };
@@ -269,20 +297,54 @@ export default function AddConfirmationPage() {
   };
 
   const validateForm = () => {
+    console.log('=== VALIDANDO FORMULÁRIO ===');
+    console.log('Dados atuais:', formData);
     const newErrors: Record<string, string> = {};
 
     // Validações obrigatórias
-    if (!formData.codigo_Matricula) newErrors.codigo_Matricula = "Matrícula é obrigatória";
-    if (!formData.codigo_Turma) newErrors.codigo_Turma = "Turma é obrigatória";
-    if (!formData.data_Confirmacao) newErrors.data_Confirmacao = "Data de confirmação é obrigatória";
-    if (!formData.classificacao) newErrors.classificacao = "Classificação é obrigatória";
-    if (!formData.codigo_Ano_lectivo) newErrors.codigo_Ano_lectivo = "Ano letivo é obrigatório";
+    if (!formData.codigo_Matricula) {
+      newErrors.codigo_Matricula = "Matrícula é obrigatória";
+      console.log('❌ Matrícula não selecionada');
+    } else {
+      console.log('✅ Matrícula:', formData.codigo_Matricula);
+    }
+    
+    if (!formData.codigo_Turma) {
+      newErrors.codigo_Turma = "Turma é obrigatória";
+      console.log('❌ Turma não selecionada');
+    } else {
+      console.log('✅ Turma:', formData.codigo_Turma);
+    }
+    
+    if (!formData.data_Confirmacao) {
+      newErrors.data_Confirmacao = "Data de confirmação é obrigatória";
+      console.log('❌ Data não preenchida');
+    } else {
+      console.log('✅ Data:', formData.data_Confirmacao);
+    }
+    
+    if (!formData.classificacao || formData.classificacao.trim() === '') {
+      newErrors.classificacao = "Classificação é obrigatória";
+      console.log('❌ Classificação não preenchida');
+    } else {
+      console.log('✅ Classificação:', formData.classificacao);
+    }
+    
+    if (!formData.codigo_Ano_lectivo) {
+      newErrors.codigo_Ano_lectivo = "Ano letivo é obrigatório";
+      console.log('❌ Ano letivo não selecionado');
+    } else {
+      console.log('✅ Ano letivo:', formData.codigo_Ano_lectivo);
+    }
 
     // Validar se a data não é futura
-    const today = new Date();
-    const confirmationDate = new Date(formData.data_Confirmacao);
-    if (confirmationDate > today) {
-      newErrors.data_Confirmacao = "Data de confirmação não pode ser futura";
+    if (formData.data_Confirmacao) {
+      const today = new Date();
+      const confirmationDate = new Date(formData.data_Confirmacao);
+      if (confirmationDate > today) {
+        newErrors.data_Confirmacao = "Data de confirmação não pode ser futura";
+        console.log('❌ Data é futura');
+      }
     }
 
     // Verificar se já existe confirmação para esta matrícula no ano letivo selecionado
@@ -292,26 +354,59 @@ export default function AddConfirmationPage() {
       );
       if (existingConfirmation) {
         newErrors.codigo_Ano_lectivo = "Já existe confirmação para esta matrícula neste ano letivo";
+        console.log('❌ Confirmação já existe para este ano letivo');
       }
     }
 
+    console.log('Erros de validação:', newErrors);
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    console.log('Formulário válido:', isValid);
+    return isValid;
   };
 
   const handleSubmit = async () => {
+    console.log('=== INICIANDO SUBMIT ===');
+    console.log('Dados do formulário:', formData);
+    
     if (!validateForm()) {
+      console.log('Validação falhou, parando submit');
       return;
     }
 
+    console.log('Validação passou, enviando para API...');
+
     try {
+      // Preparar dados para envio
+      const dataToSend: any = {
+        codigo_Matricula: formData.codigo_Matricula,
+        codigo_Turma: formData.codigo_Turma,
+        data_Confirmacao: new Date(formData.data_Confirmacao).toISOString(),
+        codigo_Ano_lectivo: formData.codigo_Ano_lectivo,
+        codigo_Utilizador: formData.codigo_Utilizador,
+        codigo_Status: formData.codigo_Status,
+        classificacao: formData.classificacao
+      };
+      
+      // Só adicionar mes_Comecar se tiver valor
+      if (formData.mes_Comecar && formData.mes_Comecar.trim() !== '') {
+        dataToSend.mes_Comecar = new Date(formData.mes_Comecar).toISOString();
+      }
+      
+      console.log('Dados originais:', formData);
+      console.log('Dados convertidos para envio:', dataToSend);
+      
       // Usar o hook real para criar confirmação
-      await createConfirmation(formData);
+      console.log('Chamando createConfirmation com:', dataToSend);
+      const result = await createConfirmation(dataToSend);
+      console.log('Confirmação criada com sucesso:', result);
       
       // Redirecionar para lista após sucesso
       router.push('/admin/student-management/confirmations');
     } catch (error) {
       console.error("Erro ao salvar confirmação:", error);
+      // Mostrar erro para o usuário
+      alert(`Erro ao salvar confirmação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -365,6 +460,34 @@ export default function AddConfirmationPage() {
               >
                 <Save className="w-5 h-5 mr-2" />
                 {isLoading ? "Salvando..." : "Salvar Confirmação"}
+              </Button>
+              
+              <Button
+                onClick={async () => {
+                  console.log('=== TESTE DIRETO ===');
+                  try {
+                    const testData = {
+                      codigo_Matricula: 2,
+                      codigo_Turma: 185,
+                      data_Confirmacao: "2025-10-01T00:00:00.000Z",
+                      codigo_Ano_lectivo: 4,
+                      codigo_Utilizador: 1,
+                      codigo_Status: 1,
+                      classificacao: "Teste Direto"
+                    };
+                    console.log('Testando com dados fixos:', testData);
+                    const result = await createConfirmation(testData);
+                    console.log('Teste direto funcionou:', result);
+                    alert('Teste direto funcionou!');
+                  } catch (error) {
+                    console.error('Teste direto falhou:', error);
+                    alert(`Teste direto falhou: ${error}`);
+                  }
+                }}
+                variant="outline"
+                className="px-6 py-3 rounded-xl font-semibold"
+              >
+                Teste Direto
               </Button>
             </div>
           </div>

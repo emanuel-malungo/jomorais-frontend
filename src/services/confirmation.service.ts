@@ -8,12 +8,45 @@ import {
 
 export default class ConfirmationService {
   static async createConfirmation(payload: IConfirmationInput): Promise<IConfirmation> {
-    const response = await api.post("/api/student-management/confirmacoes", payload)
-    const apiResponse = response.data
-    if (apiResponse.success) {
-      return apiResponse.data
+    console.log('Service: Enviando requisição POST para /api/student-management/confirmacoes')
+    console.log('Service: Payload completo:', JSON.stringify(payload, null, 2))
+    console.log('Service: Tipos dos campos:', {
+      codigo_Matricula: typeof payload.codigo_Matricula,
+      codigo_Turma: typeof payload.codigo_Turma,
+      data_Confirmacao: typeof payload.data_Confirmacao,
+      codigo_Ano_lectivo: typeof payload.codigo_Ano_lectivo,
+      codigo_Utilizador: typeof payload.codigo_Utilizador,
+      codigo_Status: typeof payload.codigo_Status,
+      classificacao: typeof payload.classificacao,
+      mes_Comecar: typeof payload.mes_Comecar
+    })
+    
+    try {
+      const response = await api.post("/api/student-management/confirmacoes", payload)
+      console.log('Service: Resposta da API:', response.data)
+      
+      const apiResponse = response.data
+      if (apiResponse.success) {
+        console.log('Service: Confirmação criada com sucesso:', apiResponse.data)
+        return apiResponse.data
+      }
+      
+      console.error('Service: API retornou success=false:', apiResponse.message)
+      throw new Error(apiResponse.message || "Erro ao criar confirmação")
+    } catch (error: any) {
+      console.error('Service: Erro na requisição:', error)
+      console.error('Service: Status:', error.response?.status)
+      console.error('Service: Headers da resposta:', error.response?.headers)
+      console.error('Service: Data da resposta:', error.response?.data)
+      console.error('Service: Config da requisição:', error.config)
+      
+      // Se a resposta está vazia, pode ser problema de CORS ou servidor
+      if (error.response?.status === 400 && (!error.response?.data || Object.keys(error.response.data).length === 0)) {
+        throw new Error('Erro 400: Servidor retornou resposta vazia. Verifique se o backend está funcionando corretamente.')
+      }
+      
+      throw error
     }
-    throw new Error(apiResponse.message || "Erro ao criar confirmação")
   }
 
   static async getConfirmations(page = 1, limit = 10, search = ""): Promise<IConfirmationListResponse> {
