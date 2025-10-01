@@ -75,6 +75,30 @@ const statusOptions = [
   { value: "Rejeitada", label: "Rejeitada" },
 ];
 
+// Mapeamento dos motivos de transferência
+const TRANSFER_MOTIVOS = [
+  { codigo: 1, designacao: "Mudança de residência" },
+  { codigo: 2, designacao: "Mudança de curso" },
+  { codigo: 3, designacao: "Problemas disciplinares" },
+  { codigo: 4, designacao: "Motivos familiares" },
+  { codigo: 5, designacao: "Transferência administrativa" },
+  { codigo: 6, designacao: "Transferência por trabalho dos pais" },
+  { codigo: 7, designacao: "Problemas de saúde" },
+  { codigo: 8, designacao: "Outros motivos" },
+];
+
+// Mapeamento das escolas de destino
+const ESCOLAS_DESTINO = [
+  { codigo: 1, nome: "Escola Secundária do Cazenga", provincia: "Luanda" },
+  { codigo: 2, nome: "Instituto Médio Politécnico de Luanda", provincia: "Luanda" },
+  { codigo: 3, nome: "Colégio São José", provincia: "Luanda" },
+  { codigo: 4, nome: "Escola Secundária da Maianga", provincia: "Luanda" },
+  { codigo: 5, nome: "Instituto Médio Industrial de Luanda", provincia: "Luanda" },
+  { codigo: 6, nome: "Escola Secundária de Viana", provincia: "Luanda" },
+  { codigo: 7, nome: "Instituto Médio de Economia", provincia: "Luanda" },
+  { codigo: 8, nome: "Escola Secundária do Sambizanga", provincia: "Luanda" },
+];
+
 
 export default function TransfersListPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -133,10 +157,18 @@ export default function TransfersListPage() {
 
   const formatDate = (dateString: string | object) => {
     if (!dateString || typeof dateString === 'object') {
-      return 'Data não informada';
+      return 'Pendente';
     }
     try {
-      return new Date(dateString).toLocaleDateString('pt-AO');
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Data inválida';
+      }
+      return date.toLocaleDateString('pt-AO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
     } catch {
       return 'Data inválida';
     }
@@ -157,6 +189,36 @@ export default function TransfersListPage() {
       return age;
     } catch {
       return 'N/A';
+    }
+  };
+
+  const getMotivoDesignacao = (codigoMotivo: number) => {
+    const motivo = TRANSFER_MOTIVOS.find(m => m.codigo === codigoMotivo);
+    return motivo?.designacao || `Motivo ${codigoMotivo}`;
+  };
+
+  const getEscolaNome = (codigoEscola: number) => {
+    const escola = ESCOLAS_DESTINO.find(e => e.codigo === codigoEscola);
+    return escola?.nome || `Escola ${codigoEscola}`;
+  };
+
+  const getTransferStatus = (dataTransferencia: string | object) => {
+    if (!dataTransferencia || typeof dataTransferencia === 'object') {
+      return { status: 'Pendente', color: 'bg-amber-100 text-amber-800' };
+    }
+    try {
+      const date = new Date(dataTransferencia);
+      if (isNaN(date.getTime())) {
+        return { status: 'Erro', color: 'bg-red-100 text-red-800' };
+      }
+      const today = new Date();
+      if (date <= today) {
+        return { status: 'Concluída', color: 'bg-green-100 text-green-800' };
+      } else {
+        return { status: 'Agendada', color: 'bg-blue-100 text-blue-800' };
+      }
+    } catch {
+      return { status: 'Erro', color: 'bg-red-100 text-red-800' };
     }
   };
 
@@ -240,29 +302,6 @@ export default function TransfersListPage() {
           <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
         </div>
 
-        {/* Card Aprovadas */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
-              <CheckCircle className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+12.3%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-emerald-600">Aprovadas</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => t.tb_motivos?.designacao === "Aprovada").length}
-            </p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
-
         {/* Card Pendentes */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -270,14 +309,14 @@ export default function TransfersListPage() {
               <Clock className="h-6 w-6 text-white" />
             </div>
             <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-blue-500" />
-              <span className="font-bold text-xs text-blue-600">Atenção</span>
+              <Activity className="h-3 w-3 text-amber-500" />
+              <span className="font-bold text-xs text-amber-600">Pendentes</span>
             </div>
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#FFD002]">Pendentes</p>
             <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => t.tb_motivos?.designacao === "Pendente").length}
+              {transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Pendente').length}
             </p>
           </div>
           
@@ -286,21 +325,44 @@ export default function TransfersListPage() {
           <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
         </div>
 
-        {/* Card Rejeitadas */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+        {/* Card Concluídas */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-sm">
-              <AlertCircle className="h-6 w-6 text-white" />
+            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
+              <CheckCircle className="h-6 w-6 text-white" />
             </div>
             <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-red-500" />
-              <span className="font-bold text-xs text-red-600">Revisão</span>
+              <TrendingUp className="h-3 w-3 text-emerald-500" />
+              <span className="font-bold text-xs text-emerald-600">Concluídas</span>
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-red-600">Rejeitadas</p>
+            <p className="text-sm font-semibold mb-2 text-emerald-600">Concluídas</p>
             <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => t.tb_motivos?.designacao === "Rejeitada").length}
+              {transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Concluída').length}
+            </p>
+          </div>
+          
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
+          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
+        </div>
+
+        {/* Card Agendadas */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm">
+              <Calendar className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <Activity className="h-3 w-3 text-blue-500" />
+              <span className="font-bold text-xs text-blue-600">Agendadas</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-blue-600">Agendadas</p>
+            <p className="text-3xl font-bold text-gray-900">
+              {transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Agendada').length}
             </p>
           </div>
           
@@ -385,11 +447,10 @@ export default function TransfersListPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Aluno</TableHead>
-                    <TableHead>Curso Atual</TableHead>
                     <TableHead>Escola Destino</TableHead>
-                    <TableHead>Data Transferência</TableHead>
                     <TableHead>Motivo</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Data Transferência</TableHead>
+                    <TableHead>Observações</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -404,43 +465,38 @@ export default function TransfersListPage() {
                         <div>
                           <p className="font-medium text-gray-900">{transfer.tb_alunos.nome}</p>
                           <p className="text-sm text-gray-500">
-                            {calculateAge(transfer.tb_alunos.dataNascimento)} anos • {transfer.tb_alunos.sexo === 'Masculino' ? 'Masculino' : 'Feminino'}
+                            {calculateAge(transfer.tb_alunos.dataNascimento)} anos • {transfer.tb_alunos.sexo}
                           </p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium text-gray-900">{transfer.tb_alunos.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</p>
+                      <div>
+                        <p className="font-medium text-gray-900">{getEscolaNome(transfer.codigoEscola)}</p>
+                        <p className="text-sm text-gray-500">Código: {transfer.codigoEscola}</p>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium text-gray-900">{transfer.tb_escolas?.nome || 'N/A'}</p>
+                      <div>
+                        <p className="font-medium text-gray-900">{getMotivoDesignacao(transfer.codigoMotivo)}</p>
+                        <p className="text-sm text-gray-500">Código: {transfer.codigoMotivo}</p>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm">{formatDate(transfer.dataTransferencia)}</span>
+                        <div>
+                          <p className="text-sm font-medium">{formatDate(transfer.dataTransferencia)}</p>
+                          {typeof transfer.dataTransferencia === 'object' && (
+                            <p className="text-xs text-amber-600">Aguardando processamento</p>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="text-sm text-gray-600 max-w-xs truncate" title={transfer.tb_motivos?.designacao || transfer.obs || ''}>
-                        {transfer.tb_motivos?.designacao || transfer.obs || 'N/A'}
+                      <p className="text-sm text-gray-600 max-w-xs truncate" title={transfer.obs || ''}>
+                        {transfer.obs || 'Sem observações'}
                       </p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={
-                          transfer.tb_motivos?.designacao === "Aprovada" ? "default" : 
-                          transfer.tb_motivos?.designacao === "Pendente" ? "secondary" : 
-                          "destructive"
-                        }
-                        className={
-                          transfer.tb_motivos?.designacao === "Aprovada" ? "bg-green-100 text-green-800" :
-                          transfer.tb_motivos?.designacao === "Pendente" ? "bg-yellow-100 text-yellow-800" :
-                          "bg-red-100 text-red-800"
-                        }
-                      >
-                        {transfer.tb_motivos?.designacao || 'N/A'}
-                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
