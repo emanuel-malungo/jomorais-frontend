@@ -1,17 +1,11 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -20,23 +14,65 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  UserCheck,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
   ArrowLeft,
   Save,
   User,
-  School,
-  AlertCircle,
+  Calendar,
+  BookOpen,
+  Users,
   Search,
   GraduationCap,
+  CheckCircle,
+  AlertCircle,
+  X,
+  UserCheck,
 } from 'lucide-react';
 import { useCreateConfirmation } from '@/hooks/useConfirmation';
 import { useTurmas } from '@/hooks/useTurma';
 import { IConfirmationInput } from '@/types/confirmation.types';
 import api from '@/utils/api.utils';
+// Componente de Toast Notification
+const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
+  <div className={`fixed top-4 right-4 z-50 flex items-center p-4 rounded-lg shadow-lg transition-all duration-300 ${
+    type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+  }`}>
+    {type === 'success' ? (
+      <CheckCircle className="w-5 h-5 mr-2" />
+    ) : (
+      <AlertCircle className="w-5 h-5 mr-2" />
+    )}
+    <span className="flex-1">{message}</span>
+    <button onClick={onClose} className="ml-2 hover:opacity-70">
+      <X className="w-4 h-4" />
+    </button>
+  </div>
+);
+
 export default function AddConfirmationPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [enrollmentSearch, setEnrollmentSearch] = useState("");
+  
+  // Estados para notificações
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // Funções para notificações
+  const showSuccessToast = (message: string) => {
+    setToast({ message, type: 'success' });
+    setTimeout(() => setToast(null), 5000);
+  };
+  
+  const showErrorToast = (message: string) => {
+    setToast({ message, type: 'error' });
+    setTimeout(() => setToast(null), 8000);
+  };
   
   // Hooks para dados do backend
   const { createConfirmation, loading: creatingConfirmation, error: confirmationError } = useCreateConfirmation();
@@ -369,12 +405,15 @@ export default function AddConfirmationPage() {
     console.log('=== INICIANDO SUBMIT ===');
     console.log('Dados do formulário:', formData);
     
+    // Validar formulário
     if (!validateForm()) {
       console.log('Validação falhou, parando submit');
+      showErrorToast('Por favor, corrija os erros no formulário antes de continuar.');
       return;
     }
 
     console.log('Validação passou, enviando para API...');
+    setIsLoading(true);
 
     try {
       // Preparar dados para envio
@@ -401,12 +440,35 @@ export default function AddConfirmationPage() {
       const result = await createConfirmation(dataToSend);
       console.log('Confirmação criada com sucesso:', result);
       
-      // Redirecionar para lista após sucesso
-      router.push('/admin/student-management/confirmations');
+      // Mostrar mensagem de sucesso
+      showSuccessToast('Confirmação criada com sucesso! Redirecionando...');
+      
+      // Aguardar um pouco para mostrar a mensagem antes de redirecionar
+      setTimeout(() => {
+        router.push('/admin/student-management/confirmations');
+      }, 2000);
+      
     } catch (error) {
       console.error("Erro ao salvar confirmação:", error);
-      // Mostrar erro para o usuário
-      alert(`Erro ao salvar confirmação: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      
+      // Tratar diferentes tipos de erro
+      let errorMessage = 'Erro desconhecido ao salvar confirmação';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('já possui confirmação')) {
+          errorMessage = 'Esta matrícula já possui confirmação para o ano letivo selecionado.';
+        } else if (error.message.includes('não encontrado')) {
+          errorMessage = 'Dados não encontrados. Verifique se a matrícula, turma e ano letivo são válidos.';
+        } else if (error.message.includes('Dados inválidos')) {
+          errorMessage = 'Dados inválidos. Verifique se todos os campos estão preenchidos corretamente.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      showErrorToast(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -456,10 +518,23 @@ export default function AddConfirmationPage() {
               <Button
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+                className={`${
+                  isLoading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-[#F9CD1D] hover:bg-[#F9CD1D]'
+                } text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200`}
               >
-                <Save className="w-5 h-5 mr-2" />
-                {isLoading ? "Salvando..." : "Salvar Confirmação"}
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5 mr-2" />
+                    Salvar Confirmação
+                  </>
+                )}
               </Button>
               
               <Button
@@ -841,6 +916,15 @@ export default function AddConfirmationPage() {
           </Card>
         </div>
       </div>
+      
+      {/* Toast Notifications */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
     </Container>
   );
 }

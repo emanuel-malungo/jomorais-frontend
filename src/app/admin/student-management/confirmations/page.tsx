@@ -5,6 +5,8 @@ import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useConfirmations } from '@/hooks/useConfirmation';
+import { IConfirmation } from '@/types/confirmation.types';
 import {
   Card,
   CardContent,
@@ -58,145 +60,7 @@ import {
   Activity,
 } from 'lucide-react';
 
-// Dados mockados baseados na estrutura do backend
-const mockConfirmations = [
-  {
-    codigo: 1,
-    data_Confirmacao: "2024-02-15",
-    classificacao: "Aprovado",
-    codigo_Ano_lectivo: 2024,
-    codigo_Status: 1,
-    codigo_Matricula: 1,
-    codigo_Turma: 1,
-    tb_matriculas: {
-      codigo: 1,
-      data_Matricula: "2024-02-01",
-      tb_alunos: {
-        codigo: 1,
-        nome: "Ana Silva Santos",
-        dataNascimento: "2005-03-15",
-        sexo: "F",
-        url_Foto: "/avatars/ana.jpg"
-      },
-      tb_cursos: {
-        codigo: 1,
-        designacao: "Informática de Gestão"
-      }
-    },
-    tb_turmas: {
-      codigo: 1,
-      designacao: "IG-2024-M",
-      tb_classes: {
-        codigo: 10,
-        designacao: "10ª Classe"
-      },
-      tb_salas: {
-        codigo: 1,
-        designacao: "Sala 101"
-      },
-      tb_periodos: {
-        codigo: 1,
-        designacao: "Manhã"
-      }
-    },
-    tb_utilizadores: {
-      codigo: 1,
-      nome: "Admin",
-      user: "admin"
-    }
-  },
-  {
-    codigo: 2,
-    data_Confirmacao: "2024-02-10",
-    classificacao: "Aprovado",
-    codigo_Ano_lectivo: 2024,
-    codigo_Status: 1,
-    codigo_Matricula: 3,
-    codigo_Turma: 2,
-    tb_matriculas: {
-      codigo: 3,
-      data_Matricula: "2024-01-28",
-      tb_alunos: {
-        codigo: 3,
-        nome: "Maria João Francisco",
-        dataNascimento: "2005-11-10",
-        sexo: "F",
-        url_Foto: "/avatars/maria.jpg"
-      },
-      tb_cursos: {
-        codigo: 1,
-        designacao: "Informática de Gestão"
-      }
-    },
-    tb_turmas: {
-      codigo: 2,
-      designacao: "IG-2024-T",
-      tb_classes: {
-        codigo: 10,
-        designacao: "10ª Classe"
-      },
-      tb_salas: {
-        codigo: 2,
-        designacao: "Sala 102"
-      },
-      tb_periodos: {
-        codigo: 2,
-        designacao: "Tarde"
-      }
-    },
-    tb_utilizadores: {
-      codigo: 1,
-      nome: "Admin",
-      user: "admin"
-    }
-  },
-  {
-    codigo: 3,
-    data_Confirmacao: "2024-02-20",
-    classificacao: "Pendente",
-    codigo_Ano_lectivo: 2024,
-    codigo_Status: 0,
-    codigo_Matricula: 4,
-    codigo_Turma: 3,
-    tb_matriculas: {
-      codigo: 4,
-      data_Matricula: "2024-02-05",
-      tb_alunos: {
-        codigo: 4,
-        nome: "Pedro António Silva",
-        dataNascimento: "2004-08-18",
-        sexo: "M",
-        url_Foto: "/avatars/pedro.jpg"
-      },
-      tb_cursos: {
-        codigo: 2,
-        designacao: "Contabilidade"
-      }
-    },
-    tb_turmas: {
-      codigo: 3,
-      designacao: "CONT-2024-M",
-      tb_classes: {
-        codigo: 11,
-        designacao: "11ª Classe"
-      },
-      tb_salas: {
-        codigo: 3,
-        designacao: "Sala 201"
-      },
-      tb_periodos: {
-        codigo: 1,
-        designacao: "Manhã"
-      }
-    },
-    tb_utilizadores: {
-      codigo: 1,
-      nome: "Admin",
-      user: "admin"
-    }
-  }
-];
-
+// Opções para filtros
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
   { value: "1", label: "Ativa" },
@@ -214,58 +78,90 @@ const academicYearOptions = [
   { value: "all", label: "Todos os Anos" },
   { value: "2024", label: "2024" },
   { value: "2023", label: "2023" },
+  { value: "2025", label: "2025" },
 ];
 
+
 export default function ConfirmationsListPage() {
-  const [confirmations, setConfirmations] = useState(mockConfirmations);
-  const [filteredConfirmations, setFilteredConfirmations] = useState(mockConfirmations);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [classificationFilter, setClassificationFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // Hook para buscar confirmações da API
+  const { 
+    confirmations, 
+    pagination, 
+    loading: isLoading, 
+    error, 
+    refetch: fetchConfirmations 
+  } = useConfirmations(currentPage, itemsPerPage, searchTerm);
+  
+  // Estados derivados
+  const [filteredConfirmations, setFilteredConfirmations] = useState<IConfirmation[]>(confirmations || []);
 
-  // Filtrar confirmações
+  // Aplicar filtros locais (além da busca que já é feita na API)
   useEffect(() => {
-    let filtered = confirmations;
-
-    if (searchTerm) {
-      filtered = filtered.filter(confirmation =>
-        confirmation.tb_matriculas.tb_alunos.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        confirmation.tb_turmas.designacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        confirmation.classificacao.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    if (!confirmations) {
+      setFilteredConfirmations([]);
+      return;
     }
 
+    let filtered = confirmations;
+
+    // Filtros locais (a busca por texto já é feita na API)
     if (statusFilter !== "all") {
-      filtered = filtered.filter(confirmation => 
+      filtered = filtered.filter((confirmation: IConfirmation) => 
         confirmation.codigo_Status.toString() === statusFilter
       );
     }
 
     if (classificationFilter !== "all") {
-      filtered = filtered.filter(confirmation => 
+      filtered = filtered.filter((confirmation: IConfirmation) => 
         confirmation.classificacao === classificationFilter
       );
     }
 
     if (yearFilter !== "all") {
-      filtered = filtered.filter(confirmation => 
+      filtered = filtered.filter((confirmation: IConfirmation) => 
         confirmation.codigo_Ano_lectivo.toString() === yearFilter
       );
     }
 
     setFilteredConfirmations(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, classificationFilter, yearFilter, confirmations]);
+  }, [statusFilter, classificationFilter, yearFilter, confirmations]);
 
-  // Paginação
-  const totalPages = Math.ceil(filteredConfirmations.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentConfirmations = filteredConfirmations.slice(startIndex, endIndex);
+  // Recarregar quando mudar a busca (com debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(1);
+      fetchConfirmations();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, fetchConfirmations]);
+
+  // Recarregar quando mudar a página
+  useEffect(() => {
+    fetchConfirmations();
+  }, [currentPage, fetchConfirmations]);
+
+  // Usar paginação da API quando disponível, senão usar paginação local
+  const totalPages = pagination?.totalPages || Math.ceil(filteredConfirmations.length / itemsPerPage);
+  const totalItems = pagination?.totalItems || filteredConfirmations.length;
+  
+  // Se estamos usando paginação da API, mostrar todos os itens filtrados
+  // Se não, fazer paginação local
+  const currentConfirmations = pagination ? filteredConfirmations : (() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredConfirmations.slice(startIndex, endIndex);
+  })();
+  
+  const startIndex = pagination ? ((currentPage - 1) * itemsPerPage) + 1 : (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = pagination ? Math.min(currentPage * itemsPerPage, totalItems) : Math.min(currentPage * itemsPerPage, filteredConfirmations.length);
 
   const handleViewConfirmation = (confirmationId: number) => {
     window.location.href = `/admin/student-management/confirmations/details/${confirmationId}`;
@@ -367,7 +263,7 @@ export default function ConfirmationsListPage() {
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Confirmações</p>
-            <p className="text-3xl font-bold text-gray-900">{confirmations.length}</p>
+            <p className="text-3xl font-bold text-gray-900">{totalItems}</p>
           </div>
           
           {/* Decorative elements */}
@@ -389,7 +285,7 @@ export default function ConfirmationsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-emerald-600">Confirmações Ativas</p>
             <p className="text-3xl font-bold text-gray-900">
-              {confirmations.filter(c => c.codigo_Status === 1).length}
+              {confirmations?.filter((c: IConfirmation) => c.codigo_Status === 1).length || 0}
             </p>
           </div>
           
@@ -412,7 +308,7 @@ export default function ConfirmationsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-[#FFD002]">Aprovados</p>
             <p className="text-3xl font-bold text-gray-900">
-              {confirmations.filter(c => c.classificacao === "Aprovado").length}
+              {confirmations?.filter((c: IConfirmation) => c.classificacao === "Aprovado").length || 0}
             </p>
           </div>
           
@@ -435,7 +331,7 @@ export default function ConfirmationsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-red-600">Pendentes</p>
             <p className="text-3xl font-bold text-gray-900">
-              {confirmations.filter(c => c.classificacao === "Pendente").length}
+              {confirmations?.filter((c: IConfirmation) => c.classificacao === "Pendente").length || 0}
             </p>
           </div>
           
@@ -519,13 +415,44 @@ export default function ConfirmationsListPage() {
             <div className="flex items-center space-x-2">
               <Users className="h-5 w-5" />
               <span>Lista de Confirmações</span>
+              {isLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#F9CD1D]"></div>}
             </div>
             <Badge variant="outline" className="text-sm">
-              {filteredConfirmations.length} confirmações encontradas
+              {totalItems} confirmações encontradas
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-600 text-sm">
+                <strong>Erro ao carregar confirmações:</strong> {error}
+              </p>
+              <Button 
+                onClick={() => fetchConfirmations()} 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+          
+          {isLoading && !confirmations?.length ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F9CD1D]"></div>
+              <span className="ml-2 text-gray-600">Carregando confirmações...</span>
+            </div>
+          ) : currentConfirmations.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Nenhuma confirmação encontrada</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Tente ajustar os filtros ou criar uma nova confirmação
+              </p>
+            </div>
+          ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -551,7 +478,7 @@ export default function ConfirmationsListPage() {
                         <div>
                           <p className="font-medium text-gray-900">{confirmation.tb_matriculas.tb_alunos.nome}</p>
                           <p className="text-sm text-gray-500">
-                            {calculateAge(confirmation.tb_matriculas.tb_alunos.dataNascimento)} anos • {confirmation.tb_matriculas.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                            {confirmation.tb_matriculas.tb_alunos.dataNascimento ? calculateAge(confirmation.tb_matriculas.tb_alunos.dataNascimento) : 'N/A'} anos • {confirmation.tb_matriculas.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
                           </p>
                         </div>
                       </div>
@@ -571,7 +498,7 @@ export default function ConfirmationsListPage() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm">{formatDate(confirmation.data_Confirmacao)}</span>
+                        <span className="text-sm">{confirmation.data_Confirmacao ? formatDate(confirmation.data_Confirmacao) : 'N/A'}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -635,12 +562,13 @@ export default function ConfirmationsListPage() {
               </TableBody>
             </Table>
           </div>
+          )}
 
           {/* Paginação */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredConfirmations.length)} de {filteredConfirmations.length} confirmações
+                Mostrando {startIndex} a {endIndex} de {totalItems} confirmações
               </div>
               <div className="flex items-center space-x-2">
                 <Button
