@@ -46,9 +46,12 @@ import {
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { DisciplineModal } from '@/components/discipline/discipline-modal';
+import { ConfirmDeleteModal } from '@/components/discipline/confirm-delete-modal';
 
-import useDiscipline from '@/hooks/useDiscipline';
-import { Discipline } from '@/types/discipline.types';
+import { useDisciplines, useDeleteDiscipline } from '@/hooks/useDiscipline';
+import { useCourses } from '@/hooks/useCourse';
+import { IDiscipline } from '@/types/discipline.types';
 
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
@@ -56,72 +59,40 @@ const statusOptions = [
   { value: "0", label: "Inativo" },
 ];
 
-const cargaHorariaOptions = [
-  { value: "all", label: "Todas as Cargas Horárias" },
-  { value: "1-2", label: "1-2 horas" },
-  { value: "3-4", label: "3-4 horas" },
-  { value: "5-6", label: "5-6 horas" },
-  { value: "7+", label: "7+ horas" },
-];
-
 export default function ListDisciplinePage() {
-  const { disciplines, loading, error, pagination, getAllDisciplines } = useDiscipline();
-
-  const [filteredDisciplines, setFilteredDisciplines] = useState<Discipline[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [cargaHorariaFilter, setCargaHorariaFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedDiscipline, setSelectedDiscipline] = useState<IDiscipline | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [disciplineToDelete, setDisciplineToDelete] = useState<IDiscipline | null>(null);
 
-  // Carregar disciplinas quando o componente for montado ou página mudar
-  useEffect(() => {
-    getAllDisciplines(currentPage, itemsPerPage);
-  }, [getAllDisciplines, currentPage, itemsPerPage]);
+  const { disciplines, loading, error, pagination, refetch } = useDisciplines(currentPage, itemsPerPage, searchTerm);
+  const { courses, loading: coursesLoading } = useCourses(1, 100); // Buscar todos os cursos para o modal
+  const { deleteDiscipline, loading: deleting } = useDeleteDiscipline();
 
-  // Filtrar disciplinas (aplicado aos dados da página atual)
+  const [filteredDisciplines, setFilteredDisciplines] = useState<IDiscipline[]>([]);
+
+  // Filtrar disciplinas localmente se necessário
   useEffect(() => {
     let filtered = disciplines;
 
-    // Filtro por busca
-    if (searchTerm) {
-      filtered = filtered.filter(discipline =>
-        discipline.designacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        discipline.codigo_disciplina.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        discipline.descricao?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filtro por status
+    // Filtro por status (apenas localmente se não for feito na API)
     if (statusFilter !== "all") {
-      filtered = filtered.filter(discipline => 
+      filtered = filtered.filter((discipline: IDiscipline) => 
         discipline.codigo_Status.toString() === statusFilter
       );
     }
 
-    // Filtro por carga horária
-    if (cargaHorariaFilter !== "all") {
-      filtered = filtered.filter(discipline => {
-        const carga = discipline.carga_horaria;
-        switch (cargaHorariaFilter) {
-          case "1-2": return carga >= 1 && carga <= 2;
-          case "3-4": return carga >= 3 && carga <= 4;
-          case "5-6": return carga >= 5 && carga <= 6;
-          case "7+": return carga >= 7;
-          default: return true;
-        }
-      });
-    }
-
     setFilteredDisciplines(filtered);
-  }, [searchTerm, statusFilter, cargaHorariaFilter, disciplines]);
+  }, [statusFilter, disciplines]);
 
   // Resetar para primeira página quando filtros mudarem
   useEffect(() => {
-    if (searchTerm || statusFilter !== "all" || cargaHorariaFilter !== "all") {
-      setCurrentPage(1);
-    }
-  }, [searchTerm, statusFilter, cargaHorariaFilter]);
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   // Paginação - usando dados da API
   const totalPages = pagination?.totalPages || 1;
@@ -130,17 +101,28 @@ export default function ListDisciplinePage() {
   const startIndex = pagination ? (pagination.currentPage - 1) * pagination.itemsPerPage + 1 : 1;
   const endIndex = pagination ? Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems) : filteredDisciplines.length;
 
-  const handleViewDiscipline = (disciplineId: number) => {
-    window.location.href = `/admin/academic-management/discipline/details/${disciplineId}`;
+  const handleCreateDiscipline = () => {
+    setSelectedDiscipline(null);
+    setShowModal(true);
   };
 
-  const handleEditDiscipline = (disciplineId: number) => {
-    window.location.href = `/admin/academic-management/discipline/edit/${disciplineId}`;
+  const handleModalSuccess = () => {
+    refetch();
+    setShowModal(false);
+    setSelectedDiscipline(null);
   };
 
-  const handleDeleteDiscipline = (disciplineId: number) => {
-    console.log("Excluir disciplina:", disciplineId);
-    // Implementar confirmação e exclusão da disciplina com o hook
+  const handleDeleteConfirm = async () => {
+    if (disciplineToDelete) {
+      try {
+        await deleteDiscipline(disciplineToDelete.codigo);
+        setShowDeleteModal(false);
+        setDisciplineToDelete(null);
+        refetch();
+      } catch (error) {
+        console.error('Erro ao excluir disciplina:', error);
+      }
+    }
   };
 
   return (
@@ -148,10 +130,10 @@ export default function ListDisciplinePage() {
       {/* Header seguindo padrão do Dashboard */}
       <WelcomeHeader
         title="Gestão de Disciplinas"
-        description="Gerencie todas as disciplinas da instituição. Visualize informações detalhadas, acompanhe cargas horárias e mantenha os dados sempre atualizados."
+        description="Gerencie todas as disciplinas da instituição. Visualize informações detalhadas e mantenha os dados sempre atualizados."
         titleBtnRight='Nova Disciplina'
         iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
-        onClickBtnRight={() => window.location.href = '/admin/academic-management/discipline/add'}
+        onClickBtnRight={handleCreateDiscipline}
       />
 
       {/* Stats Cards usando componente StatCard */}
@@ -179,14 +161,14 @@ export default function ListDisciplinePage() {
         />
 
         <StatCard
-          title="Carga Horária Total"
-          value={disciplines.reduce((total, d) => total + d.carga_horaria, 0).toString() + "h"}
-          change="+1.5%"
-          changeType="up"
+          title="Disciplinas Inativas"
+          value={disciplines.filter((d: IDiscipline) => d.codigo_Status === 0).length.toString()}
+          change="-0.8%"
+          changeType="down"
           icon={Clock}
-          color="text-[#FFD002]"
-          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
-          accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
+          color="text-red-600"
+          bgColor="bg-gradient-to-br from-red-50 via-white to-red-50/50"
+          accentColor="bg-gradient-to-br from-red-500 to-red-600"
         />
 
         <StatCard
@@ -203,7 +185,7 @@ export default function ListDisciplinePage() {
 
       <FilterSearchCard
         title="Filtros e Busca"
-        searchPlaceholder="Buscar por nome, código, descrição..."
+        searchPlaceholder="Buscar por nome da disciplina..."
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
         filters={[
@@ -212,13 +194,6 @@ export default function ListDisciplinePage() {
             value: statusFilter,
             onChange: setStatusFilter,
             options: statusOptions,
-            width: "w-48"
-          },
-          {
-            label: "Carga Horária",
-            value: cargaHorariaFilter,
-            onChange: setCargaHorariaFilter,
-            options: cargaHorariaOptions,
             width: "w-48"
           }
         ]}
@@ -242,9 +217,7 @@ export default function ListDisciplinePage() {
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Disciplina</TableHead>
                   <TableHead>Código</TableHead>
-                  <TableHead>Carga Horária</TableHead>
-                  <TableHead>Classes</TableHead>
-                  <TableHead>Professores</TableHead>
+                  <TableHead>Curso</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -284,65 +257,19 @@ export default function ListDisciplinePage() {
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">{discipline.designacao}</p>
-                            <p className="text-sm text-gray-500 truncate max-w-xs">
-                              {discipline.descricao || 'Sem descrição'}
-                            </p>
+                            <p className="text-sm text-gray-500">ID: {discipline.codigo}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-mono">
-                          {discipline.codigo_disciplina}
+                          {discipline.codigo}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <Clock className="w-4 h-4 text-gray-400" />
-                          <span className="font-medium">{discipline.carga_horaria}h</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {discipline.tb_disciplinas_classes && discipline.tb_disciplinas_classes.length > 0 ? (
-                            <>
-                              <p className="text-sm font-medium">
-                                {discipline.tb_disciplinas_classes.length} classe(s)
-                              </p>
-                              <div className="flex flex-wrap gap-1">
-                                {discipline.tb_disciplinas_classes.slice(0, 2).map((dc) => (
-                                  <Badge key={dc.codigo} variant="secondary" className="text-xs">
-                                    {dc.tb_classes.designacao}
-                                  </Badge>
-                                ))}
-                                {discipline.tb_disciplinas_classes.length > 2 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    +{discipline.tb_disciplinas_classes.length - 2}
-                                  </Badge>
-                                )}
-                              </div>
-                            </>
-                          ) : (
-                            <p className="text-sm text-gray-500">Nenhuma classe</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {discipline.tb_disciplinas_professores && discipline.tb_disciplinas_professores.length > 0 ? (
-                            <>
-                              <p className="text-sm font-medium">
-                                {discipline.tb_disciplinas_professores.length} professor(es)
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {discipline.tb_disciplinas_professores[0].tb_professores.nome}
-                                {discipline.tb_disciplinas_professores.length > 1 && 
-                                  ` +${discipline.tb_disciplinas_professores.length - 1}`
-                                }
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-sm text-gray-500">Nenhum professor</p>
-                          )}
+                          <GraduationCap className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">Código: {discipline.codigo_Curso}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -363,17 +290,13 @@ export default function ListDisciplinePage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleViewDiscipline(discipline.codigo || 0)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Visualizar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditDiscipline(discipline.codigo || 0)}>
+                            <DropdownMenuItem onClick={() => { setSelectedDiscipline(discipline); setShowModal(true) }}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteDiscipline(discipline.codigo || 0)}
+                              onClick={() => { setDisciplineToDelete(discipline); setShowDeleteModal(true) }}
                               className="text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -483,6 +406,25 @@ export default function ListDisciplinePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Disciplina */}
+      <DisciplineModal
+        open={showModal}
+        onOpenChange={setShowModal}
+        discipline={selectedDiscipline}
+        courses={courses}
+        onSuccess={handleModalSuccess}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        onConfirm={handleDeleteConfirm}
+        loading={deleting}
+        title="Excluir Disciplina"
+        description={`Tem certeza que deseja excluir a disciplina "${disciplineToDelete?.designacao}"? Esta ação não pode ser desfeita.`}
+      />
     </Container>
   );
 }
