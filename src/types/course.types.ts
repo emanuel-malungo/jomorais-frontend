@@ -1,29 +1,25 @@
-export interface Disciplina {
-  codigo: number;
-  designacao: string;
-  codigo_Curso: number;
+export interface ICourseInput {
+  designacao: string
+  observacoes?: string
 }
 
-export interface Course {
-  codigo?: number;
-  designacao: string;
-  codigo_Status?: number;
-  observacoes?: string;
-  nivel?: string;
-  modalidade?: string;
-  duracao?: string;
-  tb_disciplinas?: Disciplina[];
+export interface ICourse {
+  codigo: number
+  designacao: string
+  codigo_Status: number
+  observacoes?: string
 }
 
-export interface CreateCourseData {
-  designacao: string;
-  observacoes?: string;
-  nivel: string;
-  modalidade: string;
-  duracao: string;
-  codigo_Status?: number;
+export interface IPagination {
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  itemsPerPage: number
+  hasNextPage?: boolean
+  hasPreviousPage?: boolean
 }
 
-export interface UpdateCourseData extends Partial<CreateCourseData> {
-  codigo: number;
+export interface ICourseListResponse {
+  data: ICourse[]
+  pagination: IPagination
 }

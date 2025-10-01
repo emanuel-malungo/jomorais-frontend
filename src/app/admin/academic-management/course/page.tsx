@@ -32,25 +32,23 @@ import {
   GraduationCap,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
   Trash2,
   BookOpen,
   Users,
-  Calendar,
-  Clock,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
   Activity,
 } from 'lucide-react';
 
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { CourseModal } from '@/components/ui/course-modal';
+import { ConfirmDeleteModal } from '@/components/ui/confirm-delete-modal';
 
-import { useCourse } from '@/hooks';
-import { Course } from '@/types';
+import { useCourses, useDeleteCourse } from '@/hooks/useCourse';
+import { ICourse } from '@/types/course.types';
 
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
@@ -75,87 +73,79 @@ const modalidadeOptions = [
 ];
 
 export default function ListCoursePage() {
-  const { courses, loading, error, pagination, getAllCourses } = useCourse();
-
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [nivelFilter, setNivelFilter] = useState("all");
-  const [modalidadeFilter, setModalidadeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Hooks para gerenciamento de cursos
+  const { courses = [], pagination, loading, error, refetch } = useCourses(currentPage, itemsPerPage, searchTerm);
+  const { deleteCourse, loading: deleting } = useDeleteCourse();
 
-  // Carregar cursos quando o componente for montado ou página mudar
-  useEffect(() => {
-    getAllCourses(currentPage, itemsPerPage);
-  }, [getAllCourses, currentPage, itemsPerPage]);
+  // Estados do modal
+  const [courseModalOpen, setCourseModalOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<ICourse | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<ICourse | null>(null);
 
-  // Filtrar cursos (aplicado aos dados da página atual)
+  // Filtros locais (aplicados nos dados já paginados da API)
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [filteredCourses, setFilteredCourses] = useState<ICourse[]>([]);
+
+  // Aplicar filtros locais nos dados da página atual
   useEffect(() => {
     let filtered = courses;
 
-    // Filtro por busca
-    if (searchTerm) {
-      filtered = filtered.filter(course =>
-        course.designacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.codigo?.toString().includes(searchTerm) ||
-        course.observacoes?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
     // Filtro por status
     if (statusFilter !== "all") {
-      filtered = filtered.filter(course => 
+      filtered = filtered.filter((course: ICourse) => 
         course.codigo_Status?.toString() === statusFilter
       );
     }
 
-    // Filtro por nível
-    if (nivelFilter !== "all") {
-      filtered = filtered.filter(course => {
-        return course.nivel?.toLowerCase().includes(nivelFilter);
-      });
-    }
-
-    // Filtro por modalidade
-    if (modalidadeFilter !== "all") {
-      filtered = filtered.filter(course => {
-        return course.modalidade?.toLowerCase().includes(modalidadeFilter);
-      });
-    }
-
     setFilteredCourses(filtered);
-  }, [searchTerm, statusFilter, nivelFilter, modalidadeFilter, courses]);
+  }, [courses, statusFilter]);
 
-  // Resetar para primeira página quando filtros mudarem
-  useEffect(() => {
-    if (searchTerm || statusFilter !== "all" || nivelFilter !== "all" || modalidadeFilter !== "all") {
-      setCurrentPage(1);
-    }
-  }, [searchTerm, statusFilter, nivelFilter, modalidadeFilter]);
-
-  // Paginação - usando dados da API
+  // Paginação usando dados da API
   const totalPages = pagination?.totalPages || 1;
   const totalItems = pagination?.totalItems || 0;
-  const currentCourses = filteredCourses; // Já são os dados da página atual
   const startIndex = pagination ? (pagination.currentPage - 1) * pagination.itemsPerPage + 1 : 1;
   const endIndex = pagination ? Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems) : filteredCourses.length;
 
+  // Handlers do modal
+  const handleAddCourse = () => {
+    setSelectedCourse(null);
+    setCourseModalOpen(true);
+  };
+
+  const handleEditCourse = (course: ICourse) => {
+    setSelectedCourse(course);
+    setCourseModalOpen(true);
+  };
+
+  const handleDeleteCourse = (course: ICourse) => {
+    setCourseToDelete(course);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    
+    try {
+      await deleteCourse(courseToDelete.codigo);
+      setDeleteModalOpen(false);
+      setCourseToDelete(null);
+      refetch(); // Recarregar dados após exclusão
+    } catch (error) {
+      console.error('Erro ao excluir curso:', error);
+    }
+  };
+
+  const handleCourseModalSuccess = () => {
+    refetch(); // Recarregar dados após criar/editar
+  };
+
   const handleViewCourse = (courseId: number) => {
-    window.location.href = `/admin/course-management/course/details/${courseId}`;
-  };
-
-  const handleEditCourse = (courseId: number) => {
-    window.location.href = `/admin/course-management/course/edit/${courseId}`;
-  };
-
-  const handleDeleteCourse = (courseId: number) => {
-    console.log("Excluir curso:", courseId);
-    // Implementar confirmação e exclusão do curso com o hook
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-AO');
+    window.location.href = `/admin/academic-management/course/details/${courseId}`;
   };
 
   return (
@@ -163,10 +153,10 @@ export default function ListCoursePage() {
       {/* Header seguindo padrão do Dashboard */}
       <WelcomeHeader
         title="Gestão de Cursos"
-        description="Gerencie todos os cursos oferecidos pela instituição. Visualize informações detalhadas, acompanhe disciplinas e mantenha os dados sempre atualizados."
+        description="Gerencie todos os cursos oferecidos pela instituição. Adicione, edite e organize cursos de forma eficiente."
         titleBtnRight='Novo Curso'
         iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
-        onClickBtnRight={() => window.location.href = '/admin/course-management/course/add'}
+        onClickBtnRight={handleAddCourse}
       />
 
       {/* Stats Cards usando componente StatCard */}
@@ -184,7 +174,7 @@ export default function ListCoursePage() {
 
         <StatCard
           title="Cursos Ativos"
-          value={courses.filter(c => c.codigo_Status === 1).length.toString()}
+          value={courses.filter((c: ICourse) => c.codigo_Status === 1).length.toString()}
           change="+2.1%"
           changeType="up"
           icon={BookOpen}
@@ -194,9 +184,9 @@ export default function ListCoursePage() {
         />
 
         <StatCard
-          title="Com Disciplinas"
-          value={courses.filter(c => c.tb_disciplinas && c.tb_disciplinas.length > 0).length.toString()}
-          change="+3.5%"
+          title="Cursos Inativos"
+          value={courses.filter((c: ICourse) => c.codigo_Status === 0).length.toString()}
+          change="+1.2%"
           changeType="up"
           icon={Users}
           color="text-[#FFD002]"
@@ -218,7 +208,7 @@ export default function ListCoursePage() {
 
       <FilterSearchCard
         title="Filtros e Busca"
-        searchPlaceholder="Buscar por nome, código ou observações..."
+        searchPlaceholder="Buscar por nome do curso..."
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
         filters={[
@@ -227,20 +217,6 @@ export default function ListCoursePage() {
             value: statusFilter,
             onChange: setStatusFilter,
             options: statusOptions,
-            width: "w-48"
-          },
-          {
-            label: "Nível",
-            value: nivelFilter,
-            onChange: setNivelFilter,
-            options: nivelOptions,
-            width: "w-48"
-          },
-          {
-            label: "Modalidade",
-            value: modalidadeFilter,
-            onChange: setModalidadeFilter,
-            options: modalidadeOptions,
             width: "w-48"
           }
         ]}
@@ -263,10 +239,8 @@ export default function ListCoursePage() {
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Curso</TableHead>
-                  <TableHead>Nível</TableHead>
-                  <TableHead>Modalidade</TableHead>
-                  <TableHead>Disciplinas</TableHead>
-                  <TableHead>Duração</TableHead>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Observações</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -274,27 +248,27 @@ export default function ListCoursePage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex items-center justify-center space-x-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#182F59]"></div>
-                        <span>Carregando página {currentPage}...</span>
+                        <span>Carregando cursos...</span>
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : currentCourses.length === 0 ? (
+                ) : filteredCourses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
                         <GraduationCap className="h-12 w-12 text-gray-400" />
                         <p className="text-gray-500">Nenhum curso encontrado</p>
                         <p className="text-sm text-gray-400">
-                          Tente ajustar os filtros de busca
+                          {searchTerm ? 'Tente buscar por outro termo' : 'Comece adicionando um novo curso'}
                         </p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentCourses.map((course, index) => (
+                  filteredCourses.map((course: ICourse, index: number) => (
                     <TableRow key={course.codigo || index} className="hover:bg-gray-50">
                       <TableCell className="font-medium">
                         {startIndex + index}
@@ -306,40 +280,18 @@ export default function ListCoursePage() {
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">{course.designacao}</p>
-                            <div className="flex items-center space-x-4 text-sm text-gray-500">
-                              <span className="flex items-center">
-                                <BookOpen className="w-3 h-3 mr-1" />
-                                {course.codigo || 'N/A'}
-                              </span>
-                            </div>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          {course.nivel || 'N/A'}
+                          {course.codigo || 'N/A'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          {course.modalidade || 'N/A'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Users className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-600">
-                            {course.tb_disciplinas?.length || 0} disciplinas
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-600">
-                            {course.duracao || 'N/A'}
-                          </span>
-                        </div>
+                        <p className="text-sm text-gray-600 max-w-xs truncate">
+                          {course.observacoes || 'Sem observações'}
+                        </p>
                       </TableCell>
                       <TableCell>
                         <Badge 
@@ -359,17 +311,13 @@ export default function ListCoursePage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleViewCourse(course.codigo || 0)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Visualizar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditCourse(course.codigo || 0)}>
+                            <DropdownMenuItem onClick={() => handleEditCourse(course)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteCourse(course.codigo || 0)}
+                              onClick={() => handleDeleteCourse(course)}
                               className="text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -479,6 +427,24 @@ export default function ListCoursePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal para adicionar/editar curso */}
+      <CourseModal
+        open={courseModalOpen}
+        onOpenChange={setCourseModalOpen}
+        course={selectedCourse}
+        onSuccess={handleCourseModalSuccess}
+      />
+
+      {/* Modal de confirmação para deletar curso */}
+      <ConfirmDeleteModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onConfirm={confirmDeleteCourse}
+        title="Excluir Curso"
+        description={`Tem certeza que deseja excluir o curso "${courseToDelete?.designacao}"? Esta ação não pode ser desfeita.`}
+        loading={deleting}
+      />
     </Container>
   );
 }
