@@ -28,6 +28,7 @@ import {
   GraduationCap,
   Search,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import { useCreateTransfer } from '@/hooks/useTransfer';
 import { useStudent } from '@/hooks/useStudent';
@@ -93,11 +94,17 @@ export default function AddTransferPage() {
   const filteredStudents = React.useMemo(() => {
     if (!students || students.length === 0) return [];
     
-    if (studentSearch) {
-      return students.filter(student =>
-        student.nome?.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.email?.toLowerCase().includes(studentSearch.toLowerCase())
-      );
+    if (studentSearch && studentSearch.trim().length >= 2) { // Mínimo 2 caracteres
+      const searchTerm = studentSearch.toLowerCase().trim();
+      return students.filter(student => {
+        const nome = student.nome?.toLowerCase() || '';
+        const email = student.email?.toLowerCase() || '';
+        const codigo = student.codigo?.toString() || '';
+        
+        return nome.includes(searchTerm) || 
+               email.includes(searchTerm) || 
+               codigo.includes(searchTerm);
+      });
     }
     return students;
   }, [students, studentSearch]);
@@ -276,12 +283,29 @@ export default function AddTransferPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Digite o nome do aluno ou curso..."
+                    placeholder="Digite o nome, email ou código do aluno..."
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 pr-10"
                   />
+                  {studentSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setStudentSearch('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
+                {studentSearch && (
+                  <p className="text-xs text-gray-500">
+                    {studentSearch.trim().length < 2 ? 
+                      'Digite pelo menos 2 caracteres para buscar' :
+                      `${filteredStudents.length} aluno(s) encontrado(s)`
+                    }
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -316,7 +340,10 @@ export default function AddTransferPage() {
                       ))
                     ) : (
                       <SelectItem value="no-students" disabled>
-                        Nenhum aluno encontrado
+                        {studentSearch ? 
+                          `Nenhum aluno encontrado para "${studentSearch}"` : 
+                          'Nenhum aluno disponível'
+                        }
                       </SelectItem>
                     )}
                   </SelectContent>
