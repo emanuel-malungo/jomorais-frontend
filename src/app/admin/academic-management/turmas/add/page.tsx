@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -21,87 +20,67 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  School,
   ArrowLeft,
   Save,
   X,
   Loader2,
-  Users,
   MapPin,
   Clock,
   GraduationCap,
 } from 'lucide-react';
+import { useCreateTurma, useClasses, useSalas, usePeriodos } from '@/hooks';
+import { useAnosLectivos } from '@/hooks/useAnoLectivo';
+import { useCourses } from '@/hooks/useCourse';
+import { School } from 'lucide-react';
+import { ITurmaInput } from '@/types/turma.types';
 
-// Dados mockados para selects
-const mockClasses = [
-  { id: "1", nome: "10ª Classe", nivel: "2º Ciclo Secundário" },
-  { id: "2", nome: "11ª Classe", nivel: "2º Ciclo Secundário" },
-  { id: "3", nome: "12ª Classe", nivel: "2º Ciclo Secundário" },
-  { id: "4", nome: "13ª Classe", nivel: "Pré-Universitário" },
-];
-
-const mockCursos = [
-  { id: "1", nome: "Informática de Gestão", codigo: "IG" },
-  { id: "2", nome: "Contabilidade e Gestão", codigo: "CG" },
-  { id: "3", nome: "Administração", codigo: "AD" },
-  { id: "4", nome: "Economia", codigo: "EC" },
-];
-
-const mockSalas = [
-  { id: "1", nome: "Sala A1", capacidade: 30, localizacao: "Bloco A" },
-  { id: "2", nome: "Sala A2", capacidade: 25, localizacao: "Bloco A" },
-  { id: "3", nome: "Sala B1", capacidade: 35, localizacao: "Bloco B" },
-  { id: "4", nome: "Sala B2", capacidade: 28, localizacao: "Bloco B" },
-];
-
-const mockProfessores = [
-  { id: "1", nome: "Prof. João Silva Santos", especialidade: "Informática" },
-  { id: "2", nome: "Prof. Maria Santos Costa", especialidade: "Contabilidade" },
-  { id: "3", nome: "Prof. Carlos Mendes Lima", especialidade: "Administração" },
-  { id: "4", nome: "Prof. Ana Paula Francisco", especialidade: "Economia" },
-];
-
-const mockAnosLetivos = [
-  { id: "1", ano: "2024/2025", status: "Ativo" },
-  { id: "2", ano: "2023/2024", status: "Concluído" },
-  { id: "3", ano: "2025/2026", status: "Planejado" },
-];
+// Dados mockados removidos - agora usa dados reais da API
 
 export default function AddTurmaPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { createTurma, isLoading, error } = useCreateTurma();
+  const { classes, fetchClasses, isLoading: classesLoading, error: classesError } = useClasses();
+  const { salas, fetchSalas, isLoading: salasLoading, error: salasError } = useSalas();
+  const { periodos, fetchPeriodos, isLoading: periodosLoading, error: periodosError } = usePeriodos();
+  const { anosLectivos, fetchAnosLectivos, isLoading: anosLoading, error: anosError } = useAnosLectivos();
+  const { courses, loading: coursesLoading, error: coursesError, refetch: fetchCourses } = useCourses();
 
-  // Estados do formulário
-  const [formData, setFormData] = useState({
-    designacao: "",
-    classe: "",
-    curso: "",
-    sala: "",
-    periodo: "",
-    anoLetivo: "1", // Default para ano ativo
-    capacidade: "",
-    diretor: "",
-    observacoes: "",
-    status: "Ativo",
+  const [formData, setFormData] = useState<ITurmaInput>({
+    designacao: '',
+    codigo_Classe: 0,
+    codigo_Curso: 0,
+    codigo_Sala: 0,
+    codigo_Periodo: 0,
+    codigo_AnoLectivo: 1,
+    max_Alunos: 30,
+    status: 'Ativo',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetchClasses(1, 100);
+    fetchCourses();
+    fetchSalas(1, 100);
+    fetchPeriodos(1, 100);
+    fetchAnosLectivos(1, 100);
+  }, []);
 
   const handleCancel = () => {
     router.back();
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: keyof ITurmaInput, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
     
-    // Limpar erro do campo quando o usuário começar a digitar
+    // Limpar erro do campo quando usuário começar a digitar
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
-        [field]: ""
+        [field]: ''
       }));
     }
   };
@@ -113,26 +92,24 @@ export default function AddTurmaPage() {
       newErrors.designacao = "Designação da turma é obrigatória";
     }
 
-    if (!formData.classe) {
-      newErrors.classe = "Classe é obrigatória";
+    if (!formData.codigo_Classe || formData.codigo_Classe <= 0) {
+      newErrors.codigo_Classe = "Classe é obrigatória";
     }
 
-    if (!formData.curso) {
-      newErrors.curso = "Curso é obrigatório";
+    if (!formData.codigo_Curso || formData.codigo_Curso <= 0) {
+      newErrors.codigo_Curso = "Curso é obrigatório";
     }
 
-    if (!formData.sala) {
-      newErrors.sala = "Sala é obrigatória";
+    if (!formData.codigo_Sala || formData.codigo_Sala <= 0) {
+      newErrors.codigo_Sala = "Sala é obrigatória";
     }
 
-    if (!formData.periodo) {
-      newErrors.periodo = "Período é obrigatório";
+    if (!formData.codigo_Periodo || formData.codigo_Periodo <= 0) {
+      newErrors.codigo_Periodo = "Período é obrigatório";
     }
 
-    if (!formData.capacidade.trim()) {
-      newErrors.capacidade = "Capacidade é obrigatória";
-    } else if (parseInt(formData.capacidade) <= 0) {
-      newErrors.capacidade = "Capacidade deve ser maior que zero";
+    if (!formData.max_Alunos || formData.max_Alunos <= 0) {
+      newErrors.max_Alunos = "Capacidade é obrigatória e deve ser maior que zero";
     }
 
     setErrors(newErrors);
@@ -145,22 +122,14 @@ export default function AddTurmaPage() {
     if (!validateForm()) {
       return;
     }
-
-    setIsLoading(true);
     
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log('Dados da turma:', formData);
-      
+      await createTurma(formData);
       // Redirecionar para lista de turmas
       router.push('/admin/academic-management/turmas');
-      
     } catch (error) {
       console.error('Erro ao criar turma:', error);
-    } finally {
-      setIsLoading(false);
+      // O erro já é tratado pelo hook
     }
   };
 
@@ -251,22 +220,41 @@ export default function AddTurmaPage() {
                     Classe *
                   </Label>
                   <Select
-                    value={formData.classe}
-                    onValueChange={(value) => handleInputChange('classe', value)}
+                    value={formData.codigo_Classe.toString()}
+                    onValueChange={(value) => handleInputChange('codigo_Classe', parseInt(value))}
+                    disabled={classesLoading}
                   >
-                    <SelectTrigger className={`h-12 ${errors.classe ? 'border-red-500' : ''}`}>
-                      <SelectValue placeholder="Selecione a classe" />
+                    <SelectTrigger className={`h-12 ${errors.codigo_Classe ? 'border-red-500' : ''}`}>
+                      {classesLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      <SelectValue placeholder={classesLoading ? "Carregando classes..." : "Selecione a classe"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockClasses.map((classe) => (
-                        <SelectItem key={classe.id} value={classe.id}>
-                          {classe.nome} - {classe.nivel}
+                      {classesLoading ? (
+                        <SelectItem value="loading" disabled>
+                          Carregando classes...
                         </SelectItem>
-                      ))}
+                      ) : classesError ? (
+                        <SelectItem value="error" disabled>
+                          Erro ao carregar classes
+                        </SelectItem>
+                      ) : classes.length > 0 ? (
+                        classes.map((classe) => (
+                          <SelectItem key={classe.codigo} value={classe.codigo.toString()}>
+                            {classe.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="empty" disabled>
+                          Nenhuma classe encontrada
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  {errors.classe && (
-                    <p className="text-sm text-red-500">{errors.classe}</p>
+                  {errors.codigo_Classe && (
+                    <p className="text-sm text-red-500">{errors.codigo_Classe}</p>
+                  )}
+                  {classesError && (
+                    <p className="text-sm text-red-500">Erro ao carregar classes: {classesError}</p>
                   )}
                 </div>
 
@@ -275,22 +263,41 @@ export default function AddTurmaPage() {
                     Curso *
                   </Label>
                   <Select
-                    value={formData.curso}
-                    onValueChange={(value) => handleInputChange('curso', value)}
+                    value={formData.codigo_Curso.toString()}
+                    onValueChange={(value) => handleInputChange('codigo_Curso', parseInt(value))}
+                    disabled={coursesLoading}
                   >
-                    <SelectTrigger className={`h-12 ${errors.curso ? 'border-red-500' : ''}`}>
-                      <SelectValue placeholder="Selecione o curso" />
+                    <SelectTrigger className={`h-12 ${errors.codigo_Curso ? 'border-red-500' : ''}`}>
+                      {coursesLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      <SelectValue placeholder={coursesLoading ? "Carregando cursos..." : "Selecione o curso"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockCursos.map((curso) => (
-                        <SelectItem key={curso.id} value={curso.id}>
-                          {curso.nome} ({curso.codigo})
+                      {coursesLoading ? (
+                        <SelectItem value="loading" disabled>
+                          Carregando cursos...
                         </SelectItem>
-                      ))}
+                      ) : coursesError ? (
+                        <SelectItem value="error" disabled>
+                          Erro ao carregar cursos
+                        </SelectItem>
+                      ) : courses.length > 0 ? (
+                        courses.map((curso) => (
+                          <SelectItem key={curso.codigo} value={curso.codigo.toString()}>
+                            {curso.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="empty" disabled>
+                          Nenhum curso encontrado
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  {errors.curso && (
-                    <p className="text-sm text-red-500">{errors.curso}</p>
+                  {errors.codigo_Curso && (
+                    <p className="text-sm text-red-500">{errors.codigo_Curso}</p>
+                  )}
+                  {coursesError && (
+                    <p className="text-sm text-red-500">Erro ao carregar cursos: {coursesError}</p>
                   )}
                 </div>
 
@@ -303,13 +310,13 @@ export default function AddTurmaPage() {
                     type="number"
                     min="1"
                     max="50"
-                    value={formData.capacidade}
-                    onChange={(e) => handleInputChange('capacidade', e.target.value)}
+                    value={formData.max_Alunos?.toString() || ""}
+                    onChange={(e) => handleInputChange('max_Alunos', parseInt(e.target.value) || 0)}
                     placeholder="Ex: 30"
-                    className={`h-12 ${errors.capacidade ? 'border-red-500' : ''}`}
+                    className={`h-12 ${errors.max_Alunos ? 'border-red-500' : ''}`}
                   />
-                  {errors.capacidade && (
-                    <p className="text-sm text-red-500">{errors.capacidade}</p>
+                  {errors.max_Alunos && (
+                    <p className="text-sm text-red-500">{errors.max_Alunos}</p>
                   )}
                 </div>
               </div>
@@ -331,22 +338,41 @@ export default function AddTurmaPage() {
                     Sala *
                   </Label>
                   <Select
-                    value={formData.sala}
-                    onValueChange={(value) => handleInputChange('sala', value)}
+                    value={formData.codigo_Sala.toString()}
+                    onValueChange={(value) => handleInputChange('codigo_Sala', parseInt(value))}
+                    disabled={salasLoading}
                   >
-                    <SelectTrigger className={`h-12 ${errors.sala ? 'border-red-500' : ''}`}>
-                      <SelectValue placeholder="Selecione a sala" />
+                    <SelectTrigger className={`h-12 ${errors.codigo_Sala ? 'border-red-500' : ''}`}>
+                      {salasLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      <SelectValue placeholder={salasLoading ? "Carregando salas..." : "Selecione a sala"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockSalas.map((sala) => (
-                        <SelectItem key={sala.id} value={sala.id}>
-                          {sala.nome} - Cap: {sala.capacidade} ({sala.localizacao})
+                      {salasLoading ? (
+                        <SelectItem value="loading" disabled>
+                          Carregando salas...
                         </SelectItem>
-                      ))}
+                      ) : salasError ? (
+                        <SelectItem value="error" disabled>
+                          Erro ao carregar salas
+                        </SelectItem>
+                      ) : salas.length > 0 ? (
+                        salas.map((sala) => (
+                          <SelectItem key={sala.codigo} value={sala.codigo.toString()}>
+                            {sala.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="empty" disabled>
+                          Nenhuma sala encontrada
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  {errors.sala && (
-                    <p className="text-sm text-red-500">{errors.sala}</p>
+                  {errors.codigo_Sala && (
+                    <p className="text-sm text-red-500">{errors.codigo_Sala}</p>
+                  )}
+                  {salasError && (
+                    <p className="text-sm text-red-500">Erro ao carregar salas: {salasError}</p>
                   )}
                 </div>
 
@@ -355,20 +381,41 @@ export default function AddTurmaPage() {
                     Período *
                   </Label>
                   <Select
-                    value={formData.periodo}
-                    onValueChange={(value) => handleInputChange('periodo', value)}
+                    value={formData.codigo_Periodo.toString()}
+                    onValueChange={(value) => handleInputChange('codigo_Periodo', parseInt(value))}
+                    disabled={periodosLoading}
                   >
-                    <SelectTrigger className={`h-12 ${errors.periodo ? 'border-red-500' : ''}`}>
-                      <SelectValue placeholder="Selecione o período" />
+                    <SelectTrigger className={`h-12 ${errors.codigo_Periodo ? 'border-red-500' : ''}`}>
+                      {periodosLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      <SelectValue placeholder={periodosLoading ? "Carregando períodos..." : "Selecione o período"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Manhã">Manhã (07:30 - 12:00)</SelectItem>
-                      <SelectItem value="Tarde">Tarde (13:30 - 18:00)</SelectItem>
-                      <SelectItem value="Noite">Noite (19:00 - 22:30)</SelectItem>
+                      {periodosLoading ? (
+                        <SelectItem value="loading" disabled>
+                          Carregando períodos...
+                        </SelectItem>
+                      ) : periodosError ? (
+                        <SelectItem value="error" disabled>
+                          Erro ao carregar períodos
+                        </SelectItem>
+                      ) : periodos.length > 0 ? (
+                        periodos.map((periodo) => (
+                          <SelectItem key={periodo.codigo} value={periodo.codigo.toString()}>
+                            {periodo.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="empty" disabled>
+                          Nenhum período encontrado
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
-                  {errors.periodo && (
-                    <p className="text-sm text-red-500">{errors.periodo}</p>
+                  {errors.codigo_Periodo && (
+                    <p className="text-sm text-red-500">{errors.codigo_Periodo}</p>
+                  )}
+                  {periodosError && (
+                    <p className="text-sm text-red-500">Erro ao carregar períodos: {periodosError}</p>
                   )}
                 </div>
 
@@ -377,51 +424,49 @@ export default function AddTurmaPage() {
                     Ano Letivo
                   </Label>
                   <Select
-                    value={formData.anoLetivo}
-                    onValueChange={(value) => handleInputChange('anoLetivo', value)}
+                    value={formData.codigo_AnoLectivo?.toString() || ""}
+                    onValueChange={(value) => handleInputChange('codigo_AnoLectivo', parseInt(value))}
+                    disabled={anosLoading}
                   >
                     <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Selecione o ano letivo" />
+                      {anosLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      <SelectValue placeholder={anosLoading ? "Carregando anos letivos..." : "Selecione o ano letivo"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockAnosLetivos.map((ano) => (
-                        <SelectItem key={ano.id} value={ano.id}>
-                          {ano.ano} - {ano.status}
+                      {anosLoading ? (
+                        <SelectItem value="loading" disabled>
+                          Carregando anos letivos...
                         </SelectItem>
-                      ))}
+                      ) : anosError ? (
+                        <SelectItem value="error" disabled>
+                          Erro ao carregar anos letivos
+                        </SelectItem>
+                      ) : anosLectivos.length > 0 ? (
+                        anosLectivos.map((ano) => (
+                          <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
+                            {ano.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="empty" disabled>
+                          Nenhum ano letivo encontrado
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
+                  {anosError && (
+                    <p className="text-sm text-red-500">Erro ao carregar anos letivos: {anosError}</p>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="diretor" className="text-foreground font-semibold">
-                    Diretor de Turma
-                  </Label>
-                  <Select
-                    value={formData.diretor}
-                    onValueChange={(value) => handleInputChange('diretor', value)}
-                  >
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Selecione o diretor de turma" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockProfessores.map((professor) => (
-                        <SelectItem key={professor.id} value={professor.id}>
-                          {professor.nome} - {professor.especialidade}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
+              <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-foreground font-semibold">
                     Status
                   </Label>
                   <Select
-                    value={formData.status}
+                    value={formData.status || "Ativo"}
                     onValueChange={(value) => handleInputChange('status', value)}
                   >
                     <SelectTrigger className="h-12">
@@ -438,30 +483,7 @@ export default function AddTurmaPage() {
             </CardContent>
           </Card>
 
-          {/* Observações */}
-          <Card className="border-l-4 border-l-orange-500">
-            <CardHeader>
-              <CardTitle className="flex items-center text-xl">
-                <Users className="w-6 h-6 mr-3 text-orange-500" />
-                Observações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label htmlFor="observacoes" className="text-foreground font-semibold">
-                  Observações Gerais
-                </Label>
-                <Textarea
-                  id="observacoes"
-                  value={formData.observacoes}
-                  onChange={(e) => handleInputChange('observacoes', e.target.value)}
-                  placeholder="Informações adicionais sobre a turma, metodologia específica, etc..."
-                  rows={4}
-                  className="resize-none"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {/* Card de observações removido - não faz parte da interface ITurmaInput */}
 
         </form>
       </div>

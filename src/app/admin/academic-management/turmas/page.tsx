@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +40,6 @@ import {
   Filter,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
   Trash2,
   Download,
@@ -51,105 +50,13 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
-  Activity,
   MapPin,
   Clock,
+  Activity,
 } from 'lucide-react';
+import { useTurmaManager } from '@/hooks';
 
-// Dados mockados das turmas
-const mockTurmas = [
-  {
-    id: 1,
-    designacao: "IG-10A-2024",
-    classe: "10ª Classe",
-    curso: "Informática de Gestão",
-    sala: "Sala A1",
-    periodo: "Manhã",
-    anoLetivo: "2024/2025",
-    capacidade: 30,
-    matriculados: 28,
-    diretor: "Prof. João Silva",
-    status: "Ativo"
-  },
-  {
-    id: 2,
-    designacao: "CG-11B-2024",
-    classe: "11ª Classe",
-    curso: "Contabilidade e Gestão",
-    sala: "Sala A2",
-    periodo: "Tarde",
-    anoLetivo: "2024/2025",
-    capacidade: 25,
-    matriculados: 23,
-    diretor: "Prof. Maria Santos",
-    status: "Ativo"
-  },
-  {
-    id: 3,
-    designacao: "AD-12C-2024",
-    classe: "12ª Classe",
-    curso: "Administração",
-    sala: "Sala B1",
-    periodo: "Manhã",
-    anoLetivo: "2024/2025",
-    capacidade: 35,
-    matriculados: 32,
-    diretor: "Prof. Carlos Mendes",
-    status: "Ativo"
-  },
-  {
-    id: 4,
-    designacao: "SE-10D-2024",
-    classe: "10ª Classe",
-    curso: "Secretariado Executivo",
-    sala: "Sala A3",
-    periodo: "Tarde",
-    anoLetivo: "2024/2025",
-    capacidade: 20,
-    matriculados: 18,
-    diretor: "Prof. Ana Costa",
-    status: "Ativo"
-  },
-  {
-    id: 5,
-    designacao: "ET-11A-2024",
-    classe: "11ª Classe",
-    curso: "Electrónica e Telecomunicações",
-    sala: "Lab. Electrónica",
-    periodo: "Manhã",
-    anoLetivo: "2024/2025",
-    capacidade: 15,
-    matriculados: 14,
-    diretor: "Prof. Pedro Lima",
-    status: "Ativo"
-  },
-  {
-    id: 6,
-    designacao: "IG-12B-2024",
-    classe: "12ª Classe",
-    curso: "Informática de Gestão",
-    sala: "Lab. Informática",
-    periodo: "Tarde",
-    anoLetivo: "2024/2025",
-    capacidade: 20,
-    matriculados: 19,
-    diretor: "Prof. Isabel Ferreira",
-    status: "Ativo"
-  },
-  {
-    id: 7,
-    designacao: "CG-9A-2024",
-    classe: "9ª Classe",
-    curso: "Contabilidade e Gestão",
-    sala: "Sala B2",
-    periodo: "Manhã",
-    anoLetivo: "2024/2025",
-    capacidade: 30,
-    matriculados: 25,
-    diretor: "Prof. Fernando Costa",
-    status: "Inativo"
-  }
-];
+// Dados vêm da API real através do hook useTurmaManager
 
 const periodoOptions = [
   { value: "all", label: "Todos os Períodos" },
@@ -174,39 +81,42 @@ const statusOptions = [
 ];
 
 export default function TurmasPage() {
-  const [turmas, setTurmas] = useState(mockTurmas);
-  const [filteredTurmas, setFilteredTurmas] = useState(mockTurmas);
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    turmas,
+    pagination,
+    stats,
+    isLoading,
+    error,
+    currentPage,
+    searchTerm,
+    limit,
+    handleSearch,
+    handlePageChange,
+    refetch
+  } = useTurmaManager();
+  
   const [periodoFilter, setPeriodoFilter] = useState("all");
   const [cursoFilter, setCursoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Filtrar turmas
+  // Carregar dados iniciais da API
   useEffect(() => {
-    let filtered = turmas;
+    refetch();
+  }, []);
 
-    if (searchTerm) {
-      filtered = filtered.filter(turma =>
-        turma.designacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        turma.classe.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        turma.curso.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        turma.diretor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        turma.sala.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  // Aplicar filtros locais aos dados da API
+  const filteredTurmas = useMemo(() => {
+    let filtered = turmas;
 
     if (periodoFilter !== "all") {
       filtered = filtered.filter(turma => 
-        turma.periodo.toLowerCase() === periodoFilter
+        turma.tb_periodos?.designacao.toLowerCase() === periodoFilter
       );
     }
 
     if (cursoFilter !== "all") {
       filtered = filtered.filter(turma => {
-        const cursoName = turma.curso.toLowerCase();
+        const cursoName = turma.tb_cursos?.designacao.toLowerCase() || '';
         switch (cursoFilter) {
           case "informatica":
             return cursoName.includes("informática");
@@ -226,23 +136,17 @@ export default function TurmasPage() {
 
     if (statusFilter !== "all") {
       filtered = filtered.filter(turma => 
-        turma.status.toLowerCase() === statusFilter
+        turma.status?.toLowerCase() === statusFilter
       );
     }
 
-    setFilteredTurmas(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, periodoFilter, cursoFilter, statusFilter, turmas]);
+    return filtered;
+  }, [turmas, periodoFilter, cursoFilter, statusFilter]);
 
-  // Paginação
-  const totalPages = Math.ceil(filteredTurmas.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentTurmas = filteredTurmas.slice(startIndex, endIndex);
+  // Usar dados diretamente da API (já paginados)
+  const currentTurmas = turmas;
+  const totalPages = pagination?.totalPages || 1;
 
-  const handleViewTurma = (turmaId: number) => {
-    window.location.href = `/admin/academic-management/turmas/details/${turmaId}`;
-  };
 
   const handleEditTurma = (turmaId: number) => {
     window.location.href = `/admin/academic-management/turmas/edit/${turmaId}`;
@@ -253,16 +157,52 @@ export default function TurmasPage() {
     // Implementar confirmação e exclusão
   };
 
-  // Estatísticas das turmas
+  // Estatísticas das turmas baseadas nos dados da API
   const estatisticasTurmas = [
-    { periodo: "Manhã", count: turmas.filter(t => t.periodo === "Manhã").length },
-    { periodo: "Tarde", count: turmas.filter(t => t.periodo === "Tarde").length },
-    { periodo: "Noite", count: turmas.filter(t => t.periodo === "Noite").length }
+    { periodo: "Manhã", count: turmas.filter(t => t.tb_periodos?.designacao === "Manhã").length },
+    { periodo: "Tarde", count: turmas.filter(t => t.tb_periodos?.designacao === "Tarde").length },
+    { periodo: "Noite", count: turmas.filter(t => t.tb_periodos?.designacao === "Noite").length }
   ];
 
-  const totalMatriculados = turmas.reduce((sum, turma) => sum + turma.matriculados, 0);
-  const totalCapacidade = turmas.reduce((sum, turma) => sum + turma.capacidade, 0);
-  const ocupacao = ((totalMatriculados / totalCapacidade) * 100).toFixed(1);
+  // Em produção, dados de matrícula viriam de endpoint específico
+  const totalMatriculados = 0; // Placeholder
+  const totalCapacidade = turmas.reduce((sum, turma) => sum + (turma.max_Alunos || 0), 0);
+  const ocupacao = '0'; // Placeholder até integrar com API de matrículas
+
+  // Estados de loading e error
+  if (isLoading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3B6C4D] mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Carregando turmas...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-red-500 mb-4">
+              <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Erro ao carregar turmas</h3>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={refetch} variant="outline">
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -336,7 +276,7 @@ export default function TurmasPage() {
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Turmas</p>
-            <p className="text-3xl font-bold text-gray-900">{turmas.length}</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
           </div>
           
           {/* Decorative elements */}
@@ -422,9 +362,9 @@ export default function TurmasPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar por turma, classe, curso, diretor ou sala..."
+                  placeholder="Buscar por turma, classe, curso ou sala..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -482,7 +422,7 @@ export default function TurmasPage() {
               <span>Lista de Turmas</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {filteredTurmas.length} turmas encontradas
+              {pagination?.totalItems || turmas.length} turmas encontradas
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -496,14 +436,13 @@ export default function TurmasPage() {
                   <TableHead>Sala</TableHead>
                   <TableHead>Período</TableHead>
                   <TableHead>Capacidade</TableHead>
-                  <TableHead>Diretor</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {currentTurmas.map((turma) => (
-                  <TableRow key={turma.id}>
+                  <TableRow key={turma.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
@@ -511,55 +450,41 @@ export default function TurmasPage() {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{turma.designacao}</p>
-                          <p className="text-sm text-gray-500">{turma.anoLetivo}</p>
+                          <p className="text-sm text-gray-500">Código: {turma.codigo}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-gray-900">{turma.classe}</p>
-                        <p className="text-sm text-gray-500">{turma.curso}</p>
+                        <p className="font-medium text-gray-900">{turma.tb_classes?.designacao || 'N/A'}</p>
+                        <p className="text-sm text-gray-500">{turma.tb_cursos?.designacao || 'N/A'}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <MapPin className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">{turma.sala}</span>
+                        <span className="font-medium text-gray-900">{turma.tb_salas?.designacao || 'N/A'}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Clock className="h-4 w-4 text-gray-400" />
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          {turma.periodo}
+                          {turma.tb_periodos?.designacao || 'N/A'}
                         </Badge>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-900">
-                          {turma.matriculados}/{turma.capacidade}
-                        </span>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                          <div 
-                            className="bg-[#F9CD1D] h-2 rounded-full" 
-                            style={{ width: `${(turma.matriculados / turma.capacidade) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">{turma.diretor}</span>
-                      </div>
+                      <span className="font-medium text-gray-900">
+                        {turma.max_Alunos || 0}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge 
                         variant={turma.status === "Ativo" ? "default" : "secondary"}
                         className={turma.status === "Ativo" ? "bg-emerald-100 text-emerald-800" : ""}
                       >
-                        {turma.status}
+                        {turma.status || 'Ativo'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -572,17 +497,13 @@ export default function TurmasPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewTurma(turma.id)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditTurma(turma.id)}>
+                          <DropdownMenuItem onClick={() => handleEditTurma(turma.codigo)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            onClick={() => handleDeleteTurma(turma.id)}
+                            onClick={() => handleDeleteTurma(turma.codigo)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -601,13 +522,13 @@ export default function TurmasPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredTurmas.length)} de {filteredTurmas.length} turmas
+Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, pagination?.totalItems || 0)} de {pagination?.totalItems || 0} turmas
               </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -629,7 +550,7 @@ export default function TurmasPage() {
                           key={1}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(1)}
+                          onClick={() => handlePageChange(1)}
                         >
                           1
                         </Button>
@@ -646,7 +567,7 @@ export default function TurmasPage() {
                           key={i}
                           variant={currentPage === i ? "default" : "outline"}
                           size="sm"
-                          onClick={() => setCurrentPage(i)}
+                          onClick={() => handlePageChange(i)}
                           className={currentPage === i ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
                         >
                           {i}
@@ -664,7 +585,7 @@ export default function TurmasPage() {
                           key={totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(totalPages)}
+                          onClick={() => handlePageChange(totalPages)}
                         >
                           {totalPages}
                         </Button>
@@ -677,7 +598,7 @@ export default function TurmasPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
                   disabled={currentPage === totalPages}
                 >
                   Próximo

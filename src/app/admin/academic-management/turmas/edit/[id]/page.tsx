@@ -6,7 +6,6 @@ import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -31,64 +30,32 @@ import {
   Clock,
   GraduationCap,
 } from 'lucide-react';
+import { useTurma, useUpdateTurma } from '@/hooks/useTurma';
+import { useClasses } from '@/hooks/useClass';
+import { useCourses } from '@/hooks/useCourse';
+import { useSalas } from '@/hooks/useSala';
+import { usePeriodos } from '@/hooks/usePeriodo';
+import { useAnosLectivos } from '@/hooks/useAnoLectivo';
+import { useTeacher } from '@/hooks/useTeacher';
 
-// Dados mockados para selects
-const mockClasses = [
-  { id: "1", nome: "10ª Classe", nivel: "2º Ciclo Secundário" },
-  { id: "2", nome: "11ª Classe", nivel: "2º Ciclo Secundário" },
-  { id: "3", nome: "12ª Classe", nivel: "2º Ciclo Secundário" },
-  { id: "4", nome: "13ª Classe", nivel: "Pré-Universitário" },
-];
-
-const mockCursos = [
-  { id: "1", nome: "Informática de Gestão", codigo: "IG" },
-  { id: "2", nome: "Contabilidade e Gestão", codigo: "CG" },
-  { id: "3", nome: "Administração", codigo: "AD" },
-  { id: "4", nome: "Economia", codigo: "EC" },
-];
-
-const mockSalas = [
-  { id: "1", nome: "Sala A1", capacidade: 30, localizacao: "Bloco A" },
-  { id: "2", nome: "Sala A2", capacidade: 25, localizacao: "Bloco A" },
-  { id: "3", nome: "Sala B1", capacidade: 35, localizacao: "Bloco B" },
-  { id: "4", nome: "Sala B2", capacidade: 28, localizacao: "Bloco B" },
-];
-
-const mockProfessores = [
-  { id: "1", nome: "Prof. João Silva Santos", especialidade: "Informática" },
-  { id: "2", nome: "Prof. Maria Santos Costa", especialidade: "Contabilidade" },
-  { id: "3", nome: "Prof. Carlos Mendes Lima", especialidade: "Administração" },
-  { id: "4", nome: "Prof. Ana Paula Francisco", especialidade: "Economia" },
-];
-
-const mockAnosLetivos = [
-  { id: "1", ano: "2024/2025", status: "Ativo" },
-  { id: "2", ano: "2023/2024", status: "Concluído" },
-  { id: "3", ano: "2025/2026", status: "Planejado" },
-];
-
-// Dados mockados da turma para edição
-const mockTurmaData = {
-  id: 1,
-  designacao: "IG-10A-2024",
-  classe: "1", // 10ª Classe
-  curso: "1", // Informática de Gestão
-  sala: "1", // Sala A1
-  periodo: "Manhã",
-  anoLetivo: "1", // 2024/2025
-  capacidade: "30",
-  diretor: "1", // Prof. João Silva Santos
-  observacoes: "Turma com foco em tecnologias de informação e gestão empresarial. Metodologia prática com projetos reais.",
-  status: "Ativo",
-};
+// Dados vêm da API real através dos hooks
 
 export default function EditTurmaPage() {
   const params = useParams();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true);
 
-  const turmaId = params.id;
+  const turmaId = parseInt(params.id as string);
+
+  // Hooks da API
+  const { turma, isLoading: turmaLoading, error: turmaError } = useTurma(turmaId);
+  const { updateTurma } = useUpdateTurma();
+  const { classes, isLoading: classesLoading, fetchClasses } = useClasses();
+  const { courses, loading: coursesLoading, refetch: fetchCourses } = useCourses();
+  const { salas, isLoading: salasLoading, fetchSalas } = useSalas();
+  const { periodos, isLoading: periodosLoading, fetchPeriodos } = usePeriodos();
+  const { anosLectivos, isLoading: anosLoading, fetchAnosLectivos } = useAnosLectivos();
+  const { teachers, loading: teachersLoading, getAllTeachers } = useTeacher();
 
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -100,45 +67,47 @@ export default function EditTurmaPage() {
     anoLetivo: "",
     capacidade: "",
     diretor: "",
-    observacoes: "",
     status: "Ativo",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Carregar dados iniciais dos selects
   useEffect(() => {
-    // Simular carregamento de dados da turma
-    const loadTurmaData = async () => {
-      setDataLoading(true);
-      
+    const loadInitialData = async () => {
       try {
-        // Simular API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Carregar dados mockados
-        setFormData({
-          designacao: mockTurmaData.designacao,
-          classe: mockTurmaData.classe,
-          curso: mockTurmaData.curso,
-          sala: mockTurmaData.sala,
-          periodo: mockTurmaData.periodo,
-          anoLetivo: mockTurmaData.anoLetivo,
-          capacidade: mockTurmaData.capacidade,
-          diretor: mockTurmaData.diretor,
-          observacoes: mockTurmaData.observacoes,
-          status: mockTurmaData.status,
-        });
-        
-        console.log("Dados da turma carregados:", turmaId);
+        await Promise.all([
+          fetchClasses(),
+          fetchCourses(),
+          fetchSalas(),
+          fetchPeriodos(),
+          fetchAnosLectivos(),
+          getAllTeachers()
+        ]);
       } catch (error) {
-        console.error("Erro ao carregar turma:", error);
-      } finally {
-        setDataLoading(false);
+        console.error("Erro ao carregar dados iniciais:", error);
       }
     };
 
-    loadTurmaData();
-  }, [turmaId]);
+    loadInitialData();
+  }, []);
+
+  // Carregar dados da turma quando disponível
+  useEffect(() => {
+    if (turma) {
+      setFormData({
+        designacao: turma.designacao || "",
+        classe: turma.codigo_Classe?.toString() || "",
+        curso: turma.codigo_Curso?.toString() || "",
+        sala: turma.codigo_Sala?.toString() || "",
+        periodo: turma.codigo_Periodo?.toString() || "",
+        anoLetivo: turma.codigo_AnoLectivo?.toString() || "",
+        capacidade: turma.max_Alunos?.toString() || "",
+        diretor: "", // Diretor não está na tabela tb_turmas
+        status: turma.status || "Ativo",
+      });
+    }
+  }, [turma]);
 
   const handleCancel = () => {
     router.back();
@@ -202,13 +171,22 @@ export default function EditTurmaPage() {
     setIsLoading(true);
     
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Preparar dados para API
+      const updateData = {
+        designacao: formData.designacao,
+        codigo_Classe: parseInt(formData.classe),
+        codigo_Curso: parseInt(formData.curso),
+        codigo_Sala: parseInt(formData.sala),
+        codigo_Periodo: parseInt(formData.periodo),
+        codigo_AnoLectivo: formData.anoLetivo ? parseInt(formData.anoLetivo) : undefined,
+        max_Alunos: parseInt(formData.capacidade),
+        status: formData.status,
+      };
       
-      console.log('Dados atualizados da turma:', formData);
+      await updateTurma(turmaId, updateData);
       
-      // Redirecionar para detalhes da turma
-      router.push(`/admin/academic-management/turmas/details/${turmaId}`);
+      // Redirecionar para lista de turmas
+      router.push('/admin/academic-management/turmas');
       
     } catch (error) {
       console.error('Erro ao atualizar turma:', error);
@@ -217,13 +195,37 @@ export default function EditTurmaPage() {
     }
   };
 
-  if (dataLoading) {
+  // Estados de loading
+  const isDataLoading = turmaLoading || classesLoading || coursesLoading || salasLoading || periodosLoading || anosLoading || teachersLoading;
+
+  if (isDataLoading) {
     return (
       <Container>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#3B6C4D]" />
             <p className="text-muted-foreground">Carregando dados da turma...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (turmaError) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-red-500 mb-4">
+              <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Erro ao carregar turma</h3>
+            <p className="text-muted-foreground mb-4">{turmaError}</p>
+            <Button onClick={() => router.back()} variant="outline">
+              Voltar
+            </Button>
           </div>
         </div>
       </Container>
@@ -324,9 +326,9 @@ export default function EditTurmaPage() {
                       <SelectValue placeholder="Selecione a classe" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockClasses.map((classe) => (
-                        <SelectItem key={classe.id} value={classe.id}>
-                          {classe.nome} - {classe.nivel}
+                      {classes?.map((classe: any) => (
+                        <SelectItem key={classe.codigo} value={classe.codigo.toString()}>
+                          {classe.designacao}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -348,9 +350,9 @@ export default function EditTurmaPage() {
                       <SelectValue placeholder="Selecione o curso" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockCursos.map((curso) => (
-                        <SelectItem key={curso.id} value={curso.id}>
-                          {curso.nome} ({curso.codigo})
+                      {courses?.map((curso: any) => (
+                        <SelectItem key={curso.codigo} value={curso.codigo.toString()}>
+                          {curso.designacao}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -404,9 +406,9 @@ export default function EditTurmaPage() {
                       <SelectValue placeholder="Selecione a sala" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockSalas.map((sala) => (
-                        <SelectItem key={sala.id} value={sala.id}>
-                          {sala.nome} - Cap: {sala.capacidade} ({sala.localizacao})
+                      {salas?.map((sala: any) => (
+                        <SelectItem key={sala.codigo} value={sala.codigo.toString()}>
+                          {sala.designacao}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -428,9 +430,11 @@ export default function EditTurmaPage() {
                       <SelectValue placeholder="Selecione o período" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Manhã">Manhã (07:30 - 12:00)</SelectItem>
-                      <SelectItem value="Tarde">Tarde (13:30 - 18:00)</SelectItem>
-                      <SelectItem value="Noite">Noite (19:00 - 22:30)</SelectItem>
+                      {periodos?.map((periodo: any) => (
+                        <SelectItem key={periodo.codigo} value={periodo.codigo.toString()}>
+                          {periodo.designacao}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   {errors.periodo && (
@@ -450,9 +454,9 @@ export default function EditTurmaPage() {
                       <SelectValue placeholder="Selecione o ano letivo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockAnosLetivos.map((ano) => (
-                        <SelectItem key={ano.id} value={ano.id}>
-                          {ano.ano} - {ano.status}
+                      {anosLectivos?.map((ano: any) => (
+                        <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
+                          {ano.designacao}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -473,9 +477,9 @@ export default function EditTurmaPage() {
                       <SelectValue placeholder="Selecione o diretor de turma" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockProfessores.map((professor) => (
-                        <SelectItem key={professor.id} value={professor.id}>
-                          {professor.nome} - {professor.especialidade}
+                      {teachers?.map((professor: any) => (
+                        <SelectItem key={professor.codigo} value={professor.codigo.toString()}>
+                          {professor.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -504,30 +508,6 @@ export default function EditTurmaPage() {
             </CardContent>
           </Card>
 
-          {/* Observações */}
-          <Card className="border-l-4 border-l-orange-500">
-            <CardHeader>
-              <CardTitle className="flex items-center text-xl">
-                <Users className="w-6 h-6 mr-3 text-orange-500" />
-                Observações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label htmlFor="observacoes" className="text-foreground font-semibold">
-                  Observações Gerais
-                </Label>
-                <Textarea
-                  id="observacoes"
-                  value={formData.observacoes}
-                  onChange={(e) => handleInputChange('observacoes', e.target.value)}
-                  placeholder="Informações adicionais sobre a turma, metodologia específica, etc..."
-                  rows={4}
-                  className="resize-none"
-                />
-              </div>
-            </CardContent>
-          </Card>
 
         </form>
       </div>

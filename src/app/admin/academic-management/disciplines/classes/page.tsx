@@ -209,7 +209,7 @@ export default function ClassesListPage() {
   const currentTurmas = filteredTurmas.slice(startIndex, endIndex);
 
   const handleViewTurma = (turmaId: number) => {
-    window.location.href = `/admin/academic-management/turmas/details/${turmaId}`;
+    window.location.href = `/admin/academic-management/turmas/edit/${turmaId}`;
   };
 
   const handleEditTurma = (turmaId: number) => {
