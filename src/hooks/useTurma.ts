@@ -13,10 +13,13 @@ export const useTurmas = () => {
     try {
       setIsLoading(true)
       setError(null)
+      console.log('Hook useTurmas: Buscando turmas...', { page, limit, search })
       const response = await turmaService.getTurmas(page, limit, search)
+      console.log('Hook useTurmas: Resposta recebida:', response)
       setTurmas(response.data)
       setPagination(response.pagination)
     } catch (error: any) {
+      console.error('Hook useTurmas: Erro ao buscar turmas:', error)
       setError(error.message || "Erro ao buscar turmas")
       setTurmas([])
     } finally {

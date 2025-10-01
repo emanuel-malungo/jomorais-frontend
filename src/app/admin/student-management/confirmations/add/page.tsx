@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
@@ -29,94 +29,234 @@ import {
   Search,
   GraduationCap,
 } from 'lucide-react';
-
-// Dados mockados para selects
-const mockEnrollments = [
-  { 
-    codigo: 1, 
-    tb_alunos: { nome: "Ana Silva Santos", email: "ana.santos@email.com" },
-    tb_cursos: { designacao: "Informática de Gestão" },
-    data_Matricula: "2024-02-01"
-  },
-  { 
-    codigo: 2, 
-    tb_alunos: { nome: "Carlos Manuel Pereira", email: "carlos.pereira@email.com" },
-    tb_cursos: { designacao: "Contabilidade" },
-    data_Matricula: "2024-02-03"
-  },
-  { 
-    codigo: 3, 
-    tb_alunos: { nome: "Maria João Francisco", email: "maria.francisco@email.com" },
-    tb_cursos: { designacao: "Informática de Gestão" },
-    data_Matricula: "2024-01-28"
-  },
-];
-
-const mockClasses = [
-  { 
-    codigo: 1, 
-    designacao: "IG-2024-M",
-    tb_classes: { designacao: "10ª Classe" },
-    tb_salas: { designacao: "Sala 101" },
-    tb_periodos: { designacao: "Manhã" }
-  },
-  { 
-    codigo: 2, 
-    designacao: "IG-2024-T",
-    tb_classes: { designacao: "10ª Classe" },
-    tb_salas: { designacao: "Sala 102" },
-    tb_periodos: { designacao: "Tarde" }
-  },
-  { 
-    codigo: 3, 
-    designacao: "CONT-2024-M",
-    tb_classes: { designacao: "11ª Classe" },
-    tb_salas: { designacao: "Sala 201" },
-    tb_periodos: { designacao: "Manhã" }
-  },
-];
-
-const academicYears = [
-  { value: "2024", label: "2024" },
-  { value: "2023", label: "2023" },
-];
-
+import { useCreateConfirmation } from '@/hooks/useConfirmation';
+import { useTurmas } from '@/hooks/useTurma';
+import { IConfirmationInput } from '@/types/confirmation.types';
+import api from '@/utils/api.utils';
 export default function AddConfirmationPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [enrollmentSearch, setEnrollmentSearch] = useState("");
-  const [filteredEnrollments, setFilteredEnrollments] = useState(mockEnrollments);
-
-  // Estados do formulário
-  const [formData, setFormData] = useState({
-    codigo_Matricula: "",
-    codigo_Turma: "",
-    data_Confirmacao: new Date().toISOString().split('T')[0],
-    classificacao: "Aprovado",
-    codigo_Ano_lectivo: "2024",
-    codigo_Status: "1",
+  
+  // Hooks para dados do backend
+  const { createConfirmation, loading: creatingConfirmation, error: confirmationError } = useCreateConfirmation();
+  const { turmas, isLoading: loadingTurmas, fetchTurmas } = useTurmas();
+  
+  // Estados para dados carregados
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [loadingAcademicYears, setLoadingAcademicYears] = useState(false);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<any>(null);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  
+  // Estados para busca de turmas
+  const [turmaSearch, setTurmaSearch] = useState("");
+  const [turmaSearchResults, setTurmaSearchResults] = useState<any[]>([]);
+  const [loadingTurmaSearch, setLoadingTurmaSearch] = useState(false);
+  const [showTurmaSearchResults, setShowTurmaSearchResults] = useState(false);
+  
+  const [formData, setFormData] = useState<IConfirmationInput>({
+    codigo_Matricula: 0,
+    codigo_Turma: 0,
+    data_Confirmacao: "",
+    codigo_Ano_lectivo: 0,
+    codigo_Utilizador: 1, // Temporário - deve ser o ID do usuário logado
+    codigo_Status: 1,
+    classificacao: "",
+    mes_Comecar: ""
   });
-
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Filtrar matrículas baseado na busca
-  React.useEffect(() => {
-    if (enrollmentSearch) {
-      const filtered = mockEnrollments.filter(enrollment =>
-        enrollment.tb_alunos.nome.toLowerCase().includes(enrollmentSearch.toLowerCase()) ||
-        enrollment.tb_alunos.email.toLowerCase().includes(enrollmentSearch.toLowerCase()) ||
-        enrollment.tb_cursos.designacao.toLowerCase().includes(enrollmentSearch.toLowerCase())
-      );
-      setFilteredEnrollments(filtered);
-    } else {
-      setFilteredEnrollments(mockEnrollments);
+  // Carregar dados iniciais
+  useEffect(() => {
+    const loadData = async () => {
+      console.log('Iniciando carregamento de dados...');
+      await loadAcademicYears();
+      console.log('Dados carregados!');
+    };
+    loadData();
+  }, []);
+
+  // Função para buscar alunos matriculados
+  const searchEnrollments = async (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
     }
+
+    try {
+      setLoadingSearch(true);
+      console.log('Buscando alunos:', searchTerm);
+      
+      const response = await api.get('/api/student-management/alunos-matriculados', {
+        params: { search: searchTerm }
+      });
+      
+      const data = response.data;
+      if (data.success && data.data) {
+        // Filtrar localmente por nome do aluno ou curso
+        const filtered = data.data.filter((enrollment: any) =>
+          enrollment.tb_alunos?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          enrollment.tb_cursos?.designacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          enrollment.tb_alunos?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        console.log(`${filtered.length} resultados encontrados para "${searchTerm}"`);
+        setSearchResults(filtered.slice(0, 10)); // Limitar a 10 resultados
+        setShowSearchResults(true);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar alunos:', error);
+      setSearchResults([]);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  // Função para buscar turmas usando a API paginada
+  const searchTurmas = async (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setTurmaSearchResults([]);
+      setShowTurmaSearchResults(false);
+      return;
+    }
+
+    try {
+      setLoadingTurmaSearch(true);
+      console.log('Buscando turmas:', searchTerm);
+      
+      // Tentar primeiro com parâmetro de busca
+      let response;
+      try {
+        response = await api.get('/api/academic-management/turmas', {
+          params: { search: searchTerm }
+        });
+      } catch (searchError) {
+        console.log('Erro na busca com parâmetros, tentando buscar mais turmas:', searchError);
+        // Fallback: carregar TODAS as turmas para busca completa
+        try {
+          // Primeiro, descobrir o total de turmas
+          const firstPage = await api.get('/api/academic-management/turmas', { params: { page: 1, limit: 1 } });
+          const totalItems = firstPage.data.pagination?.totalItems || 0;
+          
+          console.log(`Total de turmas no sistema: ${totalItems}`);
+          
+          // Carregar todas as turmas de uma vez com limit alto
+          response = await api.get('/api/academic-management/turmas', { 
+            params: { 
+              page: 1, 
+              limit: Math.max(totalItems, 500) // Garantir que pegue todas
+            } 
+          });
+          
+          console.log(`Carregadas ${response.data.data?.length || 0} turmas de uma vez`);
+          
+          // Mostrar estatísticas das classes
+          if (response.data.success && response.data.data) {
+            const uniqueClasses = [...new Set(response.data.data.map((t: any) => {
+              const match = t.designacao?.match(/(\d+)ª/);
+              return match ? match[1] : 'N/A';
+            }))].filter(cls => cls !== 'N/A') as string[];
+            console.log('Classes disponíveis:', uniqueClasses.sort((a, b) => parseInt(a) - parseInt(b)));
+            
+            // Contar turmas por classe
+            const classCounts: Record<string, number> = {};
+            uniqueClasses.forEach((cls: string) => {
+              classCounts[cls] = response.data.data.filter((t: any) => t.designacao?.includes(`${cls}ª`)).length;
+            });
+            console.log('Turmas por classe:', classCounts);
+          }
+          
+        } catch (fallbackError) {
+          console.log('Erro no fallback completo, tentando com limite fixo:', fallbackError);
+          response = await api.get('/api/academic-management/turmas', { params: { limit: 1000 } });
+        }
+      }
+      
+      const data = response.data;
+      if (data.success && data.data) {
+        // Se não conseguiu buscar com parâmetros, filtrar localmente
+        let filteredTurmas = data.data;
+        const hasSearchParam = response.config?.params?.search;
+        if (!hasSearchParam) {
+          console.log('Filtrando localmente. Primeiras 5 turmas:', data.data.slice(0, 5).map((t: any) => t.designacao));
+          filteredTurmas = data.data.filter((turma: any) => {
+            const match = turma.designacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         turma.tb_classes?.designacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         turma.tb_cursos?.designacao?.toLowerCase().includes(searchTerm.toLowerCase());
+            return match;
+          });
+          console.log('Turmas que passaram no filtro:', filteredTurmas.map((t: any) => t.designacao));
+        }
+        
+        console.log(`${filteredTurmas.length} turmas encontradas para "${searchTerm}"`);
+        setTurmaSearchResults(filteredTurmas.slice(0, 15)); // Limitar a 15 resultados
+        setShowTurmaSearchResults(true);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar turmas:', error);
+      setTurmaSearchResults([]);
+    } finally {
+      setLoadingTurmaSearch(false);
+    }
+  };
+
+  const loadAcademicYears = async () => {
+    try {
+      setLoadingAcademicYears(true);
+      console.log('Carregando anos letivos...');
+      // Usar a API de anos letivos
+      const response = await api.get('/api/academic-management/anos-lectivos');
+      const data = response.data;
+      console.log('Resposta da API de anos letivos:', data);
+      if (data.success) {
+        console.log('Anos letivos carregados:', data.data);
+        setAcademicYears(data.data);
+      } else {
+        console.log('API retornou erro:', data.message);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar anos letivos:', error);
+    } finally {
+      setLoadingAcademicYears(false);
+    }
+  };
+
+  // Debounce para busca de matrículas
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (enrollmentSearch) {
+        searchEnrollments(enrollmentSearch);
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [enrollmentSearch]);
 
-  const handleInputChange = (field: string, value: string) => {
+  // Debounce para busca de turmas
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (turmaSearch) {
+        searchTurmas(turmaSearch);
+      } else {
+        setTurmaSearchResults([]);
+        setShowTurmaSearchResults(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [turmaSearch]);
+
+  const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: field.includes('codigo') ? parseInt(value.toString()) : value
     }));
     
     // Limpar erro quando o usuário começar a digitar
@@ -145,6 +285,16 @@ export default function AddConfirmationPage() {
       newErrors.data_Confirmacao = "Data de confirmação não pode ser futura";
     }
 
+    // Verificar se já existe confirmação para esta matrícula no ano letivo selecionado
+    if (selectedEnrollment && selectedEnrollment.tb_confirmacoes) {
+      const existingConfirmation = selectedEnrollment.tb_confirmacoes.find(
+        (conf: any) => conf.codigo_Ano_lectivo === formData.codigo_Ano_lectivo
+      );
+      if (existingConfirmation) {
+        newErrors.codigo_Ano_lectivo = "Já existe confirmação para esta matrícula neste ano letivo";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -154,25 +304,18 @@ export default function AddConfirmationPage() {
       return;
     }
 
-    setIsLoading(true);
-    
     try {
-      // Simular chamada à API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log("Dados da confirmação:", formData);
+      // Usar o hook real para criar confirmação
+      await createConfirmation(formData);
       
       // Redirecionar para lista após sucesso
       router.push('/admin/student-management/confirmations');
     } catch (error) {
       console.error("Erro ao salvar confirmação:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const selectedEnrollment = mockEnrollments.find(e => e.codigo.toString() === formData.codigo_Matricula);
-  const selectedClass = mockClasses.find(c => c.codigo.toString() === formData.codigo_Turma);
+  // selectedClass removido - agora usamos selectedTurma
 
   return (
     <Container>
@@ -258,38 +401,81 @@ export default function AddConfirmationPage() {
                   />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Matrícula *
-                </label>
-                <Select 
-                  value={formData.codigo_Matricula} 
-                  onValueChange={(value) => handleInputChange('codigo_Matricula', value)}
-                >
-                  <SelectTrigger className={errors.codigo_Matricula ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Selecione a matrícula" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredEnrollments.map((enrollment) => (
-                      <SelectItem key={enrollment.codigo} value={enrollment.codigo.toString()}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{enrollment.tb_alunos.nome}</span>
-                          <span className="text-xs text-gray-500">
-                            {enrollment.tb_cursos.designacao} • Matrícula: {new Date(enrollment.data_Matricula).toLocaleDateString('pt-AO')}
-                          </span>
+              {/* Resultados da busca */}
+              {showSearchResults && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Resultados da Busca
+                  </label>
+                  <div className="max-h-60 overflow-y-auto border rounded-lg">
+                    {loadingSearch ? (
+                      <div className="p-4 text-center text-gray-500">
+                        Buscando...
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map((enrollment) => (
+                        <div
+                          key={enrollment.codigo}
+                          className="p-3 border-b hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            setSelectedEnrollment(enrollment);
+                            handleInputChange('codigo_Matricula', enrollment.codigo);
+                            setShowSearchResults(false);
+                            setEnrollmentSearch(enrollment.tb_alunos?.nome || '');
+                          }}
+                        >
+                          <div className="flex flex-col">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{enrollment.tb_alunos?.nome}</span>
+                              {enrollment.tb_confirmacoes && enrollment.tb_confirmacoes.length > 0 && (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                  {enrollment.tb_confirmacoes.length} confirmação(ões)
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {enrollment.tb_cursos?.designacao} • Matrícula: {new Date(enrollment.data_Matricula).toLocaleDateString('pt-AO')}
+                            </span>
+                            {enrollment.tb_alunos?.email && (
+                              <span className="text-xs text-gray-400">
+                                {enrollment.tb_alunos.email}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.codigo_Matricula && (
-                  <p className="text-sm text-red-500 flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    {errors.codigo_Matricula}
-                  </p>
-                )}
-              </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-gray-500">
+                        Nenhum resultado encontrado
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Matrícula selecionada */}
+              {selectedEnrollment && (
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-900 mb-2">Matrícula Selecionada</h4>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-green-800">{selectedEnrollment.tb_alunos?.nome}</p>
+                    <p className="text-xs text-green-600">{selectedEnrollment.tb_cursos?.designacao}</p>
+                    <p className="text-xs text-green-600">
+                      Matrícula: {new Date(selectedEnrollment.data_Matricula).toLocaleDateString('pt-AO')}
+                    </p>
+                    {selectedEnrollment.tb_alunos?.email && (
+                      <p className="text-xs text-green-600">{selectedEnrollment.tb_alunos.email}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {errors.codigo_Matricula && (
+                <p className="text-sm text-red-500 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.codigo_Matricula}
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -305,28 +491,52 @@ export default function AddConfirmationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Turma *
+                    Buscar Turma *
                   </label>
-                  <Select 
-                    value={formData.codigo_Turma} 
-                    onValueChange={(value) => handleInputChange('codigo_Turma', value)}
-                  >
-                    <SelectTrigger className={errors.codigo_Turma ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione a turma" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockClasses.map((turma) => (
-                        <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{turma.designacao}</span>
-                            <span className="text-xs text-gray-500">
-                              {turma.tb_classes.designacao} • {turma.tb_salas.designacao} • {turma.tb_periodos.designacao}
-                            </span>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Digite o nome da turma..."
+                      value={turmaSearch}
+                      onChange={(e) => setTurmaSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  
+                  {/* Resultados da busca de turmas */}
+                  {showTurmaSearchResults && (
+                    <div className="max-h-60 overflow-y-auto border rounded-lg">
+                      {loadingTurmaSearch ? (
+                        <div className="p-4 text-center text-gray-500">
+                          Buscando turmas...
+                        </div>
+                      ) : turmaSearchResults.length > 0 ? (
+                        turmaSearchResults.map((turma) => (
+                          <div
+                            key={turma.codigo}
+                            className="p-3 border-b hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              handleInputChange('codigo_Turma', turma.codigo);
+                              setShowTurmaSearchResults(false);
+                              setTurmaSearch(turma.designacao || '');
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium">{turma.designacao}</span>
+                              <span className="text-xs text-gray-500">
+                                {turma.tb_classes?.designacao} • {turma.tb_salas?.designacao} • {turma.tb_periodos?.designacao}
+                              </span>
+                            </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-gray-500">
+                          Nenhuma turma encontrada
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   {errors.codigo_Turma && (
                     <p className="text-sm text-red-500 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
@@ -358,7 +568,7 @@ export default function AddConfirmationPage() {
                     Classificação *
                   </label>
                   <Select 
-                    value={formData.classificacao} 
+                    value={formData.classificacao || undefined} 
                     onValueChange={(value) => handleInputChange('classificacao', value)}
                   >
                     <SelectTrigger className={errors.classificacao ? "border-red-500" : ""}>
@@ -383,18 +593,24 @@ export default function AddConfirmationPage() {
                     Ano Letivo *
                   </label>
                   <Select 
-                    value={formData.codigo_Ano_lectivo} 
+                    value={formData.codigo_Ano_lectivo && formData.codigo_Ano_lectivo > 0 ? formData.codigo_Ano_lectivo.toString() : undefined} 
                     onValueChange={(value) => handleInputChange('codigo_Ano_lectivo', value)}
                   >
                     <SelectTrigger className={errors.codigo_Ano_lectivo ? "border-red-500" : ""}>
                       <SelectValue placeholder="Selecione o ano letivo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {academicYears.map((year) => (
-                        <SelectItem key={year.value} value={year.value}>
-                          {year.label}
-                        </SelectItem>
-                      ))}
+                      {loadingAcademicYears ? (
+                        <SelectItem value="loading" disabled>Carregando anos letivos...</SelectItem>
+                      ) : academicYears && academicYears.length > 0 ? (
+                        academicYears.map((year: any) => (
+                          <SelectItem key={year.codigo} value={year.codigo.toString()}>
+                            {year.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-years" disabled>Nenhum ano letivo disponível</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   {errors.codigo_Ano_lectivo && (
@@ -447,18 +663,7 @@ export default function AddConfirmationPage() {
                 </div>
               )}
 
-              {selectedClass ? (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <h4 className="font-medium text-green-900 mb-2">Turma Selecionada</h4>
-                  <p className="text-sm font-semibold text-green-800">{selectedClass.designacao}</p>
-                  <p className="text-xs text-green-600">{selectedClass.tb_classes.designacao}</p>
-                  <p className="text-xs text-green-600">{selectedClass.tb_salas.designacao} • {selectedClass.tb_periodos.designacao}</p>
-                </div>
-              ) : (
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-500">Nenhuma turma selecionada</p>
-                </div>
-              )}
+              {/* Informação da turma selecionada já é mostrada na seção de busca */}
 
               {formData.data_Confirmacao && (
                 <div className="p-4 bg-yellow-50 rounded-lg">

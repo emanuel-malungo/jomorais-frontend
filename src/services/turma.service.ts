@@ -13,12 +13,15 @@ class TurmaService {
   }
 
   async getTurmas(page = 1, limit = 10, search = ""): Promise<ITurmaListResponse> {
+    console.log('TurmaService: Fazendo requisição para turmas...', { page, limit, search })
     const response = await api.get("/api/academic-management/turmas", {
       params: { page, limit, search }
     })
+    console.log('TurmaService: Resposta da API:', response.data)
     const apiResponse = response.data
 
     if (apiResponse.success) {
+      console.log('TurmaService: Dados das turmas:', apiResponse.data)
       return { data: apiResponse.data, pagination: apiResponse.pagination }
     }
     throw new Error(apiResponse.message || "Erro ao buscar turmas")
