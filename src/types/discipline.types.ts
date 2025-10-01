@@ -1,13 +1,23 @@
 export interface IDisciplineInput {
   designacao: string
   codigo_Curso: number
+  status?: number
+  cadeiraEspecifica?: number
 }
 
 export interface IDiscipline {
   codigo: number
   designacao: string
   codigo_Curso: number
-  codigo_Status: number
+  status: number
+  cadeiraEspecifica?: number
+  tb_cursos?: {
+    codigo: number
+    designacao: string
+  }
+  tb_grade_curricular?: Array<{
+    codigo: number
+  }>
 }
 
 export interface IPagination {

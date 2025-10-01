@@ -19,6 +19,7 @@ interface ConfirmDeleteModalProps {
   title?: string
   description?: string
   loading?: boolean
+  error?: string | null
 }
 
 export function ConfirmDeleteModal({ 
@@ -27,7 +28,8 @@ export function ConfirmDeleteModal({
   onConfirm, 
   title = "Confirmar Exclusão",
   description = "Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.",
-  loading = false
+  loading = false,
+  error = null
 }: ConfirmDeleteModalProps) {
   const handleConfirm = () => {
     onConfirm()
@@ -54,6 +56,18 @@ export function ConfirmDeleteModal({
           </DialogDescription>
         </DialogHeader>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-red-800 mb-1">Não é possível excluir</h4>
+                <p className="text-sm text-red-700 leading-relaxed">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <DialogFooter>
           <Button
             type="button"
@@ -61,23 +75,25 @@ export function ConfirmDeleteModal({
             onClick={handleCancel}
             disabled={loading}
           >
-            Cancelar
+            {error ? 'Fechar' : 'Cancelar'}
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={loading}
-          >
-            {loading ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Excluindo...</span>
-              </div>
-            ) : (
-              'Excluir'
-            )}
-          </Button>
+          {!error && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Excluindo...</span>
+                </div>
+              ) : (
+                'Excluir'
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -57,11 +57,15 @@ export function DisciplineModal({
       setFormData({
         designacao: discipline.designacao || '',
         codigo_Curso: discipline.codigo_Curso || 0,
+        status: discipline.status || 1,
+        cadeiraEspecifica: discipline.cadeiraEspecifica || 0,
       })
     } else if (open && !discipline) {
       setFormData({
         designacao: '',
         codigo_Curso: 0,
+        status: 1,
+        cadeiraEspecifica: 0,
       })
     }
   }, [open, discipline])
@@ -83,6 +87,8 @@ export function DisciplineModal({
       setFormData({
         designacao: '',
         codigo_Curso: 0,
+        status: 1,
+        cadeiraEspecifica: 0,
       })
     } catch (error) {
       console.error('Erro ao salvar disciplina:', error)
@@ -101,6 +107,8 @@ export function DisciplineModal({
     setFormData({
       designacao: '',
       codigo_Curso: 0,
+      status: 1,
+      cadeiraEspecifica: 0,
     })
   }
 
@@ -148,11 +156,51 @@ export function DisciplineModal({
               <SelectContent>
                 {courses.map((course) => (
                   <SelectItem key={course.codigo} value={course.codigo.toString()}>
-                    {course.designacao}
+                    {course.designacao && course.designacao.trim() 
+                      ? course.designacao 
+                      : `Curso ID ${course.codigo}`}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="status">
+                Status
+              </Label>
+              <Select
+                value={formData.status?.toString() || "1"}
+                onValueChange={(value) => handleChange('status', parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Ativa</SelectItem>
+                  <SelectItem value="0">Inativa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cadeiraEspecifica">
+                Cadeira Específica
+              </Label>
+              <Select
+                value={formData.cadeiraEspecifica?.toString() || "0"}
+                onValueChange={(value) => handleChange('cadeiraEspecifica', parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Geral</SelectItem>
+                  <SelectItem value="1">Específica</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {error && (
