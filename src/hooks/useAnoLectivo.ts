@@ -67,3 +67,80 @@ export const useAnoLectivo = (id: number) => {
     refetch: fetchAnoLectivo
   }
 }
+
+// Hook para criar ano letivo
+export const useCreateAnoLectivo = () => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createAnoLectivo = async (data: IAnoLectivoInput) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await anoLectivoService.createAnoLectivo(data)
+      return response
+    } catch (error: any) {
+      setError(error.message || "Erro ao criar ano letivo")
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return {
+    createAnoLectivo,
+    isLoading,
+    error
+  }
+}
+
+// Hook para atualizar ano letivo
+export const useUpdateAnoLectivo = () => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const updateAnoLectivo = async (id: number, data: IAnoLectivoInput) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await anoLectivoService.updateAnoLectivo(id, data)
+      return response
+    } catch (error: any) {
+      setError(error.message || "Erro ao atualizar ano letivo")
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return {
+    updateAnoLectivo,
+    isLoading,
+    error
+  }
+}
+
+// Hook para deletar ano letivo
+export const useDeleteAnoLectivo = () => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteAnoLectivo = async (id: number) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      await anoLectivoService.deleteAnoLectivo(id)
+    } catch (error: any) {
+      setError(error.message || "Erro ao deletar ano letivo")
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return {
+    deleteAnoLectivo,
+    isLoading,
+    error
+  }
+}

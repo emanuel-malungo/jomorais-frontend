@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,69 +12,83 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   Calendar,
   Save,
   Plus,
   Edit,
   Trash2,
+  X,
   CheckCircle,
   Clock,
   AlertCircle,
   BookOpen,
   Users,
   GraduationCap,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-
-interface AnoLetivo {
-  id: string;
-  nome: string;
-  inicio: string;
-  fim: string;
-  status: 'ativo' | 'inativo' | 'planejado';
-  trimestres: Trimestre[];
-}
-
-interface Trimestre {
-  id: string;
-  nome: string;
-  inicio: string;
-  fim: string;
-  status: 'ativo' | 'concluido' | 'planejado';
-}
+import { useAnosLectivos, useCreateAnoLectivo, useUpdateAnoLectivo, useDeleteAnoLectivo } from '@/hooks/useAnoLectivo';
+import { IAnoLectivoInput } from '@/types/anoLectivo.types';
 
 export default function AnoLetivoPage() {
-  const [anosLetivos] = useState<AnoLetivo[]>([
-    {
-      id: '1',
-      nome: '2024/2025',
-      inicio: '2024-09-02',
-      fim: '2025-07-15',
-      status: 'ativo',
-      trimestres: [
-        { id: '1', nome: '1º Trimestre', inicio: '2024-09-02', fim: '2024-12-15', status: 'concluido' },
-        { id: '2', nome: '2º Trimestre', inicio: '2025-01-08', fim: '2025-04-15', status: 'ativo' },
-        { id: '3', nome: '3º Trimestre', inicio: '2025-04-22', fim: '2025-07-15', status: 'planejado' }
-      ]
-    },
-    {
-      id: '2',
-      nome: '2025/2026',
-      inicio: '2025-09-01',
-      fim: '2026-07-15',
-      status: 'planejado',
-      trimestres: [
-        { id: '4', nome: '1º Trimestre', inicio: '2025-09-01', fim: '2025-12-15', status: 'planejado' },
-        { id: '5', nome: '2º Trimestre', inicio: '2026-01-08', fim: '2026-04-15', status: 'planejado' },
-        { id: '6', nome: '3º Trimestre', inicio: '2026-04-22', fim: '2026-07-15', status: 'planejado' }
-      ]
-    }
-  ]);
+  // Hooks da API
+  const { anosLectivos, pagination, isLoading, error, fetchAnosLectivos } = useAnosLectivos();
+  const { createAnoLectivo, isLoading: createLoading } = useCreateAnoLectivo();
+  const { updateAnoLectivo, isLoading: updateLoading } = useUpdateAnoLectivo();
+  const { deleteAnoLectivo, isLoading: deleteLoading } = useDeleteAnoLectivo();
 
-  const [novoAno, setNovoAno] = useState({
-    nome: '',
-    inicio: '',
-    fim: ''
+  const [novoAno, setNovoAno] = useState<IAnoLectivoInput>({
+    designacao: '',
+    mesInicial: '',
+    mesFinal: '',
+    anoInicial: '',
+    anoFinal: ''
   });
+
+  // Estados para edição
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Estado para controlar qual item está sendo deletado
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  
+  // Estados para modal de confirmação
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{id: number, nome: string} | null>(null);
+  
+  // Estados para modal de adicionar/editar
+  const [showFormModal, setShowFormModal] = useState(false);
+  
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  // Carregar dados iniciais e quando a página mudar
+  useEffect(() => {
+    fetchAnosLectivos(currentPage, itemsPerPage);
+  }, [currentPage]);
+
+  // Carregar dados iniciais na montagem
+  useEffect(() => {
+    fetchAnosLectivos(1, itemsPerPage);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -95,12 +109,129 @@ export default function AnoLetivoPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-AO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+  const formatMes = (mes: string) => {
+    const meses: { [key: string]: string } = {
+      'JANEIRO': 'Janeiro',
+      'FEVEREIRO': 'Fevereiro',
+      'MARÇO': 'Março',
+      'ABRIL': 'Abril',
+      'MAIO': 'Maio',
+      'JUNHO': 'Junho',
+      'JULHO': 'Julho',
+      'AGOSTO': 'Agosto',
+      'SETEMBRO': 'Setembro',
+      'OUTUBRO': 'Outubro',
+      'NOVEMBRO': 'Novembro',
+      'DEZEMBRO': 'Dezembro'
+    };
+    return meses[mes] || mes;
+  };
+
+  const handleCreateAnoLectivo = async () => {
+    try {
+      if (isEditing && editingId) {
+        // Atualizar ano letivo existente
+        await updateAnoLectivo(editingId, novoAno);
+        setIsEditing(false);
+        setEditingId(null);
+      } else {
+        // Criar novo ano letivo
+        await createAnoLectivo(novoAno);
+      }
+      
+      // Limpar formulário e fechar modal
+      setNovoAno({
+        designacao: '',
+        mesInicial: '',
+        mesFinal: '',
+        anoInicial: '',
+        anoFinal: ''
+      });
+      setShowFormModal(false);
+      setIsEditing(false);
+      setEditingId(null);
+      
+      await fetchAnosLectivos(currentPage, itemsPerPage); // Recarregar lista
+    } catch (error) {
+      console.error('Erro ao salvar ano letivo:', error);
+    }
+  };
+
+  const handleEditAnoLectivo = (ano: any) => {
+    setNovoAno({
+      designacao: ano.designacao,
+      mesInicial: ano.mesInicial,
+      mesFinal: ano.mesFinal,
+      anoInicial: ano.anoInicial,
+      anoFinal: ano.anoFinal
     });
+    setEditingId(ano.codigo);
+    setIsEditing(true);
+    setShowFormModal(true);
+  };
+
+  const handleNewAnoLectivo = () => {
+    setNovoAno({
+      designacao: '',
+      mesInicial: '',
+      mesFinal: '',
+      anoInicial: '',
+      anoFinal: ''
+    });
+    setIsEditing(false);
+    setEditingId(null);
+    setShowFormModal(true);
+  };
+
+  const handleCancelEdit = () => {
+    setNovoAno({
+      designacao: '',
+      mesInicial: '',
+      mesFinal: '',
+      anoInicial: '',
+      anoFinal: ''
+    });
+    setIsEditing(false);
+    setEditingId(null);
+    setShowFormModal(false);
+  };
+
+  const handleDeleteClick = (ano: any) => {
+    setItemToDelete({ id: ano.codigo, nome: ano.designacao });
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    console.log('Tentando excluir ano letivo com ID:', itemToDelete.id);
+    setDeletingId(itemToDelete.id);
+    setShowDeleteModal(false);
+    
+    try {
+      console.log('Chamando deleteAnoLectivo para ID:', itemToDelete.id);
+      await deleteAnoLectivo(itemToDelete.id);
+      console.log('Ano letivo excluído com sucesso:', itemToDelete.id);
+      
+      // Recarregar lista
+      console.log('Recarregando lista de anos letivos...');
+      await fetchAnosLectivos(currentPage, itemsPerPage);
+      console.log('Lista recarregada com sucesso');
+      
+    } catch (error: any) {
+      console.error('Erro detalhado ao excluir ano letivo:', error);
+      console.error('Mensagem do erro:', error.message);
+      console.error('Stack do erro:', error.stack);
+      alert(`Erro ao excluir ano letivo: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setDeletingId(null);
+      setItemToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
   };
 
   return (
@@ -127,7 +258,10 @@ export default function AnoLetivoPage() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white">
+              <Button 
+                onClick={handleNewAnoLectivo}
+                className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Ano Letivo
               </Button>
@@ -149,12 +283,12 @@ export default function AnoLetivoPage() {
             </div>
             <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
               <CheckCircle className="h-3 w-3 text-green-500" />
-              <span className="font-bold text-xs text-green-600">Ativo</span>
+              <span className="font-bold text-xs text-green-600">Total</span>
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-green-600">Ano Letivo Atual</p>
-            <p className="text-3xl font-bold text-gray-900">2024/2025</p>
+            <p className="text-sm font-semibold mb-2 text-green-600">Anos Letivos</p>
+            <p className="text-3xl font-bold text-gray-900">{anosLectivos.length}</p>
           </div>
         </div>
 
@@ -165,12 +299,14 @@ export default function AnoLetivoPage() {
             </div>
             <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
               <Clock className="h-3 w-3 text-blue-500" />
-              <span className="font-bold text-xs text-blue-600">Em Curso</span>
+              <span className="font-bold text-xs text-blue-600">Atual</span>
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-[#182F59]">Trimestre Atual</p>
-            <p className="text-3xl font-bold text-gray-900">2º Trimestre</p>
+            <p className="text-sm font-semibold mb-2 text-[#182F59]">Ano Atual</p>
+            <p className="text-3xl font-bold text-gray-900">
+              {anosLectivos.length > 0 ? anosLectivos[0]?.designacao : '-'}
+            </p>
           </div>
         </div>
 
@@ -181,12 +317,12 @@ export default function AnoLetivoPage() {
             </div>
             <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
               <Users className="h-3 w-3 text-yellow-500" />
-              <span className="font-bold text-xs text-yellow-600">1.247</span>
+              <span className="font-bold text-xs text-yellow-600">API</span>
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Alunos Matriculados</p>
-            <p className="text-3xl font-bold text-gray-900">1.247</p>
+            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Status</p>
+            <p className="text-3xl font-bold text-gray-900">Conectado</p>
           </div>
         </div>
 
@@ -197,71 +333,18 @@ export default function AnoLetivoPage() {
             </div>
             <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
               <Calendar className="h-3 w-3 text-purple-500" />
-              <span className="font-bold text-xs text-purple-600">87 dias</span>
+              <span className="font-bold text-xs text-purple-600">Real</span>
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-purple-600">Dias Letivos Restantes</p>
-            <p className="text-3xl font-bold text-gray-900">87</p>
+            <p className="text-sm font-semibold mb-2 text-purple-600">Dados da API</p>
+            <p className="text-3xl font-bold text-gray-900">✓</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Novo Ano Letivo */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Plus className="h-5 w-5" />
-              <span>Novo Ano Letivo</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Nome do Ano Letivo
-              </label>
-              <Input
-                value={novoAno.nome}
-                onChange={(e) => setNovoAno(prev => ({ ...prev, nome: e.target.value }))}
-                placeholder="Ex: 2025/2026"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Data de Início
-              </label>
-              <Input
-                type="date"
-                value={novoAno.inicio}
-                onChange={(e) => setNovoAno(prev => ({ ...prev, inicio: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Data de Fim
-              </label>
-              <Input
-                type="date"
-                value={novoAno.fim}
-                onChange={(e) => setNovoAno(prev => ({ ...prev, fim: e.target.value }))}
-              />
-            </div>
-
-            <div className="pt-4">
-              <Button className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white w-full">
-                <Save className="w-4 h-4 mr-2" />
-                Criar Ano Letivo
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Lista de Anos Letivos */}
-        <div className="lg:col-span-2">
-          <Card>
+      {/* Lista de Anos Letivos */}
+      <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Calendar className="h-5 w-5" />
@@ -269,59 +352,353 @@ export default function AnoLetivoPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {anosLetivos.map((ano) => (
-                  <div key={ano.id} className="border rounded-lg p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{ano.nome}</h3>
-                          <p className="text-sm text-gray-600">
-                            {formatDate(ano.inicio)} - {formatDate(ano.fim)}
-                          </p>
-                        </div>
-                        <Badge className={getStatusColor(ano.status)}>
-                          {getStatusIcon(ano.status)}
-                          <span className="ml-1 capitalize">{ano.status}</span>
-                        </Badge>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Trimestres */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-gray-900">Trimestres</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {ano.trimestres.map((trimestre) => (
-                          <div key={trimestre.id} className="border rounded-lg p-4 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <h5 className="font-medium text-sm text-gray-900">{trimestre.nome}</h5>
-                              <Badge className={`text-xs ${getStatusColor(trimestre.status)}`}>
-                                {getStatusIcon(trimestre.status)}
-                                <span className="ml-1 capitalize">{trimestre.status}</span>
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-gray-600">
-                              {formatDate(trimestre.inicio)} - {formatDate(trimestre.fim)}
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#F9CD1D]" />
+                  <span className="ml-2 text-gray-600">Carregando anos letivos...</span>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <Button onClick={() => fetchAnosLectivos()} variant="outline">
+                    Tentar novamente
+                  </Button>
+                </div>
+              ) : anosLectivos.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">Nenhum ano letivo encontrado.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {anosLectivos.map((ano) => (
+                    <div key={ano.codigo} className="border rounded-lg p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">{ano.designacao}</h3>
+                            <p className="text-sm text-gray-600">
+                              {formatMes(ano.mesInicial)} {ano.anoInicial} - {formatMes(ano.mesFinal)} {ano.anoFinal}
                             </p>
                           </div>
-                        ))}
+                          <Badge className="bg-green-100 text-green-800">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="ml-1">Ativo</span>
+                          </Badge>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditAnoLectivo(ano)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDeleteClick(ano)}
+                            disabled={deletingId === ano.codigo}
+                          >
+                            {deletingId === ano.codigo ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Paginação Completa */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between space-x-2 py-4">
+                  <div className="text-sm text-gray-500">
+                    Mostrando {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} a {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} de {pagination.totalItems} anos letivos
                   </div>
-                ))}
-              </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1 || isLoading}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Anterior
+                    </Button>
+                    <div className="flex items-center space-x-1">
+                      {(() => {
+                        const maxPagesToShow = 5;
+                        const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                        const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
+                        const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
+                        
+                        const pages = [];
+                        
+                        // Primeira página
+                        if (adjustedStartPage > 1) {
+                          pages.push(
+                            <Button
+                              key={1}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage(1)}
+                              disabled={isLoading}
+                            >
+                              1
+                            </Button>
+                          );
+                          if (adjustedStartPage > 2) {
+                            pages.push(<span key="ellipsis1" className="px-2">...</span>);
+                          }
+                        }
+                        
+                        // Páginas do meio
+                        for (let i = adjustedStartPage; i <= endPage; i++) {
+                          pages.push(
+                            <Button
+                              key={i}
+                              variant={currentPage === i ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(i)}
+                              disabled={isLoading}
+                              className={currentPage === i ? "bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white" : ""}
+                            >
+                              {i}
+                            </Button>
+                          );
+                        }
+                        
+                        // Última página
+                        if (endPage < pagination.totalPages) {
+                          if (endPage < pagination.totalPages - 1) {
+                            pages.push(<span key="ellipsis2" className="px-2">...</span>);
+                          }
+                          pages.push(
+                            <Button
+                              key={pagination.totalPages}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage(pagination.totalPages)}
+                              disabled={isLoading}
+                            >
+                              {pagination.totalPages}
+                            </Button>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                      disabled={currentPage === pagination.totalPages || isLoading}
+                    >
+                      Próximo
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+
+      {/* Modal de Formulário */}
+      <Dialog open={showFormModal} onOpenChange={setShowFormModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              {isEditing ? (
+                <>
+                  <Edit className="h-5 w-5" />
+                  <span>Editar Ano Letivo</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="h-5 w-5" />
+                  <span>Novo Ano Letivo</span>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Designação do Ano Letivo
+              </label>
+              <Input
+                value={novoAno.designacao}
+                onChange={(e) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, designacao: e.target.value }))}
+                placeholder="Ex: 2025/2026"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Mês Inicial
+                </label>
+                <Select
+                  value={novoAno.mesInicial}
+                  onValueChange={(value: string) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, mesInicial: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="JANEIRO">Janeiro</SelectItem>
+                    <SelectItem value="FEVEREIRO">Fevereiro</SelectItem>
+                    <SelectItem value="MARÇO">Março</SelectItem>
+                    <SelectItem value="ABRIL">Abril</SelectItem>
+                    <SelectItem value="MAIO">Maio</SelectItem>
+                    <SelectItem value="JUNHO">Junho</SelectItem>
+                    <SelectItem value="JULHO">Julho</SelectItem>
+                    <SelectItem value="AGOSTO">Agosto</SelectItem>
+                    <SelectItem value="SETEMBRO">Setembro</SelectItem>
+                    <SelectItem value="OUTUBRO">Outubro</SelectItem>
+                    <SelectItem value="NOVEMBRO">Novembro</SelectItem>
+                    <SelectItem value="DEZEMBRO">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Ano Inicial
+                </label>
+                <Input
+                  value={novoAno.anoInicial}
+                  onChange={(e) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, anoInicial: e.target.value }))}
+                  placeholder="Ex: 2025"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Mês Final
+                </label>
+                <Select
+                  value={novoAno.mesFinal}
+                  onValueChange={(value: string) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, mesFinal: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="JANEIRO">Janeiro</SelectItem>
+                    <SelectItem value="FEVEREIRO">Fevereiro</SelectItem>
+                    <SelectItem value="MARÇO">Março</SelectItem>
+                    <SelectItem value="ABRIL">Abril</SelectItem>
+                    <SelectItem value="MAIO">Maio</SelectItem>
+                    <SelectItem value="JUNHO">Junho</SelectItem>
+                    <SelectItem value="JULHO">Julho</SelectItem>
+                    <SelectItem value="AGOSTO">Agosto</SelectItem>
+                    <SelectItem value="SETEMBRO">Setembro</SelectItem>
+                    <SelectItem value="OUTUBRO">Outubro</SelectItem>
+                    <SelectItem value="NOVEMBRO">Novembro</SelectItem>
+                    <SelectItem value="DEZEMBRO">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Ano Final
+                </label>
+                <Input
+                  value={novoAno.anoFinal}
+                  onChange={(e) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, anoFinal: e.target.value }))}
+                  placeholder="Ex: 2026"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelEdit}
+              disabled={createLoading || updateLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateAnoLectivo}
+              disabled={createLoading || updateLoading}
+              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white"
+            >
+              {(createLoading || updateLoading) ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {isEditing ? 'Atualizando...' : 'Criando...'}
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {isEditing ? 'Atualizar' : 'Criar'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <span>Confirmar Exclusão</span>
+            </DialogTitle>
+            <DialogDescription className="text-left">
+              Tem certeza que deseja excluir o ano letivo{' '}
+              <span className="font-semibold text-gray-900">
+                {itemToDelete?.nome}
+              </span>
+              ?
+              <br />
+              <br />
+              <span className="text-red-600 font-medium">
+                Esta ação não pode ser desfeita.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelDelete}
+              disabled={deletingId !== null}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deletingId !== null}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deletingId === itemToDelete?.id ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }

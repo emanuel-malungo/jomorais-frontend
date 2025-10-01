@@ -45,12 +45,20 @@ class AnoLectivoService {
   }
 
   async deleteAnoLectivo(id: number): Promise<void> {
+    console.log(`Fazendo requisição DELETE para: /api/academic-management/anos-lectivos/${id}`);
+    
     const response = await api.delete(`/api/academic-management/anos-lectivos/${id}`)
+    console.log('Resposta da API DELETE:', response);
+    
     const apiResponse = response.data
+    console.log('Dados da resposta:', apiResponse);
 
     if (!apiResponse.success) {
+      console.error('API retornou erro:', apiResponse.message);
       throw new Error(apiResponse.message || "Erro ao deletar ano letivo")
     }
+    
+    console.log('Ano letivo deletado com sucesso via API');
   }
 }
 
