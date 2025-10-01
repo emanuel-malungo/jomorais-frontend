@@ -44,8 +44,8 @@ import {
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
-import { CourseModal } from '@/components/ui/course-modal';
-import { ConfirmDeleteModal } from '@/components/ui/confirm-delete-modal';
+import { CourseModal } from '@/components/course/course-modal';
+import { ConfirmDeleteModal } from '@/components/course/confirm-delete-modal';
 
 import { useCourses, useDeleteCourse } from '@/hooks/useCourse';
 import { ICourse } from '@/types/course.types';
@@ -54,22 +54,6 @@ const statusOptions = [
   { value: "all", label: "Todos os Status" },
   { value: "1", label: "Ativo" },
   { value: "0", label: "Inativo" },
-];
-
-const nivelOptions = [
-  { value: "all", label: "Todos os Níveis" },
-  { value: "ensino primário", label: "Ensino Primário" },
-  { value: "1º ciclo secundário", label: "1º Ciclo Secundário" },
-  { value: "2º ciclo secundário", label: "2º Ciclo Secundário" },
-  { value: "pré-universitário", label: "Pré-Universitário" },
-  { value: "técnico profissional", label: "Técnico Profissional" },
-];
-
-const modalidadeOptions = [
-  { value: "all", label: "Todas as Modalidades" },
-  { value: "presencial", label: "Presencial" },
-  { value: "semi-presencial", label: "Semi-Presencial" },
-  { value: "à distância", label: "À Distância" },
 ];
 
 export default function ListCoursePage() {
@@ -240,7 +224,6 @@ export default function ListCoursePage() {
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Curso</TableHead>
                   <TableHead>Código</TableHead>
-                  <TableHead>Observações</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -287,11 +270,6 @@ export default function ListCoursePage() {
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                           {course.codigo || 'N/A'}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm text-gray-600 max-w-xs truncate">
-                          {course.observacoes || 'Sem observações'}
-                        </p>
                       </TableCell>
                       <TableCell>
                         <Badge 

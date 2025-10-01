@@ -1,13 +1,12 @@
 export interface ICourseInput {
   designacao: string
-  observacoes?: string
+  codigo_Status: number
 }
 
 export interface ICourse {
   codigo: number
   designacao: string
   codigo_Status: number
-  observacoes?: string
 }
 
 export interface IPagination {
