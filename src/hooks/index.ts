@@ -13,6 +13,7 @@ export * from './useGeographic';
 export * from './useMatricula';
 export * from './useOrigins';
 export * from './usePeriodo';
+export * from './useProfession';
 export * from './useResponsible';
 export * from './useSala';
 export * from './useTurma';

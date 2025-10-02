@@ -55,6 +55,7 @@ import {
 } from 'lucide-react';
 import BIService from '@/services/bi.service';
 import { ConsultaBilheteResponse } from '@/types/bi.types';
+import { useProfessions } from '@/hooks/useProfession';
 
 type AddStudentFormData = yup.InferType<typeof addStudentSchema>;
 
@@ -116,6 +117,9 @@ export default function AddStudentPage() {
   // Watch para mudanças geográficas
   const watchProvincia = watch("provincia");
   const watchMunicipio = watch("municipio");
+
+  // Hook de profissões
+  
 
   // Dados de profissões (você pode criar um hook ou usar dados estáticos)
   const profissoes = [
