@@ -45,31 +45,23 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
+
+
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
 import useStudent from '@/hooks/useStudent';
 import { Student } from '@/types/student.types';
-
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "1", label: "Ativo" },
-  { value: "0", label: "Inativo" },
-];
-
-const courseOptions = [
-  { value: "all", label: "Todos os Cursos" },
-  { value: "ensino primário", label: "Ensino Primário" },
-  { value: "enfermagem geral", label: "Enfermagem Geral" },
-  { value: "i ciclo", label: "I Ciclo" },
-  { value: "analises clinicas", label: "Análises Clínicas" },
-  { value: "iniciação", label: "Iniciação" },
-];
+import { useStatus } from '@/hooks/useStatusControl';
+import { useCourses } from '@/hooks/useCourse';
 
 export default function ListStudentPage() {
   const { students, loading, error, pagination, getAllStudents } = useStudent();
 
+  // Buscar dados de status e cursos
+  const { status } = useStatus(1, 100, ""); // Carregar todos os status
+  const { courses } = useCourses(1, 100, ""); // Carregar todos os cursos
   
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -78,9 +70,37 @@ export default function ListStudentPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
+  // Criar opções de status dinamicamente
+  const statusOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Status" }];
+    if (status && status.length > 0) {
+      status.forEach((s) => {
+        options.push({
+          value: s.codigo.toString(),
+          label: s.designacao
+        });
+      });
+    }
+    return options;
+  }, [status]);
+
+  // Criar opções de cursos dinamicamente
+  const courseOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Cursos" }];
+    if (courses && courses.length > 0) {
+      courses.forEach((c) => {
+        options.push({
+          value: c.codigo.toString(),
+          label: c.designacao
+        });
+      });
+    }
+    return options;
+  }, [courses]);
+
   // Carregar TODOS os estudantes para pesquisa global
   useEffect(() => {
-    getAllStudents(1, 1000); // Carregar até 1000 estudantes
+    getAllStudents(1, 100); // Carregar até 100 estudantes
   }, [getAllStudents]);
 
   // Filtrar estudantes (aplicado aos dados da página atual)
@@ -110,8 +130,7 @@ export default function ListStudentPage() {
     if (courseFilter !== "all") {
       filtered = filtered.filter(student => {
         if (!student.tb_matriculas) return false;
-        const courseName = student.tb_matriculas.tb_cursos.designacao.toLowerCase();
-        return courseName.includes(courseFilter);
+        return student.tb_matriculas.tb_cursos.codigo.toString() === courseFilter;
       });
     }
 
@@ -207,7 +226,7 @@ export default function ListStudentPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total de Alunos"
-          value={localPagination.totalItems.toString()}
+          value={(pagination?.totalItems || 0).toString()}
           change="+8.2%"
           changeType="up"
           icon={Users}

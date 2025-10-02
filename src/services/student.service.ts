@@ -1,4 +1,5 @@
 import api from "@/utils/api.utils";
+import { toast } from "react-toastify";
 import { Student, StudentCreateData, StudentResponse } from "@/types/student.types";
 
 export default class StudentService {
@@ -60,9 +61,11 @@ export default class StudentService {
             const apiResponse = response.data;
             
             if (apiResponse.success) {
+                toast.success('Aluno criado com sucesso!');
                 return apiResponse.data;
             } else {
                 throw new Error(apiResponse.message || 'Erro ao criar aluno');
+                toast.error(apiResponse.message || 'Erro ao criar aluno');
             }
         } catch (error) {
             console.error("Erro ao criar aluno:", error);
@@ -88,9 +91,11 @@ export default class StudentService {
             const apiResponse = response.data;
             
             if (apiResponse.success) {
+                toast.success('Aluno atualizado com sucesso!');
                 return apiResponse.data;
             } else {
                 throw new Error(apiResponse.message || 'Erro ao atualizar aluno');
+                toast.error(apiResponse.message || 'Erro ao atualizar aluno');
             }
         } catch (error) {
             console.error("Erro ao atualizar aluno:", error);
@@ -105,6 +110,7 @@ export default class StudentService {
             const apiResponse = response.data;
             
             if (!apiResponse.success) {
+                toast.error(apiResponse.message || 'Erro ao deletar aluno');
                 throw new Error(apiResponse.message || 'Erro ao deletar aluno');
             }
         } catch (error) {
