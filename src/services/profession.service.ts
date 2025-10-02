@@ -9,7 +9,6 @@ class ProfessionService {
   static async getAllProfessions(): Promise<Profession[]> {
     try {
       const response = await api.get<Profession[]>("/api/institutional/profissoes");
-      console.log("Profissões carregadas:", response.data);
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar profissões:", error);

@@ -16,5 +16,6 @@ export * from './usePeriodo';
 export * from './useProfession';
 export * from './useResponsible';
 export * from './useSala';
+export * from './useStatusControl';
 export * from './useTurma';
 export * from './useUsers';

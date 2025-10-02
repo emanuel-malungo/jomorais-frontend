@@ -56,6 +56,8 @@ import {
 import BIService from '@/services/bi.service';
 import { ConsultaBilheteResponse } from '@/types/bi.types';
 import { useProfessions } from '@/hooks/useProfession';
+import { ITipoStatus } from '@/types/status-control.types';
+import { useStatus } from '@/hooks/useStatusControl';
 
 type AddStudentFormData = yup.InferType<typeof addStudentSchema>;
 
@@ -119,18 +121,10 @@ export default function AddStudentPage() {
   const watchMunicipio = watch("municipio");
 
   // Hook de profissões
-  
-
-  // Dados de profissões (você pode criar um hook ou usar dados estáticos)
-  const profissoes = [
-    { codigo: 1, designacao: "Médico" },
-    { codigo: 2, designacao: "Professor" },
-    { codigo: 3, designacao: "Engenheiro" },
-    { codigo: 4, designacao: "Comerciante" },
-    { codigo: 5, designacao: "Funcionário Público" },
-    { codigo: 6, designacao: "Empresário" },
-    { codigo: 7, designacao: "Outro" },
-  ];
+  const { professions, loading: loadingProfessions } = useProfessions();
+    
+  // Hook de status
+  const { status, loading: loadingStatus } = useStatus();
 
   // Função para consultar o BI
   const handleConsultBI = async () => {
@@ -860,7 +854,7 @@ export default function AddStudentPage() {
                               <SelectValue placeholder="Selecione a profissão" />
                             </SelectTrigger>
                             <SelectContent>
-                              {profissoes.map((prof) => (
+                              {professions.map((prof) => (
                                 <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
                                   {prof.designacao}
                                 </SelectItem>
@@ -906,13 +900,22 @@ export default function AddStudentPage() {
                         <Select 
                           onValueChange={(value) => field.onChange(parseInt(value))} 
                           value={field.value?.toString()}
+                          disabled={loadingStatus}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione o status" />
+                            <SelectValue placeholder={loadingStatus ? "Carregando..." : "Selecione o status"} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="1">Ativo</SelectItem>
-                            <SelectItem value="0">Inativo</SelectItem>
+                            {status.map((statusItem) => (
+                              <SelectItem key={statusItem.codigo} value={statusItem.codigo.toString()}>
+                                {statusItem.designacao}
+                                {statusItem.tb_tipo_status && (
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    ({statusItem.tb_tipo_status.designacao})
+                                  </span>
+                                )}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
@@ -921,7 +924,7 @@ export default function AddStudentPage() {
                       <p className="text-sm text-red-500">{errors.encarregado.status.message}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Por padrão, o encarregado será criado como Ativo
+                      Selecione o status do encarregado
                     </p>
                   </div>
 
