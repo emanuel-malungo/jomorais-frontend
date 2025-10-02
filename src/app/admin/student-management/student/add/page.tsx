@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm, Controller } from 'react-hook-form';
@@ -8,7 +8,7 @@ import Container from '@/components/layout/Container';
 import useStudent from '@/hooks/useStudent';
 import { useGeographic } from '@/hooks/useGeographic';
 import { useDocumentTypes } from '@/hooks/useDocument';
-import { addStudentSchema } from '@/validations/student-management.validatios';
+import { addStudentSchema } from '@/validations/student.validatios';
 import * as yup from 'yup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card';
 import {
   Select,
@@ -32,6 +33,15 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import {
   UserPlus,
   ArrowLeft,
   Save,
@@ -39,42 +49,26 @@ import {
   FileText,
   Users,
   AlertCircle,
+  Search,
+  CheckCircle,
+  Loader2,
 } from 'lucide-react';
 import BIService from '@/services/bi.service';
+import { ConsultaBilheteResponse } from '@/types/bi.types';
 
 type AddStudentFormData = yup.InferType<typeof addStudentSchema>;
-
-// Hooks para dados que ainda não têm API
-const useEncarregados = () => {
-  // Mock - deve ser substituído por hook real
-  return {
-    encarregados: [
-      { codigo: 1, nome: "João Silva" },
-      { codigo: 2, nome: "Maria Santos" },
-      { codigo: 3, nome: "Pedro Costa" },
-    ],
-    loading: false
-  };
-};
-
-const useUtilizadores = () => {
-  // Mock - deve ser substituído por hook real
-  return {
-    utilizadores: [
-      { codigo: 1, nome: "Admin Sistema" },
-      { codigo: 2, nome: "Secretário" },
-    ],
-    loading: false
-  };
-};
-
-
 
 export default function AddStudentPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("personal");
-  const { createStudent, loading, error } = useStudent();
+  const [showBIModal, setShowBIModal] = useState(true);
+  const [biNumber, setBiNumber] = useState("");
+  const [loadingBI, setLoadingBI] = useState(false);
+  const [biError, setBiError] = useState("");
+  const [biData, setBiData] = useState<ConsultaBilheteResponse | null>(null);
   
+  const { createStudent, loading, error } = useStudent();
+
   // Configuração do react-hook-form com yupResolver
   const {
     control,
@@ -89,728 +83,888 @@ export default function AddStudentPage() {
       nome: "",
       pai: "",
       mae: "",
-      codigo_Nacionalidade: "",
-      dataNascimento: "",
+      codigo_Nacionalidade: undefined, 
+      dataNascimento: undefined, 
       email: "",
       telefone: "",
-      codigo_Comuna: "",
-      codigo_Encarregado: "",
+      codigo_Comuna: undefined, 
       codigo_Utilizador: "",
       sexo: "",
       n_documento_identificacao: "",
       saldo: 0,
       morada: "",
-      codigoTipoDocumento: "",
+      codigoTipoDocumento: undefined,
       provincia: "",
       municipio: "",
+
+      // Novo objeto aninhado
+      encarregado: {
+        nome: "",
+        telefone: "",
+        email: "",
+        codigo_Profissao: undefined,
+        local_Trabalho: "",
+        status: undefined
+      }
     }
   });
 
-  useEffect(() => {
-    BIService.fetchBIDetails("007537847LA041").then(data => {
-      console.log("Detalhes do BI:", data);
-    }).catch(error => {
-      console.error("Erro ao buscar detalhes do BI:", error);
-    });
-  }, []);
-  
   // Hooks geográficos
-  const { 
-    nacionalidades, 
-    provincias,
-    municipios,
-    comunas 
-  } = useGeographic();
+  const geographic = useGeographic();
+  console.log(geographic, 'geographic');
+  const { documentTypes, loading: loadingDocTypes } = useDocumentTypes();
 
-  // Hooks para dados relacionados
-  const { encarregados } = useEncarregados();
-  const { utilizadores } = useUtilizadores();
-  const { documentTypes, loading: loadingDocumentTypes } = useDocumentTypes();
-
-  // Estados para seleções hierárquicas
-  const [selectedProvinciaId, setSelectedProvinciaId] = useState<number | undefined>();
-  const [selectedMunicipioId, setSelectedMunicipioId] = useState<number | undefined>();
-
-  // Observar mudanças nos campos de hierarquia geográfica
+  // Watch para mudanças geográficas
   const watchProvincia = watch("provincia");
   const watchMunicipio = watch("municipio");
 
-  // Lógica para hierarquia geográfica
-  useEffect(() => {
-    if (watchProvincia) {
-      const provinciaId = parseInt(watchProvincia);
-      setSelectedProvinciaId(provinciaId);
-      setSelectedMunicipioId(undefined);
-      setValue("municipio", "");
-      setValue("codigo_Comuna", "");
-      // Buscar municípios da província selecionada
-      municipios.getMunicipiosByProvincia(provinciaId);
-    }
-  }, [watchProvincia, municipios, setValue]);
+  // Dados de profissões (você pode criar um hook ou usar dados estáticos)
+  const profissoes = [
+    { codigo: 1, designacao: "Médico" },
+    { codigo: 2, designacao: "Professor" },
+    { codigo: 3, designacao: "Engenheiro" },
+    { codigo: 4, designacao: "Comerciante" },
+    { codigo: 5, designacao: "Funcionário Público" },
+    { codigo: 6, designacao: "Empresário" },
+    { codigo: 7, designacao: "Outro" },
+  ];
 
-  useEffect(() => {
-    if (watchMunicipio) {
-      const municipioId = parseInt(watchMunicipio);
-      setSelectedMunicipioId(municipioId);
-      setValue("codigo_Comuna", "");
-      // Buscar comunas do município selecionado
-      comunas.getComunasByMunicipio(municipioId);
+  // Função para consultar o BI
+  const handleConsultBI = async () => {
+    if (!biNumber.trim()) {
+      setBiError("Por favor, digite o número do BI");
+      return;
     }
-  }, [watchMunicipio, comunas, setValue]);
 
-  const onSubmit = async (data: any) => {
+    setBiError("");
+    setLoadingBI(true);
+
     try {
-      // Criar objeto Student baseado nos campos esperados pela API
-      const studentData = {
-        nome: data.nome,
-        pai: data.pai || undefined,
-        mae: data.mae || undefined,
-        codigo_Nacionalidade: parseInt(data.codigo_Nacionalidade),
-        dataNascimento: data.dataNascimento,
-        email: data.email || undefined,
-        telefone: data.telefone || undefined,
-        codigo_Comuna: parseInt(data.codigo_Comuna),
-        codigo_Encarregado: parseInt(data.codigo_Encarregado),
-        codigo_Utilizador: parseInt(data.codigo_Utilizador || "1"), // Temporário
-        sexo: data.sexo,
-        n_documento_identificacao: data.n_documento_identificacao,
-        saldo: data.saldo || 0,
-        morada: data.morada || undefined,
-        codigoTipoDocumento: parseInt(data.codigoTipoDocumento)
-      };
+      const data = await BIService.fetchBIDetails(biNumber.trim());
       
-      await createStudent(studentData as any);
-      
-      if (!error) {
-        // Redirecionar para lista após sucesso
-        router.push('/admin/student-management/student');
+      if (data.error) {
+        setBiError("Erro ao consultar BI. Verifique o número e tente novamente.");
+        return;
       }
+
+      setBiData(data);
+      
+      // Auto-preencher formulário com os dados do BI
+      setValue("nome", data.name || "");
+      setValue("pai", data.pai || "");
+      setValue("mae", data.mae || "");
+      setValue("n_documento_identificacao", biNumber.trim());
+      
+      // Converter data de nascimento de YYYY-MM-DD para Date
+      if (data.data_de_nascimento) {
+        setValue("dataNascimento", new Date(data.data_de_nascimento) as any);
+      }
+      
+      if (data.morada) {
+        setValue("morada", data.morada);
+      }
+
+      // Fechar modal após sucesso
+      setTimeout(() => {
+        setShowBIModal(false);
+      }, 1500);
+
     } catch (error) {
-      console.error("Erro ao salvar aluno:", error);
+      console.error("Erro ao buscar detalhes do BI:", error);
+      setBiError("Erro ao consultar BI. Tente novamente mais tarde.");
+    } finally {
+      setLoadingBI(false);
+    }
+  };
+
+  // Função para pular a consulta do BI
+  const handleSkipBI = () => {
+    setShowBIModal(false);
+    setBiData(null);
+  };
+
+  const onSubmit = async (data: AddStudentFormData) => {
+    try {
+      await createStudent(data as any);
+      router.push('/admin/student-management/student');
+    } catch (error) {
+      console.error("Erro ao criar estudante:", error);
     }
   };
 
   return (
     <Container>
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
-        <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  onClick={() => router.back()}
-                  className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+      {/* Modal de Consulta de BI */}
+      <Dialog open={showBIModal} onOpenChange={setShowBIModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Consultar Bilhete de Identidade
+            </DialogTitle>
+            <DialogDescription>
+              Digite o número do BI do aluno para auto-preencher os dados básicos do formulário.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="bi-number">Número do BI</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="bi-number"
+                  placeholder="Ex: 007537847LA041"
+                  value={biNumber}
+                  onChange={(e) => {
+                    setBiNumber(e.target.value);
+                    setBiError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleConsultBI();
+                    }
+                  }}
+                  disabled={loadingBI}
+                  className={biError ? "border-red-500" : ""}
+                />
+                <Button 
+                  onClick={handleConsultBI} 
+                  disabled={loadingBI || !biNumber.trim()}
+                  size="icon"
                 >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Voltar
+                  {loadingBI ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
                 </Button>
-                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
-                  <UserPlus className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-gray-900">
-                    Adicionar Aluno
-                  </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">Novo Estudante</p>
-                </div>
               </div>
-              <p className="text-gray-600 text-sm max-w-2xl">
-                Preencha todas as informações necessárias para cadastrar um novo aluno no sistema.
-                Todos os campos marcados com * são obrigatórios.
+              {biError && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {biError}
+                </p>
+              )}
+            </div>
+
+            {/* Resultado da consulta */}
+            {biData && !biData.error && (
+              <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800 space-y-2">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Dados encontrados!</span>
+                </div>
+                <div className="text-sm space-y-1 text-green-900 dark:text-green-100">
+                  <p><strong>Nome:</strong> {biData.name}</p>
+                  <p><strong>Data de Nascimento:</strong> {biData.data_de_nascimento}</p>
+                  <p><strong>Pai:</strong> {biData.pai}</p>
+                  <p><strong>Mãe:</strong> {biData.mae}</p>
+                  {biData.morada && <p><strong>Morada:</strong> {biData.morada}</p>}
+                </div>
+                <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                  Os dados serão preenchidos automaticamente no formulário.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />
+              <span>Você pode pular esta etapa e preencher manualmente.</span>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSkipBI}
+              disabled={loadingBI}
+              className="w-full sm:w-auto"
+            >
+              Preencher Manualmente
+            </Button>
+            {biData && !biData.error && (
+              <Button
+                onClick={() => setShowBIModal(false)}
+                className="w-full sm:w-auto"
+              >
+                Continuar com os Dados
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Formulário Principal */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.back()}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <UserPlus className="h-8 w-8 text-primary" />
+                Adicionar Novo Aluno
+              </h1>
+              <p className="text-muted-foreground">
+                Preencha os dados do aluno e do encarregado
               </p>
             </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={() => router.back()}
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                Cancelar
-              </Button>
-
-              <Button
-                type="submit"
-                onClick={handleSubmit(onSubmit)}
-                disabled={loading || isSubmitting}
-                className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Save className="w-5 h-5 mr-2" />
-                {loading || isSubmitting ? "Salvando..." : "Salvar Aluno"}
-              </Button>
-            </div>
           </div>
+          
+          {biData && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBIModal(true)}
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Consultar BI Novamente
+            </Button>
+          )}
         </div>
 
-        {/* Decorative elements */}
-        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#FFC506]/5 rounded-full"></div>
-        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
-      </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="personal" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Dados Pessoais
+              </TabsTrigger>
+              <TabsTrigger value="document" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Documentação
+              </TabsTrigger>
+              <TabsTrigger value="guardian" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Encarregado
+              </TabsTrigger>
+            </TabsList>
 
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-red-700 font-medium">Erro ao salvar aluno</p>
-          </div>
-          <p className="text-red-600 text-sm mt-1">{error}</p>
-        </div>
-      )}
-
-      {/* Formulário em Tabs */}
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
-            <TabsTrigger value="documents">Documentos</TabsTrigger>
-            <TabsTrigger value="system">Sistema</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="personal" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <User className="h-5 w-5" />
-                  <span>Informações Pessoais</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Nome */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Nome Completo *
-                    </label>
-                    <Controller
-                      name="nome"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Digite o nome completo"
-                          {...field}
-                          className={errors.nome ? "border-red-500" : ""}
-                        />
+            {/* Tab: Dados Pessoais */}
+            <TabsContent value="personal">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informações Pessoais do Aluno</CardTitle>
+                  <CardDescription>
+                    Dados básicos e de contato do estudante
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Nome Completo */}
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nome">
+                        Nome Completo <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="nome"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="nome"
+                            placeholder="Digite o nome completo do aluno"
+                            className={errors.nome ? "border-red-500" : ""}
+                          />
+                        )}
+                      />
+                      {errors.nome && (
+                        <p className="text-sm text-red-500">{errors.nome.message}</p>
                       )}
-                    />
-                    {errors.nome && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.nome?.message}
-                      </p>
-                    )}
+                    </div>
                   </div>
 
-                  {/* Sexo */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Sexo *
-                    </label>
-                    <Controller
-                      name="sexo"
-                      control={control}
-                      render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className={errors.sexo ? "border-red-500" : ""}>
-                            <SelectValue placeholder="Selecione o sexo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="M">Masculino</SelectItem>
-                            <SelectItem value="F">Feminino</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  {/* Pais */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pai">Nome do Pai</Label>
+                      <Controller
+                        name="pai"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="pai"
+                            placeholder="Nome do pai"
+                          />
+                        )}
+                      />
+                      {errors.pai && (
+                        <p className="text-sm text-red-500">{errors.pai.message}</p>
                       )}
-                    />
-                    {errors.sexo && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.sexo?.message}
-                      </p>
-                    )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="mae">Nome da Mãe</Label>
+                      <Controller
+                        name="mae"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="mae"
+                            placeholder="Nome da mãe"
+                          />
+                        )}
+                      />
+                      {errors.mae && (
+                        <p className="text-sm text-red-500">{errors.mae.message}</p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Data de Nascimento */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Data de Nascimento *
-                    </label>
-                    <Controller
-                      name="dataNascimento"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          type="date"
-                          {...field}
-                          className={errors.dataNascimento ? "border-red-500" : ""}
-                        />
+                  {/* Sexo e Data de Nascimento */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="sexo">Sexo <span className="text-red-500">*</span></Label>
+                      <Controller
+                        name="sexo"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger className={errors.sexo ? "border-red-500" : ""}>
+                              <SelectValue placeholder="Selecione o sexo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="M">Masculino</SelectItem>
+                              <SelectItem value="F">Feminino</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.sexo && (
+                        <p className="text-sm text-red-500">{errors.sexo.message}</p>
                       )}
-                    />
-                    {errors.dataNascimento && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.dataNascimento?.message}
-                      </p>
-                    )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="dataNascimento">Data de Nascimento</Label>
+                      <Controller
+                        name="dataNascimento"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="dataNascimento"
+                            type="date"
+                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                          />
+                        )}
+                      />
+                      {errors.dataNascimento && (
+                        <p className="text-sm text-red-500">{errors.dataNascimento.message}</p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Email */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Email *
-                    </label>
-                    <Controller
-                      name="email"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          type="email"
-                          placeholder="exemplo@email.com"
-                          {...field}
-                          className={errors.email ? "border-red-500" : ""}
-                        />
+                  {/* Contato */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Controller
+                        name="email"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="email"
+                            type="email"
+                            placeholder="exemplo@email.com"
+                          />
+                        )}
+                      />
+                      {errors.email && (
+                        <p className="text-sm text-red-500">{errors.email.message}</p>
                       )}
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.email?.message}
-                      </p>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Telefone */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Telefone *
-                    </label>
-                    <Controller
-                      name="telefone"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          placeholder="9XX XXX XXX"
-                          {...field}
-                          className={errors.telefone ? "border-red-500" : ""}
-                        />
+                    <div className="space-y-2">
+                      <Label htmlFor="telefone">Telefone</Label>
+                      <Controller
+                        name="telefone"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="telefone"
+                            placeholder="923456789"
+                          />
+                        )}
+                      />
+                      {errors.telefone && (
+                        <p className="text-sm text-red-500">{errors.telefone.message}</p>
                       )}
-                    />
-                    {errors.telefone && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.telefone?.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Nome do Pai */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Nome do Pai
-                    </label>
-                    <Controller
-                      name="pai"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Nome do pai"
-                          {...field}
-                        />
-                      )}
-                    />
-                  </div>
-
-                  {/* Nome da Mãe */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Nome da Mãe
-                    </label>
-                    <Controller
-                      name="mae"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Nome da mãe"
-                          {...field}
-                        />
-                      )}
-                    />
+                    </div>
                   </div>
 
                   {/* Nacionalidade */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Nacionalidade *
-                    </label>
+                    <Label htmlFor="codigo_Nacionalidade">
+                      Nacionalidade <span className="text-red-500">*</span>
+                    </Label>
                     <Controller
                       name="codigo_Nacionalidade"
                       control={control}
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select 
+                          onValueChange={(value) => field.onChange(parseInt(value))} 
+                          value={field.value?.toString()}
+                        >
                           <SelectTrigger className={errors.codigo_Nacionalidade ? "border-red-500" : ""}>
                             <SelectValue placeholder="Selecione a nacionalidade" />
                           </SelectTrigger>
                           <SelectContent>
-                            {nacionalidades.loading ? (
-                              <SelectItem value="loading-nacionalidades" disabled>Carregando...</SelectItem>
-                            ) : nacionalidades.nacionalidades && nacionalidades.nacionalidades.length > 0 ? (
-                              nacionalidades.nacionalidades.filter(n => n.codigo || n.id).map((nacionalidade) => {
-                                const key = nacionalidade.codigo || nacionalidade.id;
-                                const value = nacionalidade.codigo || nacionalidade.id;
-                                const label = nacionalidade.designacao || nacionalidade.nome;
-                                return (
-                                  <SelectItem key={key} value={value?.toString() || ''}>
-                                    {label}
-                                  </SelectItem>
-                                );
-                              })
-                            ) : (
-                              <SelectItem value="no-nacionalidades" disabled>Nenhuma nacionalidade disponível</SelectItem>
-                            )}
+                            {geographic.nacionalidades.nacionalidades.map((nac) => (
+                              <SelectItem key={nac.codigo} value={nac.codigo.toString()}>
+                                {nac.designacao}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
                     />
                     {errors.codigo_Nacionalidade && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.codigo_Nacionalidade?.message}
-                      </p>
+                      <p className="text-sm text-red-500">{errors.codigo_Nacionalidade.message}</p>
                     )}
                   </div>
 
-                  {/* Província */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Província *
-                    </label>
-                    <Controller
-                      name="provincia"
-                      control={control}
-                      render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className={errors.provincia ? "border-red-500" : ""}>
-                            <SelectValue placeholder="Selecione a província" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {provincias.loading ? (
-                              <SelectItem value="loading-provincias" disabled>Carregando...</SelectItem>
-                            ) : provincias.provincias && provincias.provincias.length > 0 ? (
-                              provincias.provincias.filter(p => p.codigo || p.id).map((provincia) => {
-                                const key = provincia.codigo || provincia.id;
-                                const value = provincia.codigo || provincia.id;
-                                const label = provincia.designacao || provincia.nome;
-                                return (
-                                  <SelectItem key={key} value={value?.toString() || ''}>
-                                    {label}
+                  {/* Endereço - Província, Município, Comuna */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Endereço</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="provincia">Província</Label>
+                        <Controller
+                          name="provincia"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {geographic.provincias.provincias.map((prov) => (
+                                  <SelectItem key={prov.codigo || prov.designacao} value={(prov.codigo || '').toString()}>
+                                    {prov.designacao}
                                   </SelectItem>
-                                );
-                              })
-                            ) : (
-                              <SelectItem value="no-provincias" disabled>Nenhuma província disponível</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.provincia && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.provincia?.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Município */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Município *
-                    </label>
-                    <Controller
-                      name="municipio"
-                      control={control}
-                      render={({ field }) => (
-                        <Select 
-                          value={field.value} 
-                          onValueChange={field.onChange}
-                          disabled={!selectedProvinciaId}
-                        >
-                          <SelectTrigger className={errors.municipio ? "border-red-500" : ""}>
-                            <SelectValue placeholder={!selectedProvinciaId ? "Selecione primeiro a província" : "Selecione o município"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {municipios.loading ? (
-                              <SelectItem value="loading-municipios" disabled>Carregando...</SelectItem>
-                            ) : municipios.municipios && municipios.municipios.length > 0 ? (
-                              municipios.municipios
-                                .filter(municipio => (municipio.codigo || municipio.id) && municipio.provincia_id === selectedProvinciaId)
-                                .map((municipio) => {
-                                  const key = municipio.codigo || municipio.id;
-                                  const value = municipio.codigo || municipio.id;
-                                  const label = municipio.designacao || municipio.nome;
-                                  return (
-                                    <SelectItem key={key} value={value?.toString() || ''}>
-                                      {label}
-                                    </SelectItem>
-                                  );
-                                })
-                            ) : (
-                              <SelectItem value="no-municipios" disabled>
-                                {!selectedProvinciaId ? "Selecione primeiro uma província" : "Nenhum município disponível"}
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.municipio && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.municipio?.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Comuna */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Comuna *
-                    </label>
-                    <Controller
-                      name="codigo_Comuna"
-                      control={control}
-                      render={({ field }) => (
-                        <Select 
-                          value={field.value} 
-                          onValueChange={field.onChange}
-                          disabled={!selectedMunicipioId}
-                        >
-                          <SelectTrigger className={errors.codigo_Comuna ? "border-red-500" : ""}>
-                            <SelectValue placeholder={!selectedMunicipioId ? "Selecione primeiro o município" : "Selecione a comuna"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {comunas.loading ? (
-                              <SelectItem value="loading-comunas" disabled>Carregando...</SelectItem>
-                            ) : comunas.comunas && comunas.comunas.length > 0 ? (
-                              comunas.comunas
-                                .filter(comuna => (comuna.codigo || comuna.id) && comuna.municipio_id === selectedMunicipioId)
-                                .map((comuna) => {
-                                  const key = comuna.codigo || comuna.id;
-                                  const value = comuna.codigo || comuna.id;
-                                  const label = comuna.designacao || comuna.nome;
-                                  return (
-                                    <SelectItem key={key} value={value?.toString() || ''}>
-                                      {label}
-                                    </SelectItem>
-                                  );
-                                })
-                            ) : (
-                              <SelectItem value="no-comunas" disabled>
-                                {!selectedMunicipioId ? "Selecione primeiro um município" : "Nenhuma comuna disponível"}
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.codigo_Comuna && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.codigo_Comuna?.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Endereço */}
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Endereço
-                    </label>
-                    <Controller
-                      name="morada"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          placeholder="Endereço completo"
-                          {...field}
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         />
-                      )}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      </div>
 
-          <TabsContent value="documents" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="h-5 w-5" />
-                  <span>Documentos de Identificação</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="municipio">Município</Label>
+                        <Controller
+                          name="municipio"
+                          control={control}
+                          render={({ field }) => (
+                            <Select 
+                              onValueChange={field.onChange} 
+                              value={field.value}
+                              disabled={!watchProvincia}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {geographic.municipios.municipios
+                                  .filter(mun => (mun as any).codigo_Provincia?.toString() === watchProvincia)
+                                  .map((mun) => (
+                                    <SelectItem key={mun.codigo || mun.designacao} value={(mun.codigo || '').toString()}>
+                                      {mun.designacao}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="codigo_Comuna">
+                          Comuna <span className="text-red-500">*</span>
+                        </Label>
+                        <Controller
+                          name="codigo_Comuna"
+                          control={control}
+                          render={({ field }) => (
+                            <Select 
+                              onValueChange={(value) => field.onChange(parseInt(value))} 
+                              value={field.value?.toString()}
+                              disabled={!watchMunicipio}
+                            >
+                              <SelectTrigger className={errors.codigo_Comuna ? "border-red-500" : ""}>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {geographic.comunas.comunas
+                                  .filter(com => (com as any).codigo_Municipio?.toString() === watchMunicipio)
+                                  .map((com) => (
+                                    <SelectItem key={com.codigo || com.designacao} value={(com.codigo || '').toString()}>
+                                      {com.designacao}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.codigo_Comuna && (
+                          <p className="text-sm text-red-500">{errors.codigo_Comuna.message}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="morada">Morada Completa</Label>
+                      <Controller
+                        name="morada"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="morada"
+                            placeholder="Rua, número, bairro..."
+                          />
+                        )}
+                      />
+                      {errors.morada && (
+                        <p className="text-sm text-red-500">{errors.morada.message}</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab: Documentação */}
+            <TabsContent value="document">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Documentação</CardTitle>
+                  <CardDescription>
+                    Informações sobre documentos de identificação
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
                   {/* Tipo de Documento */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Tipo de Documento *
-                    </label>
-                    <Controller
-                      name="codigoTipoDocumento"
-                      control={control}
-                      render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className={errors.codigoTipoDocumento ? "border-red-500" : ""}>
-                            <SelectValue placeholder="Selecione o tipo de documento" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {loadingDocumentTypes ? (
-                              <SelectItem value="loading-documentos" disabled>Carregando...</SelectItem>
-                            ) : documentTypes.length > 0 ? (
-                              documentTypes.map((doc) => (
-                                <SelectItem key={doc.codigo} value={doc.codigo.toString()}>
-                                  {doc.designacao}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="codigoTipoDocumento">
+                        Tipo de Documento <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="codigoTipoDocumento"
+                        control={control}
+                        render={({ field }) => (
+                          <Select 
+                            onValueChange={(value) => field.onChange(parseInt(value))} 
+                            value={field.value?.toString()}
+                          >
+                            <SelectTrigger className={errors.codigoTipoDocumento ? "border-red-500" : ""}>
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {documentTypes.map((docType) => (
+                                <SelectItem key={docType.codigo} value={docType.codigo.toString()}>
+                                  {docType.designacao}
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="no-documentos" disabled>Nenhum tipo de documento disponível</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.codigoTipoDocumento && (
+                        <p className="text-sm text-red-500">{errors.codigoTipoDocumento.message}</p>
                       )}
-                    />
-                    {errors.codigoTipoDocumento && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.codigoTipoDocumento?.message}
-                      </p>
-                    )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="n_documento_identificacao">
+                        Número do Documento <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="n_documento_identificacao"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="n_documento_identificacao"
+                            placeholder="Ex: 007537847LA041"
+                            className={errors.n_documento_identificacao ? "border-red-500" : ""}
+                          />
+                        )}
+                      />
+                      {errors.n_documento_identificacao && (
+                        <p className="text-sm text-red-500">{errors.n_documento_identificacao.message}</p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Número do Documento */}
+                  {/* Informações Financeiras */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Informações Financeiras</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="saldo">Saldo Inicial</Label>
+                        <Controller
+                          name="saldo"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              id="saldo"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="0.00"
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="codigo_Utilizador">Código do Utilizador</Label>
+                        <Controller
+                          name="codigo_Utilizador"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              id="codigo_Utilizador"
+                              placeholder="Será obtido automaticamente"
+                              disabled
+                            />
+                          )}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Este campo será preenchido automaticamente com o usuário logado
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab: Encarregado */}
+            <TabsContent value="guardian">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dados do Encarregado</CardTitle>
+                  <CardDescription>
+                    Informações do responsável pelo aluno. Será criado automaticamente junto com o aluno.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-900 dark:text-blue-100">
+                      <strong>Novo:</strong> O encarregado será criado automaticamente ao salvar o aluno. 
+                      Não é necessário criar o encarregado separadamente.
+                    </p>
+                  </div>
+
+                  {/* Nome e Telefone */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="encarregado.nome">
+                        Nome Completo do Encarregado <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="encarregado.nome"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="encarregado.nome"
+                            placeholder="Nome completo"
+                            className={errors.encarregado?.nome ? "border-red-500" : ""}
+                          />
+                        )}
+                      />
+                      {errors.encarregado?.nome && (
+                        <p className="text-sm text-red-500">{errors.encarregado.nome.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="encarregado.telefone">
+                        Telefone <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="encarregado.telefone"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="encarregado.telefone"
+                            placeholder="923456789"
+                            className={errors.encarregado?.telefone ? "border-red-500" : ""}
+                          />
+                        )}
+                      />
+                      {errors.encarregado?.telefone && (
+                        <p className="text-sm text-red-500">{errors.encarregado.telefone.message}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Email */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Número do Documento *
-                    </label>
+                    <Label htmlFor="encarregado.email">Email</Label>
                     <Controller
-                      name="n_documento_identificacao"
+                      name="encarregado.email"
                       control={control}
                       render={({ field }) => (
                         <Input
-                          placeholder="Número do documento"
                           {...field}
-                          className={errors.n_documento_identificacao ? "border-red-500" : ""}
+                          id="encarregado.email"
+                          type="email"
+                          placeholder="email@exemplo.com"
                         />
                       )}
                     />
-                    {errors.n_documento_identificacao && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.n_documento_identificacao?.message}
-                      </p>
+                    {errors.encarregado?.email && (
+                      <p className="text-sm text-red-500">{errors.encarregado.email.message}</p>
                     )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Tab Sistema */}
-          <TabsContent value="system" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5" />
-                  <span>Informações do Sistema</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Encarregado */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Encarregado *
-                    </label>
-                    <Controller
-                      name="codigo_Encarregado"
-                      control={control}
-                      render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className={errors.codigo_Encarregado ? "border-red-500" : ""}>
-                            <SelectValue placeholder="Selecione o encarregado" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {encarregados.map((encarregado) => (
-                              <SelectItem key={encarregado.codigo} value={encarregado.codigo.toString()}>
-                                {encarregado.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                  {/* Profissão e Local de Trabalho */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="encarregado.codigo_Profissao">
+                        Profissão <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="encarregado.codigo_Profissao"
+                        control={control}
+                        render={({ field }) => (
+                          <Select 
+                            onValueChange={(value) => field.onChange(parseInt(value))} 
+                            value={field.value?.toString()}
+                          >
+                            <SelectTrigger className={errors.encarregado?.codigo_Profissao ? "border-red-500" : ""}>
+                              <SelectValue placeholder="Selecione a profissão" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {profissoes.map((prof) => (
+                                <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
+                                  {prof.designacao}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.encarregado?.codigo_Profissao && (
+                        <p className="text-sm text-red-500">{errors.encarregado.codigo_Profissao.message}</p>
                       )}
-                    />
-                    {errors.codigo_Encarregado && (
-                      <p className="text-sm text-red-500 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.codigo_Encarregado?.message}
-                      </p>
-                    )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="encarregado.local_Trabalho">
+                        Local de Trabalho <span className="text-red-500">*</span>
+                      </Label>
+                      <Controller
+                        name="encarregado.local_Trabalho"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="encarregado.local_Trabalho"
+                            placeholder="Ex: Hospital Central"
+                            className={errors.encarregado?.local_Trabalho ? "border-red-500" : ""}
+                          />
+                        )}
+                      />
+                      {errors.encarregado?.local_Trabalho && (
+                        <p className="text-sm text-red-500">{errors.encarregado.local_Trabalho.message}</p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Utilizador Responsável */}
+                  {/* Status */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Utilizador Responsável
-                    </label>
+                    <Label htmlFor="encarregado.status">Status</Label>
                     <Controller
-                      name="codigo_Utilizador"
+                      name="encarregado.status"
                       control={control}
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select 
+                          onValueChange={(value) => field.onChange(parseInt(value))} 
+                          value={field.value?.toString()}
+                        >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione o utilizador" />
+                            <SelectValue placeholder="Selecione o status" />
                           </SelectTrigger>
                           <SelectContent>
-                            {utilizadores.map((utilizador) => (
-                              <SelectItem key={utilizador.codigo} value={utilizador.codigo.toString()}>
-                                {utilizador.nome}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="1">Ativo</SelectItem>
+                            <SelectItem value="0">Inativo</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
                     />
+                    {errors.encarregado?.status && (
+                      <p className="text-sm text-red-500">{errors.encarregado.status.message}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Por padrão, o encarregado será criado como Ativo
+                    </p>
                   </div>
 
-                  {/* Saldo Inicial */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Saldo Inicial
-                    </label>
-                    <Controller
-                      name="saldo"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          {...field}
-                          min="0"
-                          step="0.01"
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                        />
-                      )}
-                    />
+                  {/* Informação sobre o usuário */}
+                  <div className="p-4 bg-muted rounded-lg border">
+                    <h4 className="font-medium mb-2">Informação Importante</h4>
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>• O encarregado será vinculado automaticamente ao usuário logado</li>
+                      <li>• Todos os campos marcados com <span className="text-red-500">*</span> são obrigatórios</li>
+                      <li>• O código do encarregado será gerado automaticamente</li>
+                      <li>• Após salvar, o aluno ficará vinculado a este encarregado</li>
+                    </ul>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex justify-end gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || loading}
+            >
+              {isSubmitting || loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar Aluno
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
     </Container>
   );
 }

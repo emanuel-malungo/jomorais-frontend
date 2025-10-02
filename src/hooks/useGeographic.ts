@@ -233,7 +233,7 @@ export function useComunas(municipioId?: number) {
       } else {
         response = await GeographicService.getAllComunas();
       }
-      
+
       setComunas(response.data || []);
     } catch (err) {
       setError(err);
