@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -78,10 +78,10 @@ export default function ListStudentPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  // Carregar estudantes quando o componente for montado ou página mudar
+  // Carregar TODOS os estudantes para pesquisa global
   useEffect(() => {
-    getAllStudents(currentPage, itemsPerPage);
-  }, [getAllStudents, currentPage, itemsPerPage]);
+    getAllStudents(1, 1000); // Carregar até 1000 estudantes
+  }, [getAllStudents]);
 
   // Filtrar estudantes (aplicado aos dados da página atual)
   useEffect(() => {
@@ -118,19 +118,35 @@ export default function ListStudentPage() {
     setFilteredStudents(filtered);
   }, [searchTerm, statusFilter, courseFilter, students]);
 
+  // Paginação local dos resultados filtrados
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredStudents.slice(startIndex, endIndex);
+  }, [filteredStudents, currentPage, itemsPerPage]);
+
+  // Cálculo da paginação local
+  const localPagination = useMemo(() => {
+    const totalItems = filteredStudents.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    return {
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1
+    };
+  }, [filteredStudents.length, currentPage, itemsPerPage]);
+
   // Resetar para primeira página quando filtros mudarem
   useEffect(() => {
-    if (searchTerm || statusFilter !== "all" || courseFilter !== "all") {
-      setCurrentPage(1);
-    }
+    setCurrentPage(1);
   }, [searchTerm, statusFilter, courseFilter]);
 
-  // Paginação - usando dados da API
-  const totalPages = pagination?.totalPages || 1;
-  const totalItems = pagination?.totalItems || 0;
-  const currentStudents = filteredStudents; // Já são os dados da página atual
-  const startIndex = pagination ? (pagination.currentPage - 1) * pagination.itemsPerPage + 1 : 1;
-  const endIndex = pagination ? Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems) : filteredStudents.length;
+  // Cálculos para exibição
+  const startIndex = ((currentPage - 1) * itemsPerPage) + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, localPagination.totalItems);
 
   const handleViewStudent = (studentId: number) => {
     window.location.href = `/admin/student-management/student/details/${studentId}`;
@@ -305,7 +321,7 @@ export default function ListStudentPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentStudents.map((student, index) => (
+                  paginatedStudents.map((student, index) => (
                     <TableRow key={student.codigo || index} className="hover:bg-gray-50">
                       <TableCell className="font-medium">
                         {startIndex + index}
