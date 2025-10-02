@@ -30,6 +30,8 @@ import {
   GraduationCap,
   Edit,
 } from 'lucide-react';
+import { useConfirmation, useUpdateConfirmation } from '@/hooks/useConfirmation';
+import { useToast, ToastContainer } from '@/components/ui/toast';
 
 // Dados mockados
 const mockEnrollments = [
@@ -109,10 +111,16 @@ export default function EditConfirmationPage() {
   const params = useParams();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const confirmationId = parseInt(params.id as string);
+  
+  // Hooks para dados reais
+  const { confirmation, loading: loadingConfirmation } = useConfirmation(confirmationId);
+  const { updateConfirmation, loading: updatingConfirmation } = useUpdateConfirmation(confirmationId);
+  
+  // Hook para toasts
+  const { toasts, removeToast, success, error: showError } = useToast();
   const [enrollmentSearch, setEnrollmentSearch] = useState("");
   const [filteredEnrollments, setFilteredEnrollments] = useState(mockEnrollments);
-
-  const confirmationId = params.id;
 
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -183,21 +191,35 @@ export default function EditConfirmationPage() {
 
   const handleSubmit = async () => {
     if (!validateForm()) {
+      showError('Erro de validação', 'Por favor, corrija os erros no formulário antes de continuar.');
       return;
     }
 
     setIsLoading(true);
     
     try {
-      // Simular chamada à API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Usar o hook real para atualizar confirmação
+      await updateConfirmation(formData);
       
       console.log("Dados atualizados da confirmação:", formData);
       
-      // Redirecionar para lista após sucesso
-      router.push('/admin/student-management/confirmations');
+      // Mostrar mensagem de sucesso e redirecionar
+      success('Confirmação alterada com sucesso!', 'As informações foram atualizadas no sistema.');
+      
+      // Aguardar um pouco para mostrar a mensagem antes de redirecionar
+      setTimeout(() => {
+        router.push('/admin/student-management/confirmations?success=updated');
+      }, 2000);
+      
     } catch (error) {
       console.error("Erro ao atualizar confirmação:", error);
+      
+      let errorMessage = 'Erro desconhecido ao atualizar confirmação';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      showError('Erro ao atualizar confirmação', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -596,6 +618,9 @@ export default function EditConfirmationPage() {
           </Card>
         </div>
       </div>
+      
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </Container>
   );
 }

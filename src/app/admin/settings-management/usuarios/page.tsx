@@ -41,7 +41,10 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { useUsersLegacy } from '@/hooks/useUsers';
+import { useUsersLegacy, useDeleteUser } from '@/hooks/useUsers';
+import { UserModal } from '@/components/users/users-modal';
+import { ConfirmDeleteModal } from '@/components/users/confirm-delete-modal';
+import { useToast, ToastContainer } from '@/components/ui/toast';
 
 import WelcomeHeader from '@/components/layout/WelcomeHeader';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
@@ -51,12 +54,12 @@ interface Usuario {
   codigo: number;
   nome: string;
   user: string;
-  passe: string;
+  passe?: string;
   codigo_Tipo_Utilizador: number;
-  estadoActual: 'Activo' | 'Desactivo';
-  dataCadastro: object;
-  loginStatus: 'ON' | 'OFF';
-  tb_tipos_utilizador: {
+  estadoActual: string;
+  dataCadastro: string;
+  loginStatus: string;
+  tb_tipos_utilizador?: {
     codigo: number;
     designacao: string;
   };
@@ -66,8 +69,16 @@ export default function UsuariosPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTipoUsuario, setSelectedTipoUsuario] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  
+  // Estados para modais
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
 
-  const { users, meta, loading, error, page, setPage } = useUsersLegacy(1, 10);
+  const { users, meta, loading, error, page, setPage, refetch } = useUsersLegacy(1, 10);
+  const { deleteUser, loading: deletingUser } = useDeleteUser();
+  const { success, error: showError } = useToast();
 
   const getTipoUsuarioColor = (designacao: string) => {
     switch (designacao.toLowerCase()) {
@@ -106,14 +117,14 @@ export default function UsuariosPage() {
   const filteredUsuarios = (users as Usuario[])?.filter((usuario) => {
     const matchesSearch = usuario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       usuario.user.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTipoUsuario = selectedTipoUsuario === 'all' || usuario.tb_tipos_utilizador.designacao === selectedTipoUsuario;
+    const matchesTipoUsuario = selectedTipoUsuario === 'all' || usuario.tb_tipos_utilizador?.designacao === selectedTipoUsuario;
     const matchesStatus = selectedStatus === 'all' || usuario.estadoActual === selectedStatus;
 
     return matchesSearch && matchesTipoUsuario && matchesStatus;
   }) || [];
 
   const getUsuariosPorTipo = (tipo: string) => {
-    return (users as Usuario[])?.filter((u) => u.tb_tipos_utilizador.designacao === tipo).length || 0;
+    return (users as Usuario[])?.filter((u) => u.tb_tipos_utilizador?.designacao === tipo).length || 0;
   };
 
   const getUsuariosAtivos = () => {
@@ -121,8 +132,43 @@ export default function UsuariosPage() {
   };
 
   const getTiposUsuario = () => {
-    const tipos = (users as Usuario[])?.map((u) => u.tb_tipos_utilizador.designacao) || [];
+    const tipos = (users as Usuario[])?.map((u) => u.tb_tipos_utilizador?.designacao).filter(Boolean) || [];
     return [...new Set(tipos)];
+  };
+
+  // Funções para manipular modais
+  const handleNewUser = () => {
+    setSelectedUser(null);
+    setUserModalOpen(true);
+  };
+
+  const handleEditUser = (user: Usuario) => {
+    setSelectedUser(user);
+    setUserModalOpen(true);
+  };
+
+  const handleDeleteUser = (user: Usuario) => {
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      await deleteUser(userToDelete.codigo);
+      success('Usuário excluído com sucesso!', 'O usuário foi removido do sistema.');
+      setDeleteModalOpen(false);
+      setUserToDelete(null);
+      refetch(); // Recarregar a lista
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      showError('Erro ao excluir usuário', error instanceof Error ? error.message : 'Ocorreu um erro inesperado.');
+    }
+  };
+
+  const handleUserModalSuccess = () => {
+    refetch(); // Recarregar a lista após criar/editar
   };
 
   return (
@@ -134,7 +180,7 @@ export default function UsuariosPage() {
         description="Gerencie usuários do sistema, configure perfis de acesso, defina permissões e monitore atividades dos usuários."
         titleBtnRight="Novo Usuário"
         iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
-        onClickBtnRight={() => { }}
+        onClickBtnRight={handleNewUser}
       />
 
       {/* Statistics Cards */}
@@ -196,7 +242,7 @@ export default function UsuariosPage() {
             onChange: setSelectedTipoUsuario,
             options: [
               { value: "all", label: "Todos os Tipos" },
-              ...getTiposUsuario().map((tipo) => ({ value: tipo, label: tipo }))
+              ...getTiposUsuario().map((tipo) => ({ value: tipo as string, label: tipo as string }))
             ],
             width: "w-48"
           },
@@ -267,9 +313,9 @@ export default function UsuariosPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={getTipoUsuarioColor(usuario.tb_tipos_utilizador.designacao)}>
+                            <Badge className={getTipoUsuarioColor(usuario.tb_tipos_utilizador?.designacao || '')}>
                               <Shield className="mr-1 h-3 w-3" />
-                              {usuario.tb_tipos_utilizador.designacao}
+                              {usuario.tb_tipos_utilizador?.designacao || 'N/A'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -298,12 +344,15 @@ export default function UsuariosPage() {
                                   <Eye className="mr-2 h-4 w-4" />
                                   Visualizar
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditUser(usuario)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-red-600">
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={() => handleDeleteUser(usuario)}
+                                >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Excluir
                                 </DropdownMenuItem>
@@ -365,6 +414,26 @@ export default function UsuariosPage() {
           </Card>
         </div>
       </div>
+
+      {/* Modais */}
+      <UserModal
+        open={userModalOpen}
+        onOpenChange={setUserModalOpen}
+        user={selectedUser}
+        onSuccess={handleUserModalSuccess}
+      />
+
+      <ConfirmDeleteModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onConfirm={confirmDeleteUser}
+        title="Confirmar Exclusão de Usuário"
+        description={`Tem certeza que deseja excluir o usuário "${userToDelete?.nome}"? Esta ação não pode ser desfeita.`}
+        loading={deletingUser}
+      />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={[]} onRemove={() => {}} />
     </Container>
   );
 }

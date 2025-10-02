@@ -37,42 +37,15 @@ import {
 import { useCreateConfirmation } from '@/hooks/useConfirmation';
 import { useTurmas } from '@/hooks/useTurma';
 import { IConfirmationInput } from '@/types/confirmation.types';
+import { useToast, ToastContainer } from '@/components/ui/toast';
 import api from '@/utils/api.utils';
-// Componente de Toast Notification
-const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) => (
-  <div className={`fixed top-4 right-4 z-50 flex items-center p-4 rounded-lg shadow-lg transition-all duration-300 ${
-    type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-  }`}>
-    {type === 'success' ? (
-      <CheckCircle className="w-5 h-5 mr-2" />
-    ) : (
-      <AlertCircle className="w-5 h-5 mr-2" />
-    )}
-    <span className="flex-1">{message}</span>
-    <button onClick={onClose} className="ml-2 hover:opacity-70">
-      <X className="w-4 h-4" />
-    </button>
-  </div>
-);
-
 export default function AddConfirmationPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [enrollmentSearch, setEnrollmentSearch] = useState("");
   
-  // Estados para notificações
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  
-  // Funções para notificações
-  const showSuccessToast = (message: string) => {
-    setToast({ message, type: 'success' });
-    setTimeout(() => setToast(null), 5000);
-  };
-  
-  const showErrorToast = (message: string) => {
-    setToast({ message, type: 'error' });
-    setTimeout(() => setToast(null), 8000);
-  };
+  // Hook para toasts
+  const { toasts, removeToast, success, error: showError } = useToast();
   
   // Hooks para dados do backend
   const { createConfirmation, loading: creatingConfirmation, error: confirmationError } = useCreateConfirmation();
@@ -408,7 +381,7 @@ export default function AddConfirmationPage() {
     // Validar formulário
     if (!validateForm()) {
       console.log('Validação falhou, parando submit');
-      showErrorToast('Por favor, corrija os erros no formulário antes de continuar.');
+      showError('Erro de validação', 'Por favor, corrija os erros no formulário antes de continuar.');
       return;
     }
 
@@ -440,12 +413,12 @@ export default function AddConfirmationPage() {
       const result = await createConfirmation(dataToSend);
       console.log('Confirmação criada com sucesso:', result);
       
-      // Mostrar mensagem de sucesso
-      showSuccessToast('Confirmação criada com sucesso! Redirecionando...');
+      // Mostrar mensagem de sucesso e redirecionar
+      success('Confirmação criada com sucesso!', 'Redirecionando para a lista de confirmações...');
       
       // Aguardar um pouco para mostrar a mensagem antes de redirecionar
       setTimeout(() => {
-        router.push('/admin/student-management/confirmations');
+        router.push('/admin/student-management/confirmations?success=created');
       }, 2000);
       
     } catch (error) {
@@ -466,7 +439,7 @@ export default function AddConfirmationPage() {
         }
       }
       
-      showErrorToast(errorMessage);
+      showError('Erro ao salvar confirmação', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -918,13 +891,7 @@ export default function AddConfirmationPage() {
       </div>
       
       {/* Toast Notifications */}
-      {toast && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
-        />
-      )}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </Container>
   );
 }

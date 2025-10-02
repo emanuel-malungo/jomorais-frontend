@@ -5,8 +5,9 @@ import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useConfirmations } from '@/hooks/useConfirmation';
+import { useConfirmations, useDeleteConfirmation } from '@/hooks/useConfirmation';
 import { IConfirmation } from '@/types/confirmation.types';
+import { useToast, ToastContainer } from '@/components/ui/toast';
 import {
   Card,
   CardContent,
@@ -99,6 +100,12 @@ export default function ConfirmationsListPage() {
     refetch: fetchConfirmations 
   } = useConfirmations(currentPage, itemsPerPage, searchTerm);
   
+  // Hook para deletar confirmações
+  const { deleteConfirmation, loading: deletingConfirmation } = useDeleteConfirmation();
+  
+  // Hook para toasts
+  const { toasts, removeToast, success, error: showError, warning } = useToast();
+  
   // Estados derivados
   const [filteredConfirmations, setFilteredConfirmations] = useState<IConfirmation[]>(confirmations || []);
 
@@ -171,10 +178,58 @@ export default function ConfirmationsListPage() {
     window.location.href = `/admin/student-management/confirmations/edit/${confirmationId}`;
   };
 
-  const handleDeleteConfirmation = (confirmationId: number) => {
-    console.log("Excluir confirmação:", confirmationId);
-    // Implementar confirmação e exclusão
+  const handleDeleteConfirmation = async (confirmationId: number) => {
+    const confirmation = confirmations?.find(c => c.codigo === confirmationId);
+    const studentName = confirmation?.tb_matriculas?.tb_alunos?.nome || 'Aluno';
+    
+    if (window.confirm(`Tem certeza que deseja excluir a confirmação de ${studentName}?`)) {
+      try {
+        await deleteConfirmation(confirmationId);
+        success(
+          'Confirmação excluída com sucesso!',
+          `A confirmação de ${studentName} foi removida do sistema.`
+        );
+        fetchConfirmations(); // Recarregar a lista
+      } catch (error) {
+        showError(
+          'Erro ao excluir confirmação',
+          error instanceof Error ? error.message : 'Ocorreu um erro inesperado.'
+        );
+      }
+    }
   };
+
+  // Verificar se há mensagens de sucesso na URL (vindas de outras páginas)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const successMessage = urlParams.get('success');
+    const errorMessage = urlParams.get('error');
+    
+    if (successMessage) {
+      switch (successMessage) {
+        case 'created':
+          success('Confirmação criada com sucesso!', 'A nova confirmação foi adicionada ao sistema.');
+          break;
+        case 'updated':
+          success('Confirmação alterada com sucesso!', 'As informações da confirmação foram atualizadas.');
+          break;
+        case 'deleted':
+          success('Confirmação excluída com sucesso!', 'A confirmação foi removida do sistema.');
+          break;
+        default:
+          success('Operação realizada com sucesso!');
+      }
+      
+      // Limpar a URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    
+    if (errorMessage) {
+      showError('Erro na operação', decodeURIComponent(errorMessage));
+      // Limpar a URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [success, showError]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-AO');
@@ -655,6 +710,9 @@ export default function ConfirmationsListPage() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </Container>
   );
 }
