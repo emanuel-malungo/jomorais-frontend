@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
@@ -28,81 +28,16 @@ import {
   Receipt,
   History
 } from 'lucide-react';
-
-interface Payment {
-  id: number;
-  estudante: string;
-  classe: string;
-  turma: string;
-  tipo_pagamento: string;
-  valor: number;
-  metodo_pagamento: string;
-  data_pagamento: string;
-  data_vencimento: string;
-  status: string;
-  descricao: string;
-  observacoes: string;
-  numero_recibo: string;
-}
+import { usePagamentoPrincipal } from '@/hooks/usePayment';
 
 export default function PaymentDetails() {
   const params = useParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  const [payment, setPayment] = useState<Payment | null>(null);
-
-  // Dados mockados dos pagamentos
-  const paymentsData: Payment[] = [
-    {
-      id: 1,
-      estudante: "João Manuel Silva",
-      classe: "10ª",
-      turma: "A",
-      tipo_pagamento: "propina",
-      valor: 25000,
-      metodo_pagamento: "transferencia",
-      data_pagamento: "2024-09-30",
-      data_vencimento: "2024-09-30",
-      status: "pago",
-      descricao: "Propina referente ao mês de Setembro 2024",
-      observacoes: "Pagamento efetuado via transferência bancária",
-      numero_recibo: "REC-2024-001234"
-    },
-    {
-      id: 2,
-      estudante: "Maria Santos Costa",
-      classe: "11ª",
-      turma: "B",
-      tipo_pagamento: "matricula",
-      valor: 15000,
-      metodo_pagamento: "dinheiro",
-      data_pagamento: "",
-      data_vencimento: "2024-10-15",
-      status: "pendente",
-      descricao: "Taxa de matrícula para o ano letivo 2024/2025",
-      observacoes: "",
-      numero_recibo: ""
-    }
-  ];
-
-  useEffect(() => {
-    const loadPayment = async () => {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const paymentId = parseInt(params.id as string);
-      const foundPayment = paymentsData.find(p => p.id === paymentId);
-      
-      if (foundPayment) {
-        setPayment(foundPayment);
-      }
-      
-      setLoading(false);
-    };
-
-    loadPayment();
-  }, [params.id]);
+  
+  // Hook da API para buscar dados reais
+  const paymentId = parseInt(params.id as string);
+  const { pagamento: payment, loading, error } = usePagamentoPrincipal(paymentId);
 
   const handleEdit = () => {
     router.push(`/admin/finance-management/payments/edit/${params.id}`);
@@ -112,42 +47,30 @@ export default function PaymentDetails() {
     router.push('/admin/finance-management/payments');
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: number) => {
     const statusConfig = {
-      'pago': { label: 'Pago', className: 'bg-green-100 text-green-800' },
-      'pendente': { label: 'Pendente', className: 'bg-yellow-100 text-yellow-800' },
-      'atrasado': { label: 'Atrasado', className: 'bg-red-100 text-red-800' },
-      'cancelado': { label: 'Cancelado', className: 'bg-gray-100 text-gray-800' }
+      1: { label: 'Ativo', className: 'bg-green-100 text-green-800' },
+      0: { label: 'Inativo', className: 'bg-gray-100 text-gray-800' },
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pendente;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig[0];
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
-  const getTipoLabel = (tipo: string) => {
-    const tipos = {
-      'propina': 'Propina Mensal',
-      'matricula': 'Taxa de Matrícula',
-      'confirmacao': 'Taxa de Confirmação',
-      'exame': 'Taxa de Exame',
-      'material': 'Material Escolar',
-      'uniforme': 'Uniforme',
-      'transporte': 'Transporte',
-      'alimentacao': 'Alimentação',
-      'outros': 'Outros'
-    };
-    return tipos[tipo as keyof typeof tipos] || tipo;
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-AO', {
+      style: 'currency',
+      currency: 'AOA'
+    }).format(value);
   };
 
-  const getMetodoLabel = (metodo: string) => {
-    const metodos = {
-      'dinheiro': 'Dinheiro',
-      'transferencia': 'Transferência Bancária',
-      'multicaixa': 'Multicaixa Express',
-      'cheque': 'Cheque',
-      'cartao': 'Cartão de Débito/Crédito'
-    };
-    return metodos[metodo as keyof typeof metodos] || metodo;
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Não informado";
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   if (loading) {
@@ -158,6 +81,22 @@ export default function PaymentDetails() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
             <p className="text-muted-foreground">Carregando detalhes do pagamento...</p>
           </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div className="text-center py-12">
+          <CreditCard className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">Erro ao carregar pagamento</h2>
+          <p className="text-muted-foreground mb-6">{error}</p>
+          <Button onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar para Pagamentos
+          </Button>
         </div>
       </Container>
     );
@@ -195,7 +134,9 @@ export default function PaymentDetails() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Detalhes do Pagamento</h1>
-            <p className="text-muted-foreground">{payment.estudante} - {getTipoLabel(payment.tipo_pagamento)}</p>
+            <p className="text-muted-foreground">
+              {payment.aluno?.nome || payment.tb_alunos?.nome || 'Aluno não identificado'} - Código: {payment.codigo}
+            </p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -212,9 +153,9 @@ export default function PaymentDetails() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                <p className="text-sm font-medium text-muted-foreground">Valor Entregue</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {payment.valor.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                  {formatCurrency(payment.valorEntregue)}
                 </p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
@@ -244,9 +185,9 @@ export default function PaymentDetails() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Método</p>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
                 <p className="text-lg font-semibold text-foreground">
-                  {getMetodoLabel(payment.metodo_pagamento)}
+                  {payment.total ? formatCurrency(payment.total) : 'Não informado'}
                 </p>
               </div>
               <div className="p-3 bg-purple-100 rounded-lg">
@@ -260,9 +201,9 @@ export default function PaymentDetails() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Vencimento</p>
+                <p className="text-sm font-medium text-muted-foreground">Data do Banco</p>
                 <p className="text-lg font-semibold text-foreground">
-                  {new Date(payment.data_vencimento).toLocaleDateString('pt-BR')}
+                  {formatDate(payment.dataBanco)}
                 </p>
               </div>
               <div className="p-3 bg-orange-100 rounded-lg">
@@ -275,11 +216,10 @@ export default function PaymentDetails() {
 
       {/* Tabs Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="student">Estudante</TabsTrigger>
-          <TabsTrigger value="receipt">Recibo</TabsTrigger>
-          <TabsTrigger value="history">Histórico</TabsTrigger>
+          <TabsTrigger value="details">Detalhes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -294,67 +234,73 @@ export default function PaymentDetails() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Tipo de Pagamento</label>
-                  <p className="text-foreground">{getTipoLabel(payment.tipo_pagamento)}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Código do Pagamento</label>
+                  <p className="text-foreground font-mono">#{payment.codigo}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Valor</label>
-                  <p className="text-foreground">
-                    {payment.valor.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                  <label className="text-sm font-medium text-muted-foreground">Valor Entregue</label>
+                  <p className="text-foreground text-lg font-semibold">
+                    {formatCurrency(payment.valorEntregue)}
                   </p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Método de Pagamento</label>
-                  <p className="text-foreground">{getMetodoLabel(payment.metodo_pagamento)}</p>
-                </div>
+                {payment.total && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
+                    <p className="text-foreground">
+                      {formatCurrency(payment.total)}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
                   <div className="mt-1">
                     {getStatusBadge(payment.status)}
                   </div>
                 </div>
+                {payment.totalDesconto && payment.totalDesconto > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Desconto</label>
+                    <p className="text-foreground text-green-600">
+                      -{formatCurrency(payment.totalDesconto)}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Datas */}
+            {/* Datas e Informações */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Calendar className="h-5 w-5" />
-                  <span>Datas</span>
+                  <span>Datas e Informações</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Data de Vencimento</label>
+                  <label className="text-sm font-medium text-muted-foreground">Data do Pagamento</label>
                   <p className="text-foreground">
-                    {new Date(payment.data_vencimento).toLocaleDateString('pt-BR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
+                    {formatDate(payment.data)}
                   </p>
                 </div>
-                {payment.data_pagamento && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Data do Banco</label>
+                  <p className="text-foreground">
+                    {formatDate(payment.dataBanco)}
+                  </p>
+                </div>
+                {payment.obs && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Data de Pagamento</label>
-                    <p className="text-foreground">
-                      {new Date(payment.data_pagamento).toLocaleDateString('pt-BR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                    <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                    <p className="text-foreground text-sm bg-muted p-3 rounded-lg">
+                      {payment.obs}
                     </p>
                   </div>
                 )}
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Descrição</label>
-                  <p className="text-foreground">{payment.descricao}</p>
-                </div>
-                {payment.observacoes && (
+                {payment.borderoux && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Observações</label>
-                    <p className="text-foreground">{payment.observacoes}</p>
+                    <label className="text-sm font-medium text-muted-foreground">Borderô</label>
+                    <p className="text-foreground font-mono">{payment.borderoux}</p>
                   </div>
                 )}
               </CardContent>
@@ -371,82 +317,85 @@ export default function PaymentDetails() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Nome Completo</label>
-                  <p className="text-foreground">{payment.estudante}</p>
+                  <p className="text-foreground">
+                    {payment.aluno?.nome || payment.tb_alunos?.nome || 'Não informado'}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Classe</label>
-                  <p className="text-foreground">{payment.classe} Classe</p>
+                  <label className="text-sm font-medium text-muted-foreground">Código do Aluno</label>
+                  <p className="text-foreground font-mono">
+                    #{payment.codigo_Aluno}
+                  </p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Turma</label>
-                  <p className="text-foreground">Turma {payment.turma}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="receipt" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Receipt className="h-5 w-5" />
-                <span>Recibo de Pagamento</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {payment.numero_recibo ? (
-                <div className="space-y-4">
+                {payment.tb_alunos?.numeroMatricula && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Número do Recibo</label>
-                    <p className="text-lg font-semibold text-foreground">{payment.numero_recibo}</p>
-                  </div>
-                  <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      Recibo gerado automaticamente após confirmação do pagamento.
+                    <label className="text-sm font-medium text-muted-foreground">Número de Matrícula</label>
+                    <p className="text-foreground font-mono">
+                      {payment.tb_alunos.numeroMatricula}
                     </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Recibo será gerado após confirmação do pagamento</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <History className="h-5 w-5" />
-                <span>Histórico de Alterações</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Pagamento criado</p>
-                    <p className="text-xs text-muted-foreground">30 de Setembro, 2024 às 14:30</p>
-                  </div>
-                </div>
-                {payment.status === 'pago' && (
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Pagamento confirmado</p>
-                      <p className="text-xs text-muted-foreground">30 de Setembro, 2024 às 15:45</p>
-                    </div>
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="details" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="h-5 w-5" />
+                <span>Detalhes do Pagamento</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {payment.detalhes && payment.detalhes.length > 0 ? (
+                <div className="space-y-4">
+                  <h4 className="font-medium text-foreground">Serviços Pagos:</h4>
+                  {payment.detalhes.map((detalhe, index) => (
+                    <div key={index} className="p-4 bg-muted rounded-lg">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Serviço</label>
+                          <p className="text-foreground">
+                            {detalhe.tipoServico?.designacao || detalhe.tb_tipo_servicos?.designacao || 'Não informado'}
+                          </p>
+                        </div>
+                        {detalhe.preco && (
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Preço</label>
+                            <p className="text-foreground">
+                              {formatCurrency(detalhe.preco)}
+                            </p>
+                          </div>
+                        )}
+                        {detalhe.quantidade && (
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
+                            <p className="text-foreground">{detalhe.quantidade}</p>
+                          </div>
+                        )}
+                        {detalhe.desconto && detalhe.desconto > 0 && (
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Desconto</label>
+                            <p className="text-foreground text-green-600">
+                              -{formatCurrency(detalhe.desconto)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Nenhum detalhe de serviço disponível</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

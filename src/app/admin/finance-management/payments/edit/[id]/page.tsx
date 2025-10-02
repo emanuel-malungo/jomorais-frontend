@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
@@ -14,101 +14,176 @@ import {
   ArrowLeft,
   Save,
   X,
-  CreditCard,
+  Receipt,
   User,
   Calendar,
-  DollarSign
+  DollarSign,
+  Hash,
+  FileText
 } from 'lucide-react';
-
-interface Payment {
-  id: number;
-  estudante_id: string;
-  tipo_pagamento: string;
-  valor: string;
-  metodo_pagamento: string;
-  data_pagamento: string;
-  data_vencimento: string;
-  descricao: string;
-  observacoes: string;
-  status: string;
-}
+import { 
+  usePagamentoPrincipal, 
+  useUpdatePagamentoPrincipal, 
+  useAlunosBasicos 
+} from '@/hooks/usePaymentPrincipal';
+import { 
+  IPagamentoPrincipalInput, 
+  StatusPagamentoEnum, 
+  TipoDocumentoEnum 
+} from '@/types/financialService.types';
 
 export default function EditPayment() {
   const params = useParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState<Payment>({
-    id: 0,
-    estudante_id: '',
-    tipo_pagamento: '',
-    valor: '',
-    metodo_pagamento: '',
-    data_pagamento: '',
-    data_vencimento: '',
-    descricao: '',
-    observacoes: '',
-    status: 'pendente'
+  const paymentId = parseInt(params.id as string);
+  
+  const { pagamento, isLoading: loading, error } = usePagamentoPrincipal(paymentId);
+  const { updatePagamentoPrincipal, isUpdating: saving } = useUpdatePagamentoPrincipal();
+  const { alunos, isLoading: alunosLoading } = useAlunosBasicos();
+  
+  // Estados para a combobox de alunos
+  const [alunoSearch, setAlunoSearch] = useState('');
+  const [isAlunoDropdownOpen, setIsAlunoDropdownOpen] = useState(false);
+  const [selectedAluno, setSelectedAluno] = useState<any>(null);
+  const alunoDropdownRef = useRef<HTMLDivElement>(null);
+  
+  const [formData, setFormData] = useState<IPagamentoPrincipalInput>({
+    data: new Date().toISOString().split('T')[0],
+    codigo_Aluno: 0,
+    status: StatusPagamentoEnum.ATIVO,
+    total: 0,
+    valorEntregue: 0,
+    dataBanco: new Date().toISOString().split('T')[0],
+    totalDesconto: 0,
+    obs: '',
+    borderoux: '',
+    saldoAnterior: 0,
+    descontoSaldo: 0,
+    saldo: 0,
+    codigoPagamento: 0,
+    saldoOperacao: 0,
+    codigoUtilizador: 1,
+    hash: '',
+    tipoDocumento: TipoDocumentoEnum.RECIBO,
+    totalIva: 0,
+    nifCliente: '',
+    troco: 0
   });
 
-  // Dados mockados dos pagamentos
-  const paymentsData = [
-    {
-      id: 1,
-      estudante_id: "1",
-      tipo_pagamento: "propina",
-      valor: "25000",
-      metodo_pagamento: "transferencia",
-      data_pagamento: "2024-09-30",
-      data_vencimento: "2024-09-30",
-      descricao: "Propina referente ao mês de Setembro 2024",
-      observacoes: "Pagamento efetuado via transferência bancária",
-      status: "pago"
-    },
-    {
-      id: 2,
-      estudante_id: "2",
-      tipo_pagamento: "matricula",
-      valor: "15000",
-      metodo_pagamento: "dinheiro",
-      data_pagamento: "",
-      data_vencimento: "2024-10-15",
-      descricao: "Taxa de matrícula para o ano letivo 2024/2025",
-      observacoes: "",
-      status: "pendente"
-    }
-  ];
-
+  // Carregar dados do pagamento quando disponível
   useEffect(() => {
-    const loadPayment = async () => {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const paymentId = parseInt(params.id as string);
-      const foundPayment = paymentsData.find(p => p.id === paymentId);
-      
-      if (foundPayment) {
-        setFormData(foundPayment);
+    if (pagamento) {
+      setFormData({
+        data: pagamento.data ? pagamento.data.split('T')[0] : '',
+        codigo_Aluno: pagamento.codigo_Aluno || 0,
+        status: pagamento.status || StatusPagamentoEnum.ATIVO,
+        total: pagamento.total || 0,
+        valorEntregue: pagamento.valorEntregue || 0,
+        dataBanco: pagamento.dataBanco ? pagamento.dataBanco.split('T')[0] : '',
+        totalDesconto: pagamento.totalDesconto || 0,
+        obs: pagamento.obs || '',
+        borderoux: pagamento.borderoux || '',
+        saldoAnterior: pagamento.saldoAnterior || 0,
+        descontoSaldo: pagamento.descontoSaldo || 0,
+        saldo: pagamento.saldo || 0,
+        codigoPagamento: pagamento.codigoPagamento || 0,
+        saldoOperacao: pagamento.saldoOperacao || 0,
+        codigoUtilizador: pagamento.codigoUtilizador || 1,
+        hash: pagamento.hash || '',
+        tipoDocumento: pagamento.tipoDocumento || TipoDocumentoEnum.RECIBO,
+        totalIva: pagamento.totalIva || 0,
+        nifCliente: pagamento.nifCliente || '',
+        troco: pagamento.troco || 0
+      });
+    }
+  }, [pagamento]);
+
+  // Calcular total automaticamente
+  useEffect(() => {
+    const total = formData.valorEntregue - (formData.totalDesconto || 0);
+    setFormData(prev => ({ ...prev, total }));
+  }, [formData.valorEntregue, formData.totalDesconto]);
+
+  // Filtrar alunos baseado na pesquisa
+  const filteredAlunos = alunos.filter(aluno =>
+    aluno.nome.toLowerCase().includes(alunoSearch.toLowerCase()) ||
+    aluno.codigo.toString().includes(alunoSearch)
+  ).slice(0, 10); // Mostrar apenas 10 resultados
+
+  // Função para selecionar aluno
+  const handleAlunoSelect = (aluno: any) => {
+    setSelectedAluno(aluno);
+    setAlunoSearch(aluno.nome);
+    setFormData(prev => ({ ...prev, codigo_Aluno: aluno.codigo }));
+    setIsAlunoDropdownOpen(false);
+  };
+
+  // Validar se o texto digitado corresponde a um aluno válido
+  const validateAlunoInput = (inputValue: string) => {
+    if (!inputValue.trim()) {
+      setSelectedAluno(null);
+      setFormData(prev => ({ ...prev, codigo_Aluno: 0 }));
+      return;
+    }
+
+    // Procurar aluno que corresponda exatamente ao texto digitado
+    const alunoEncontrado = alunos.find(aluno => 
+      aluno.nome.toLowerCase() === inputValue.toLowerCase()
+    );
+
+    if (alunoEncontrado) {
+      setSelectedAluno(alunoEncontrado);
+      setFormData(prev => ({ ...prev, codigo_Aluno: alunoEncontrado.codigo }));
+    } else {
+      // Se não encontrou, limpar seleção mas manter o texto para mostrar erro
+      setSelectedAluno(null);
+      setFormData(prev => ({ ...prev, codigo_Aluno: 0 }));
+    }
+  };
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (alunoDropdownRef.current && !alunoDropdownRef.current.contains(event.target as Node)) {
+        setIsAlunoDropdownOpen(false);
       }
-      
-      setLoading(false);
     };
 
-    loadPayment();
-  }, [params.id]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Atualizar combobox quando pagamento carregar
+  useEffect(() => {
+    if (pagamento && pagamento.aluno) {
+      setSelectedAluno(pagamento.aluno);
+      setAlunoSearch(pagamento.aluno.nome);
+    }
+  }, [pagamento]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
+    
+    if (!selectedAluno || formData.codigo_Aluno === 0) {
+      alert('Por favor, selecione um estudante da lista');
+      return;
+    }
+
+    if (formData.valorEntregue <= 0) {
+      alert('Por favor, informe um valor válido');
+      return;
+    }
     
     try {
-      // Simular atualização do pagamento
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      router.push(`/admin/finance-management/payments/details/${params.id}`);
+      const result = await updatePagamentoPrincipal(paymentId, formData);
+      
+      if (result) {
+        alert('Pagamento atualizado com sucesso!');
+        router.push('/admin/finance-management/payments');
+      }
     } catch (error) {
       console.error('Erro ao atualizar pagamento:', error);
-    } finally {
-      setSaving(false);
+      alert('Erro ao atualizar pagamento. Tente novamente.');
     }
   };
 
@@ -194,40 +269,89 @@ export default function EditPayment() {
                   <label className="block text-sm font-semibold text-foreground mb-2">
                     Estudante *
                   </label>
-                  <select
-                    value={formData.estudante_id}
-                    onChange={(e) => setFormData({...formData, estudante_id: e.target.value})}
-                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                    required
-                  >
-                    <option value="">Selecionar estudante</option>
-                    <option value="1">João Manuel Silva - 10ª A</option>
-                    <option value="2">Maria Santos Costa - 11ª B</option>
-                    <option value="3">Pedro António Neto - 9ª C</option>
-                    <option value="4">Ana Paula Francisco - 12ª A</option>
-                    <option value="5">Carlos Alberto Mendes - 10ª B</option>
-                  </select>
+                  <div className="relative" ref={alunoDropdownRef}>
+                    <input
+                      type="text"
+                      value={alunoSearch}
+                      onChange={(e) => {
+                        setAlunoSearch(e.target.value);
+                        setIsAlunoDropdownOpen(true);
+                      }}
+                      onBlur={(e) => {
+                        // Validar quando o usuário sair do campo
+                        setTimeout(() => validateAlunoInput(e.target.value), 150);
+                      }}
+                      onFocus={() => setIsAlunoDropdownOpen(true)}
+                      placeholder={alunosLoading ? 'Carregando alunos...' : `Pesquisar estudante... (${alunos.length} disponíveis)`}
+                      className={`w-full h-12 px-4 pr-10 border rounded-lg focus:ring-2 focus:border-transparent bg-background text-foreground ${
+                        alunoSearch && !selectedAluno 
+                          ? 'border-red-500 focus:ring-red-500' 
+                          : selectedAluno 
+                            ? 'border-green-500 focus:ring-green-500'
+                            : 'border-border focus:ring-blue-500'
+                      }`}
+                      disabled={alunosLoading}
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    
+                    {isAlunoDropdownOpen && !alunosLoading && (
+                      <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {filteredAlunos.length > 0 ? (
+                          filteredAlunos.map((aluno) => (
+                            <div
+                              key={aluno.codigo}
+                              onClick={() => handleAlunoSelect(aluno)}
+                              className="px-4 py-3 hover:bg-muted cursor-pointer border-b border-border last:border-b-0 flex items-center justify-between"
+                            >
+                              <div>
+                                <div className="font-medium text-foreground">{aluno.nome}</div>
+                                <div className="text-sm text-muted-foreground">Código: {aluno.codigo}</div>
+                              </div>
+                              {selectedAluno?.codigo === aluno.codigo && (
+                                <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-muted-foreground text-center">
+                            {alunoSearch ? 'Nenhum estudante encontrado' : 'Digite para pesquisar...'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {alunoSearch && !selectedAluno && (
+                    <p className="mt-1 text-sm text-red-600">
+                      Estudante não encontrado. Selecione um estudante da lista.
+                    </p>
+                  )}
+                  {selectedAluno && (
+                    <p className="mt-1 text-sm text-green-600">
+                      ✓ {selectedAluno.nome} selecionado
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Tipo de Pagamento *
+                    Status do Pagamento *
                   </label>
                   <select
-                    value={formData.tipo_pagamento}
-                    onChange={(e) => setFormData({...formData, tipo_pagamento: e.target.value})}
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: parseInt(e.target.value)})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
                     required
                   >
-                    <option value="">Selecionar tipo</option>
-                    <option value="propina">Propina Mensal</option>
-                    <option value="matricula">Taxa de Matrícula</option>
-                    <option value="confirmacao">Taxa de Confirmação</option>
-                    <option value="exame">Taxa de Exame</option>
-                    <option value="material">Material Escolar</option>
-                    <option value="uniforme">Uniforme</option>
-                    <option value="transporte">Transporte</option>
-                    <option value="alimentacao">Alimentação</option>
-                    <option value="outros">Outros</option>
+                    <option value={StatusPagamentoEnum.ATIVO}>Ativo</option>
+                    <option value={StatusPagamentoEnum.PENDENTE}>Pendente</option>
+                    <option value={StatusPagamentoEnum.PROCESSANDO}>Processando</option>
+                    <option value={StatusPagamentoEnum.CANCELADO}>Cancelado</option>
                   </select>
                 </div>
               </div>
@@ -246,12 +370,12 @@ export default function EditPayment() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Valor (AOA) *
+                    Valor Entregue (AOA) *
                   </label>
                   <input
                     type="number"
-                    value={formData.valor}
-                    onChange={(e) => setFormData({...formData, valor: e.target.value})}
+                    value={formData.valorEntregue}
+                    onChange={(e) => setFormData({...formData, valorEntregue: parseFloat(e.target.value) || 0})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
                     placeholder="Ex: 25000"
                     min="0"
@@ -261,37 +385,29 @@ export default function EditPayment() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Método de Pagamento *
+                    Total Desconto (AOA)
                   </label>
-                  <select
-                    value={formData.metodo_pagamento}
-                    onChange={(e) => setFormData({...formData, metodo_pagamento: e.target.value})}
+                  <input
+                    type="number"
+                    value={formData.totalDesconto}
+                    onChange={(e) => setFormData({...formData, totalDesconto: parseFloat(e.target.value) || 0})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
-                    required
-                  >
-                    <option value="">Selecionar método</option>
-                    <option value="dinheiro">Dinheiro</option>
-                    <option value="transferencia">Transferência Bancária</option>
-                    <option value="multicaixa">Multicaixa Express</option>
-                    <option value="cheque">Cheque</option>
-                    <option value="cartao">Cartão de Débito/Crédito</option>
-                  </select>
+                    placeholder="Ex: 500"
+                    min="0"
+                    step="0.01"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Status *
+                    Total Final (AOA)
                   </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
-                    required
-                  >
-                    <option value="pendente">Pendente</option>
-                    <option value="pago">Pago</option>
-                    <option value="atrasado">Atrasado</option>
-                    <option value="cancelado">Cancelado</option>
-                  </select>
+                  <input
+                    type="number"
+                    value={formData.total}
+                    readOnly
+                    className="w-full h-12 px-4 border border-border rounded-lg bg-muted text-foreground"
+                    placeholder="Calculado automaticamente"
+                  />
                 </div>
               </div>
             </CardContent>
@@ -309,23 +425,24 @@ export default function EditPayment() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Data de Pagamento
+                    Data do Pagamento *
                   </label>
                   <input
                     type="date"
-                    value={formData.data_pagamento}
-                    onChange={(e) => setFormData({...formData, data_pagamento: e.target.value})}
+                    value={formData.data}
+                    onChange={(e) => setFormData({...formData, data: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-background text-foreground"
+                    required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Data de Vencimento *
+                    Data do Banco *
                   </label>
                   <input
                     type="date"
-                    value={formData.data_vencimento}
-                    onChange={(e) => setFormData({...formData, data_vencimento: e.target.value})}
+                    value={formData.dataBanco}
+                    onChange={(e) => setFormData({...formData, dataBanco: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-background text-foreground"
                     required
                   />
@@ -334,37 +451,57 @@ export default function EditPayment() {
             </CardContent>
           </Card>
 
-          {/* Descrição e Observações */}
+          {/* Informações Adicionais */}
           <Card className="border-l-4 border-l-orange-500">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <CreditCard className="h-5 w-5 text-orange-600" />
-                <span>Detalhes Adicionais</span>
+                <Receipt className="h-5 w-5 text-orange-600" />
+                <span>Informações Adicionais</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Descrição
-                </label>
-                <input
-                  type="text"
-                  value={formData.descricao}
-                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-                  className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
-                  placeholder="Ex: Propina referente ao mês de Outubro 2024"
-                />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Tipo de Documento
+                  </label>
+                  <select
+                    value={formData.tipoDocumento}
+                    onChange={(e) => setFormData({...formData, tipoDocumento: e.target.value})}
+                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
+                  >
+                    <option value={TipoDocumentoEnum.RECIBO}>Recibo</option>
+                    <option value={TipoDocumentoEnum.FATURA}>Fatura</option>
+                    <option value={TipoDocumentoEnum.NOTA_CREDITO}>Nota de Crédito</option>
+                    <option value={TipoDocumentoEnum.COMPROVATIVO}>Comprovativo</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Total IVA (AOA)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.totalIva}
+                    onChange={(e) => setFormData({...formData, totalIva: parseFloat(e.target.value) || 0})}
+                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
+                    placeholder="Ex: 2100"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">
                   Observações
                 </label>
                 <textarea
-                  value={formData.observacoes}
-                  onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
+                  value={formData.obs}
+                  onChange={(e) => setFormData({...formData, obs: e.target.value})}
                   rows={4}
                   className="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
                   placeholder="Observações adicionais sobre o pagamento..."
+                  maxLength={200}
                 />
               </div>
             </CardContent>

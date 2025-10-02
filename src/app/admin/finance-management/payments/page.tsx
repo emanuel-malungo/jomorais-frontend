@@ -1,17 +1,31 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Pagination } from '@/components/ui/pagination';
+import { 
+  usePagamentosPrincipais, 
+  usePagamentoPrincipal,
+  useDeletePagamentoPrincipal,
+  useUpdatePagamentoPrincipal
+} from '@/hooks/usePaymentPrincipal';
+import StatCard from '@/components/layout/StatCard';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -58,92 +72,11 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
-// Dados mockados dos pagamentos
-const mockPayments = [
-  {
-    id: 1,
-    aluno: "Ana Silva Santos",
-    numeroMatricula: "2024001",
-    tipoServico: "Propina",
-    descricao: "Propina - 1º Trimestre 2024",
-    valor: 25000,
-    valorPago: 25000,
-    dataVencimento: "2024-03-31",
-    dataPagamento: "2024-03-15",
-    metodoPagamento: "Transferência Bancária",
-    status: "Pago",
-    observacoes: "Pagamento efetuado dentro do prazo"
-  },
-  {
-    id: 2,
-    aluno: "Carlos Manuel Ferreira",
-    numeroMatricula: "2024002",
-    tipoServico: "Propina",
-    descricao: "Propina - 1º Trimestre 2024",
-    valor: 25000,
-    valorPago: 15000,
-    dataVencimento: "2024-03-31",
-    dataPagamento: null,
-    metodoPagamento: null,
-    status: "Pendente",
-    observacoes: "Pagamento parcial efetuado"
-  },
-  {
-    id: 3,
-    aluno: "Beatriz Costa Lima",
-    numeroMatricula: "2024003",
-    tipoServico: "Matrícula",
-    descricao: "Taxa de Matrícula 2024",
-    valor: 15000,
-    valorPago: 15000,
-    dataVencimento: "2024-02-15",
-    dataPagamento: "2024-02-10",
-    metodoPagamento: "Dinheiro",
-    status: "Pago",
-    observacoes: "Pagamento antecipado"
-  },
-  {
-    id: 4,
-    aluno: "David Nunes Pereira",
-    numeroMatricula: "2024004",
-    tipoServico: "Certificado",
-    descricao: "Emissão de Certificado",
-    valor: 5000,
-    valorPago: 0,
-    dataVencimento: "2024-04-15",
-    dataPagamento: null,
-    metodoPagamento: null,
-    status: "Em Atraso",
-    observacoes: "Pagamento em atraso há 15 dias"
-  },
-  {
-    id: 5,
-    aluno: "Eduarda Mendes Silva",
-    numeroMatricula: "2024005",
-    tipoServico: "Propina",
-    descricao: "Propina - 2º Trimestre 2024",
-    valor: 25000,
-    valorPago: 25000,
-    dataVencimento: "2024-06-30",
-    dataPagamento: "2024-06-20",
-    metodoPagamento: "Multicaixa",
-    status: "Pago",
-    observacoes: "Pagamento via Multicaixa Express"
-  },
-  {
-    id: 6,
-    aluno: "Francisco José Costa",
-    numeroMatricula: "2024006",
-    tipoServico: "Exame",
-    descricao: "Taxa de Exame Final",
-    valor: 8000,
-    valorPago: 8000,
-    dataVencimento: "2024-11-15",
-    dataPagamento: "2024-11-10",
-    metodoPagamento: "Transferência Bancária",
-    status: "Pago",
-    observacoes: "Pagamento confirmado"
-  }
+// Opções de filtros
+const statusOptions = [
+  { value: "all", label: "Todos os Status" },
+  { value: "1", label: "Ativo" },
+  { value: "0", label: "Inativo" },
 ];
 
 const tipoServicoOptions = [
@@ -154,90 +87,81 @@ const tipoServicoOptions = [
   { value: "exame", label: "Exame" },
 ];
 
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "pago", label: "Pago" },
-  { value: "pendente", label: "Pendente" },
-  { value: "atraso", label: "Em Atraso" },
-];
-
 const metodoPagamentoOptions = [
   { value: "all", label: "Todos os Métodos" },
   { value: "transferencia", label: "Transferência Bancária" },
   { value: "dinheiro", label: "Dinheiro" },
-  { value: "multicaixa", label: "Multicaixa" },
+  { value: "multicaixa", label: "Multicaixa Express" },
 ];
 
 export default function PaymentsPage() {
-  const [payments, setPayments] = useState(mockPayments);
-  const [filteredPayments, setFilteredPayments] = useState(mockPayments);
+  // Estados para filtros e paginação
   const [searchTerm, setSearchTerm] = useState("");
-  const [tipoServicoFilter, setTipoServicoFilter] = useState("all");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [tipoServicoFilter, setTipoServicoFilter] = useState("all");
   const [metodoPagamentoFilter, setMetodoPagamentoFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Filtrar pagamentos
+  const [itemsPerPage] = useState(10);
+  
+  // Estados para modais
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{id: number, nome: string} | null>(null);
+  
+  // Estados para formulário de novo pagamento
+  const [formData, setFormData] = useState({
+    data: '',
+    codigo_Aluno: '',
+    status: 1,
+    valorEntregue: '',
+    dataBanco: '',
+    totalDesconto: 0,
+    obs: ''
+  });
+  
+  // Debounce para o campo de busca
   useEffect(() => {
-    let filtered = payments;
-
-    if (searchTerm) {
-      filtered = filtered.filter(payment =>
-        payment.aluno.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.numeroMatricula.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.descricao.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (tipoServicoFilter !== "all") {
-      filtered = filtered.filter(payment => 
-        payment.tipoServico.toLowerCase().includes(tipoServicoFilter)
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(payment => {
-        switch (statusFilter) {
-          case "pago":
-            return payment.status === "Pago";
-          case "pendente":
-            return payment.status === "Pendente";
-          case "atraso":
-            return payment.status === "Em Atraso";
-          default:
-            return true;
-        }
-      });
-    }
-
-    if (metodoPagamentoFilter !== "all") {
-      filtered = filtered.filter(payment => {
-        if (!payment.metodoPagamento) return false;
-        const metodo = payment.metodoPagamento.toLowerCase();
-        switch (metodoPagamentoFilter) {
-          case "transferencia":
-            return metodo.includes("transferência");
-          case "dinheiro":
-            return metodo.includes("dinheiro");
-          case "multicaixa":
-            return metodo.includes("multicaixa");
-          default:
-            return true;
-        }
-      });
-    }
-
-    setFilteredPayments(filtered);
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  
+  // Resetar página quando filtros mudarem
+  useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, tipoServicoFilter, statusFilter, metodoPagamentoFilter, payments]);
+  }, [debouncedSearchTerm, statusFilter]);
 
-  // Paginação
-  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentPayments = filteredPayments.slice(startIndex, endIndex);
+  // Memoizar os filtros para evitar re-renders infinitos
+  const filters = useMemo(() => {
+    const filterObj: any = {};
+    
+    if (debouncedSearchTerm && debouncedSearchTerm.trim() !== '') {
+      filterObj.search = debouncedSearchTerm.trim();
+    }
+    
+    if (statusFilter !== "all") {
+      const statusNum = parseInt(statusFilter);
+      if (!isNaN(statusNum)) {
+        filterObj.status = statusNum;
+      }
+    }
+    
+    return filterObj;
+  }, [debouncedSearchTerm, statusFilter]);
+  
+  // Hooks da API
+  const { pagamentos, isLoading: loading, error, pagination, refetch } = usePagamentosPrincipais(currentPage, itemsPerPage, filters);
+  const { deletePagamentoPrincipal: deletePagamento, isDeleting: deleteLoading } = useDeletePagamentoPrincipal();
+
+
+
+  // Usar paginação da API
+  const totalPages = pagination?.totalPages || 1;
+  const startIndex = ((pagination?.currentPage || 1) - 1) * (pagination?.itemsPerPage || 10) + 1;
+  const endIndex = Math.min((pagination?.currentPage || 1) * (pagination?.itemsPerPage || 10), pagination?.totalItems || 0);
+  const currentPayments = pagamentos || [];
 
   const handleViewPayment = (paymentId: number) => {
     window.location.href = `/admin/finance-management/payments/details/${paymentId}`;
@@ -247,20 +171,67 @@ export default function PaymentsPage() {
     window.location.href = `/admin/finance-management/payments/edit/${paymentId}`;
   };
 
-  const handleDeletePayment = (paymentId: number) => {
-    console.log("Excluir pagamento:", paymentId);
-    // Implementar confirmação e exclusão
+  // Funções de manipulação
+  const handleDeleteClick = (payment: any) => {
+    setItemToDelete({
+      id: payment.codigo,
+      nome: payment.aluno?.nome || payment.tb_alunos?.nome || 'Pagamento'
+    });
+    setShowDeleteModal(true);
   };
 
-  // Estatísticas dos pagamentos
-  const totalReceita = payments.filter(p => p.status === "Pago").reduce((sum, payment) => sum + payment.valorPago, 0);
-  const totalPendente = payments.filter(p => p.status === "Pendente").reduce((sum, payment) => sum + (payment.valor - payment.valorPago), 0);
-  const totalAtraso = payments.filter(p => p.status === "Em Atraso").reduce((sum, payment) => sum + payment.valor, 0);
-  const pagamentosHoje = payments.filter(p => {
-    if (!p.dataPagamento) return false;
-    const hoje = new Date().toISOString().split('T')[0];
-    return p.dataPagamento.split('T')[0] === hoje;
-  }).length;
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    try {
+      await deletePagamento(itemToDelete.id);
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      refetch(); // Recarregar a lista
+    } catch (error) {
+      console.error('Erro ao excluir pagamento:', error);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
+  };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+
+
+  // Estatísticas calculadas dos dados reais
+  const totalReceita = useMemo(() => {
+    if (pagamentos && pagination && pagamentos.length > 0) {
+      const mediaPorPagamento = pagamentos.reduce((sum: number, p) => sum + (p.valorEntregue || 0), 0) / pagamentos.length;
+      return mediaPorPagamento * pagination.totalItems;
+    }
+    return 0;
+  }, [pagamentos, pagination]);
+  
+  const totalPendente = useMemo(() => {
+    if (pagamentos && pagination && pagamentos.length > 0) {
+      const mediaPendentePorPagamento = pagamentos.reduce((sum: number, p) => sum + ((p.total || 0) - (p.valorEntregue || 0)), 0) / pagamentos.length;
+      return mediaPendentePorPagamento * pagination.totalItems;
+    }
+    return 0;
+  }, [pagamentos, pagination]);
+  
+  const totalPagamentos = pagination?.totalItems || 0;
+  const pagamentosAtivos = useMemo(() => {
+    if (pagamentos && pagination && pagamentos.length > 0) {
+      const percentualAtivos = pagamentos.filter(p => p.status === 1).length / pagamentos.length;
+      return Math.round(percentualAtivos * pagination.totalItems);
+    }
+    return 0;
+  }, [pagamentos, pagination]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -358,8 +329,11 @@ export default function PaymentsPage() {
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-emerald-600">Total Recebido</p>
+            <p className="text-sm font-semibold mb-2 text-emerald-600">Total Recebido (Geral)</p>
             <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalReceita)}</p>
+            <p className="text-xs text-emerald-500 mt-1">
+              Estimativa baseada nos dados atuais
+            </p>
           </div>
           
           {/* Decorative elements */}
@@ -379,8 +353,11 @@ export default function PaymentsPage() {
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Pagamentos Pendentes</p>
+            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Pagamentos Pendentes (Geral)</p>
             <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalPendente)}</p>
+            <p className="text-xs text-[#FFD002] mt-1">
+              Estimativa baseada nos dados atuais
+            </p>
           </div>
           
           {/* Decorative elements */}
@@ -388,20 +365,21 @@ export default function PaymentsPage() {
           <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
         </div>
 
-        {/* Card Pagamentos em Atraso */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+        {/* Card Pagamentos Ativos */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 via-white to-green-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-sm">
-              <AlertCircle className="h-6 w-6 text-white" />
+            <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-green-600 shadow-sm">
+              <Activity className="h-6 w-6 text-white" />
             </div>
             <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <AlertCircle className="h-3 w-3 text-red-500" />
-              <span className="font-bold text-xs text-red-600">Atraso</span>
+              <Activity className="h-3 w-3 text-green-500" />
+              <span className="font-bold text-xs text-green-600">Ativo</span>
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-red-600">Em Atraso</p>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalAtraso)}</p>
+            <p className="text-sm font-semibold mb-2 text-green-600">Pagamentos Ativos (Geral)</p>
+            <p className="text-3xl font-bold text-gray-900">{pagamentosAtivos}</p>
+            <p className="text-xs text-green-500 mt-1">Estimativa baseada na amostra</p>
           </div>
           
           {/* Decorative elements */}
@@ -421,8 +399,8 @@ export default function PaymentsPage() {
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-2 text-[#182F59]">Pagamentos Hoje</p>
-            <p className="text-3xl font-bold text-gray-900">{pagamentosHoje}</p>
+            <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Pagamentos</p>
+            <p className="text-3xl font-bold text-gray-900">{totalPagamentos}</p>
           </div>
           
           {/* Decorative elements */}
@@ -505,76 +483,99 @@ export default function PaymentsPage() {
               <span>Registro de Pagamentos</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {filteredPayments.length} pagamentos encontrados
+              {pagination?.totalItems || 0} pagamentos encontrados
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Aluno</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Valor Pago</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Pagamento</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentPayments.map((payment) => (
-                  <TableRow key={payment.id}>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
+                <p className="text-gray-500">Carregando pagamentos...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+                <p className="text-red-600 mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()} variant="outline">
+                  Tentar Novamente
+                </Button>
+              </div>
+            </div>
+          ) : currentPayments.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <Wallet className="h-8 w-8 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Nenhum pagamento encontrado</p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aluno</TableHead>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Valor Pago</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Pagamento</TableHead>
+                    <TableHead>Documento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentPayments.map((payment) => (
+                  <TableRow key={payment.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
                           <Users className="h-5 w-5 text-[#F9CD1D]" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{payment.aluno}</p>
-                          <p className="text-sm text-gray-500">Mat: {payment.numeroMatricula}</p>
+                          <p className="font-medium text-gray-900">{payment.aluno?.nome || payment.tb_alunos?.nome || 'N/A'}</p>
+                          <p className="text-sm text-gray-500">Cód: {payment.aluno?.codigo || payment.codigo_Aluno}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-gray-900">{payment.tipoServico}</p>
-                        <p className="text-sm text-gray-500">{payment.descricao}</p>
+                        <p className="font-medium text-gray-900">
+                          {payment.detalhes?.[0]?.tipoServico?.designacao || 'Pagamento Principal'}
+                        </p>
+                        <p className="text-sm text-gray-500">{payment.obs || 'Sem descrição'}</p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-gray-900">{formatCurrency(payment.valor)}</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(payment.total || 0)}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-gray-900">{formatCurrency(payment.valorPago)}</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(payment.valorEntregue || 0)}</span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{formatDate(payment.dataVencimento)}</span>
+                        <span className="text-sm text-gray-600">{formatDate(payment.dataBanco)}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{formatDate(payment.dataPagamento)}</span>
+                        <span className="text-sm text-gray-600">{formatDate(payment.data)}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {payment.metodoPagamento ? (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          {payment.metodoPagamento}
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {payment.tipoDocumento || 'Não especificado'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(payment.status)}>
-                        {payment.status}
+                      <Badge className={getStatusColor(payment.status === 1 ? "Ativo" : "Inativo")}>
+                        {payment.status === 1 ? "Ativo" : "Inativo"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -587,17 +588,17 @@ export default function PaymentsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewPayment(payment.id)}>
+                          <DropdownMenuItem onClick={() => handleViewPayment(payment.codigo)}>
                             <Eye className="mr-2 h-4 w-4" />
                             Visualizar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditPayment(payment.id)}>
+                          <DropdownMenuItem onClick={() => handleEditPayment(payment.codigo)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            onClick={() => handleDeletePayment(payment.id)}
+                            onClick={() => handleDeleteClick(payment)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -608,15 +609,14 @@ export default function PaymentsPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableBody>
+              </Table>
 
-          {/* Paginação */}
-          {totalPages > 1 && (
+              {/* Paginação */}
+              {totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredPayments.length)} de {filteredPayments.length} pagamentos
+                Mostrando {startIndex} a {endIndex} de {pagination?.totalItems || 0} pagamentos
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -698,11 +698,53 @@ export default function PaymentsPage() {
                   Próximo
                   <ChevronRight className="h-4 w-4" />
                 </Button>
+                </div>
               </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <span>Confirmar Exclusão</span>
+            </DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o pagamento de <strong>{itemToDelete?.nome}</strong>?
+              <br />
+              <span className="text-red-600 font-medium">Esta ação não pode ser desfeita.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete} disabled={deleteLoading}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
     </Container>
   );
 }

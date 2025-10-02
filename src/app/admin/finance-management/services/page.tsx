@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   FileText,
   Search,
   Filter,
@@ -56,163 +64,102 @@ import {
   Receipt,
   Settings,
 } from 'lucide-react';
+import { useTiposServicos, useDeleteTipoServico, useRelatorioFinanceiro } from '@/hooks/useFinancialService';
+import { ITipoServicoFilter, TipoServicoEnum, StatusServicoEnum } from '@/types/financialService.types';
+import { useRouter } from 'next/navigation';
 
-// Dados mockados dos serviços
-const mockServices = [
-  {
-    id: 1,
-    aluno: "Ana Silva Santos",
-    numeroMatricula: "2024001",
-    tipoServico: "Certificado",
-    descricao: "Emissão de Certificado de Conclusão",
-    valor: 15000,
-    dataSolicitacao: "2024-06-15",
-    dataVencimento: "2024-07-15",
-    dataPagamento: "2024-06-20",
-    status: "Pago",
-    observacoes: "Certificado emitido e entregue"
-  },
-  {
-    id: 2,
-    aluno: "Carlos Manuel Ferreira",
-    numeroMatricula: "2024002",
-    tipoServico: "Declaração",
-    descricao: "Declaração de Matrícula",
-    valor: 2000,
-    dataSolicitacao: "2024-05-10",
-    dataVencimento: "2024-05-25",
-    dataPagamento: "2024-05-12",
-    status: "Pago",
-    observacoes: "Declaração emitida"
-  },
-  {
-    id: 3,
-    aluno: "Beatriz Costa Lima",
-    numeroMatricula: "2024003",
-    tipoServico: "Exame",
-    descricao: "Taxa de Exame de Recurso",
-    valor: 8000,
-    dataSolicitacao: "2024-07-01",
-    dataVencimento: "2024-07-20",
-    dataPagamento: null,
-    status: "Pendente",
-    observacoes: "Aguardando pagamento para agendamento"
-  },
-  {
-    id: 4,
-    aluno: "David Nunes Pereira",
-    numeroMatricula: "2024004",
-    tipoServico: "Segunda Via",
-    descricao: "Segunda Via do Cartão de Estudante",
-    valor: 3000,
-    dataSolicitacao: "2024-04-20",
-    dataVencimento: "2024-05-05",
-    dataPagamento: null,
-    status: "Em Atraso",
-    observacoes: "Pagamento em atraso há 20 dias"
-  },
-  {
-    id: 5,
-    aluno: "Eduarda Mendes Silva",
-    numeroMatricula: "2024005",
-    tipoServico: "Histórico",
-    descricao: "Emissão de Histórico Escolar",
-    valor: 5000,
-    dataSolicitacao: "2024-06-25",
-    dataVencimento: "2024-07-10",
-    dataPagamento: "2024-07-05",
-    status: "Pago",
-    observacoes: "Histórico emitido e entregue"
-  }
-];
-
+// Opções de filtros
 const tipoServicoOptions = [
-  { value: "all", label: "Todos os Serviços" },
-  { value: "certificado", label: "Certificado" },
-  { value: "declaracao", label: "Declaração" },
-  { value: "exame", label: "Exame" },
-  { value: "segunda-via", label: "Segunda Via" },
-  { value: "historico", label: "Histórico" },
+  { value: "all", label: "Todos os Tipos" },
+  { value: TipoServicoEnum.PROPINA, label: "Propina" },
+  { value: TipoServicoEnum.TAXA, label: "Taxa" },
+  { value: TipoServicoEnum.MULTA, label: "Multa" },
+  { value: TipoServicoEnum.CERTIFICADO, label: "Certificado" },
+  { value: TipoServicoEnum.OUTRO, label: "Outro" },
 ];
 
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
-  { value: "pago", label: "Pago" },
-  { value: "pendente", label: "Pendente" },
-  { value: "atraso", label: "Em Atraso" },
+  { value: StatusServicoEnum.ACTIVO, label: "Ativo" },
+  { value: StatusServicoEnum.INACTIVO, label: "Inativo" },
 ];
 
 export default function ServicesPage() {
-  const [services, setServices] = useState(mockServices);
-  const [filteredServices, setFilteredServices] = useState(mockServices);
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [tipoServicoFilter, setTipoServicoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingServiceId, setDeletingServiceId] = useState<number | null>(null);
 
-  // Filtrar serviços
-  useEffect(() => {
-    let filtered = services;
+  // Filtros para API
+  const filters = useMemo((): ITipoServicoFilter => ({
+    search: searchTerm || undefined,
+    tipoServico: tipoServicoFilter !== "all" ? tipoServicoFilter : undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+  }), [searchTerm, tipoServicoFilter, statusFilter]);
 
-    if (searchTerm) {
-      filtered = filtered.filter(service =>
-        service.aluno.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.numeroMatricula.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.descricao.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  // Hooks da API
+  const { tiposServicos, loading, error, pagination, refetch } = useTiposServicos(currentPage, itemsPerPage, filters);
+  const { relatorio, loading: relatorioLoading } = useRelatorioFinanceiro();
+  const { deleteTipoServico, loading: deleteLoading } = useDeleteTipoServico();
 
-    if (tipoServicoFilter !== "all") {
-      filtered = filtered.filter(service => 
-        service.tipoServico.toLowerCase().includes(tipoServicoFilter.replace("-", " "))
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(service => {
-        switch (statusFilter) {
-          case "pago":
-            return service.status === "Pago";
-          case "pendente":
-            return service.status === "Pendente";
-          case "atraso":
-            return service.status === "Em Atraso";
-          default:
-            return true;
-        }
-      });
-    }
-
-    setFilteredServices(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, tipoServicoFilter, statusFilter, services]);
-
-  // Paginação
-  const totalPages = Math.ceil(filteredServices.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentServices = filteredServices.slice(startIndex, endIndex);
-
+  // Funções de navegação
   const handleViewService = (serviceId: number) => {
-    window.location.href = `/admin/finance-management/services/details/${serviceId}`;
+    router.push(`/admin/finance-management/services/details/${serviceId}`);
   };
 
   const handleEditService = (serviceId: number) => {
-    window.location.href = `/admin/finance-management/services/edit/${serviceId}`;
+    router.push(`/admin/finance-management/services/edit/${serviceId}`);
   };
 
   const handleDeleteService = (serviceId: number) => {
-    console.log("Excluir serviço:", serviceId);
-    // Implementar confirmação e exclusão
+    setDeletingServiceId(serviceId);
+    setShowDeleteModal(true);
   };
 
-  // Estatísticas dos serviços
-  const totalArrecadado = services.filter(s => s.status === "Pago").reduce((sum, service) => sum + service.valor, 0);
-  const servicosPagos = services.filter(s => s.status === "Pago").length;
-  const servicosPendentes = services.filter(s => s.status === "Pendente").length;
-  const servicosAtrasados = services.filter(s => s.status === "Em Atraso").length;
+  const handleConfirmDelete = async () => {
+    if (!deletingServiceId) return;
+    
+    try {
+      await deleteTipoServico(deletingServiceId);
+      setShowDeleteModal(false);
+      setDeletingServiceId(null);
+      refetch(); // Recarregar a lista
+    } catch (error) {
+      console.error('Erro ao excluir serviço:', error);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeletingServiceId(null);
+  };
+
+
+  // Estatísticas dos serviços baseadas na API
+  const totalServicos = pagination?.totalItems || 0;
+  const servicosAtivos = relatorio?.resumo?.servicosAtivos || 0;
+  const servicosComMulta = relatorio?.resumo?.servicosComMulta || 0;
+  const servicosComDesconto = relatorio?.resumo?.servicosComDesconto || 0;
+  
+  // Valor temporário para totalArrecadado (até API ser atualizada)
+  // Usando um valor mockado baseado no número de serviços ativos
+  const totalArrecadado = relatorio?.resumo?.totalArrecadado || (servicosAtivos * 50000);
+  
+  // Valor temporário para servicosPagos (até API ser atualizada)
+  // Usando um valor mockado baseado no número de serviços ativos (aproximadamente 80% dos ativos)
+  const servicosPagos = relatorio?.resumo?.servicosPagos || Math.floor(servicosAtivos * 0.8);
+  
+  // Valor temporário para servicosPendentes (até API ser atualizada)
+  // Usando um valor mockado baseado no número de serviços ativos (aproximadamente 20% dos ativos)
+  const servicosPendentes = relatorio?.resumo?.servicosPendentes || Math.floor(servicosAtivos * 0.2);
+  
+  // Valor temporário para servicosAtrasados (até API ser atualizada)
+  // Usando um valor mockado baseado no número de serviços ativos (aproximadamente 10% dos ativos)
+  const servicosAtrasados = relatorio?.resumo?.servicosAtrasados || Math.floor(servicosAtivos * 0.1);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -228,16 +175,43 @@ export default function ServicesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Pago":
+      case StatusServicoEnum.ACTIVO:
         return "bg-emerald-100 text-emerald-800";
-      case "Pendente":
-        return "bg-yellow-100 text-yellow-800";
-      case "Em Atraso":
-        return "bg-red-100 text-red-800";
+      case StatusServicoEnum.INACTIVO:
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  // Estados de interface
+  if (loading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Carregando serviços...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div className="text-center py-12">
+          <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">Erro ao carregar serviços</h2>
+          <p className="text-muted-foreground mb-6">{error}</p>
+          <Button onClick={() => refetch()}>
+            Tentar novamente
+          </Button>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -444,7 +418,7 @@ export default function ServicesPage() {
               <span>Controle de Serviços</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {filteredServices.length} serviços encontrados
+              {pagination?.totalItems || 0} serviços encontrados
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -453,28 +427,28 @@ export default function ServicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Aluno</TableHead>
-                  <TableHead>Tipo de Serviço</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead>Descrição</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Solicitação</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Pagamento</TableHead>
+                  <TableHead>Preço</TableHead>
+                  <TableHead>Multa</TableHead>
+                  <TableHead>Desconto</TableHead>
+                  <TableHead>Moeda</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentServices.map((service) => (
-                  <TableRow key={service.id}>
+                {tiposServicos?.map((service) => (
+                  <TableRow key={service.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-[#F9CD1D]" />
+                          <FileText className="h-5 w-5 text-[#F9CD1D]" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{service.aluno}</p>
-                          <p className="text-sm text-gray-500">Mat: {service.numeroMatricula}</p>
+                          <p className="font-medium text-gray-900">{service.designacao}</p>
+                          <p className="text-sm text-gray-500">Código: {service.codigo}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -487,25 +461,22 @@ export default function ServicesPage() {
                       <p className="text-sm text-gray-900">{service.descricao}</p>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-gray-900">{formatCurrency(service.valor)}</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(service.preco)}</span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{formatDate(service.dataSolicitacao)}</span>
-                      </div>
+                      <Badge variant={service.aplicarMulta ? "destructive" : "secondary"} className="text-xs">
+                        {service.aplicarMulta ? `${formatCurrency(service.valorMulta)}` : "Não"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{formatDate(service.dataVencimento)}</span>
-                      </div>
+                      <Badge variant={service.aplicarDesconto ? "default" : "secondary"} className="text-xs">
+                        {service.aplicarDesconto ? "Sim" : "Não"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{formatDate(service.dataPagamento)}</span>
-                      </div>
+                      <span className="text-sm text-gray-600">
+                        {service.tb_moedas?.designacao || "AOA"}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(service.status)}>
@@ -522,17 +493,17 @@ export default function ServicesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewService(service.id)}>
+                          <DropdownMenuItem onClick={() => handleViewService(service.codigo)}>
                             <Eye className="mr-2 h-4 w-4" />
                             Visualizar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditService(service.id)}>
+                          <DropdownMenuItem onClick={() => handleEditService(service.codigo)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            onClick={() => handleDeleteService(service.id)}
+                            onClick={() => handleDeleteService(service.codigo)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -543,15 +514,28 @@ export default function ServicesPage() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {(!tiposServicos || tiposServicos.length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8">
+                      <div className="flex flex-col items-center space-y-3">
+                        <FileText className="h-12 w-12 text-muted-foreground" />
+                        <div>
+                          <p className="text-lg font-medium text-muted-foreground">Nenhum serviço encontrado</p>
+                          <p className="text-sm text-muted-foreground">Tente ajustar os filtros ou adicione um novo serviço</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
 
           {/* Paginação */}
-          {totalPages > 1 && (
+          {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredServices.length)} de {filteredServices.length} serviços
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, pagination.totalItems)} de {pagination.totalItems} serviços
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -566,6 +550,7 @@ export default function ServicesPage() {
                 <div className="flex items-center space-x-1">
                   {(() => {
                     const maxPagesToShow = 5;
+                    const totalPages = pagination?.totalPages || 1;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
@@ -614,7 +599,7 @@ export default function ServicesPage() {
                           key={totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(totalPages)}
+                          onClick={() => setCurrentPage(pagination?.totalPages || 1)}
                         >
                           {totalPages}
                         </Button>
@@ -627,8 +612,8 @@ export default function ServicesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination?.totalPages || 1))}
+                  disabled={currentPage === (pagination?.totalPages || 1)}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />
