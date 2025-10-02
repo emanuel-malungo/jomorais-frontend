@@ -100,7 +100,7 @@ export default function ListStudentPage() {
 
   // Carregar TODOS os estudantes para pesquisa global
   useEffect(() => {
-    getAllStudents(1, 100); // Carregar até 100 estudantes
+    getAllStudents(1, 1000); // Carregar até 1000 estudantes
   }, [getAllStudents]);
 
   // Filtrar estudantes (aplicado aos dados da página atual)
