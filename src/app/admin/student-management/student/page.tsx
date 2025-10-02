@@ -207,7 +207,7 @@ export default function ListStudentPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total de Alunos"
-          value={totalItems.toString()}
+          value={localPagination.totalItems.toString()}
           change="+8.2%"
           changeType="up"
           icon={Users}
@@ -240,7 +240,7 @@ export default function ListStudentPage() {
 
         <StatCard
           title="Página Atual"
-          value={`${currentPage}/${totalPages}`}
+          value={`${currentPage}/${localPagination.totalPages}`}
           change="Paginação"
           changeType="neutral"
           icon={UserX}
@@ -280,7 +280,7 @@ export default function ListStudentPage() {
             Alunos da Página {currentPage} ({filteredStudents.length} de {itemsPerPage})
           </CardTitle>
           <CardDescription>
-            Página {currentPage} de {totalPages} - Total: {totalItems} alunos
+            Página {currentPage} de {localPagination.totalPages} - Total: {localPagination.totalItems} alunos
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -308,7 +308,7 @@ export default function ListStudentPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : currentStudents.length === 0 ? (
+                ) : paginatedStudents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
@@ -434,16 +434,16 @@ export default function ListStudentPage() {
           </div>
 
           {/* Paginação */}
-          {totalPages > 1 && (
+          {localPagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex} a {endIndex} de {totalItems} alunos
+                Mostrando {startIndex} a {endIndex} de {localPagination.totalItems} alunos
               </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1 || loading}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -453,7 +453,7 @@ export default function ListStudentPage() {
                   {(() => {
                     const maxPagesToShow = 5;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                    const endPage = Math.min(localPagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
                     
                     const pages = [];
@@ -493,19 +493,19 @@ export default function ListStudentPage() {
                     }
                     
                     // Última página
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
+                    if (endPage < localPagination.totalPages) {
+                      if (endPage < localPagination.totalPages - 1) {
                         pages.push(<span key="ellipsis2" className="px-2">...</span>);
                       }
                       pages.push(
                         <Button
-                          key={totalPages}
+                          key={localPagination.totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(totalPages)}
+                          onClick={() => setCurrentPage(localPagination.totalPages)}
                           disabled={loading}
                         >
-                          {totalPages}
+                          {localPagination.totalPages}
                         </Button>
                       );
                     }
@@ -516,8 +516,8 @@ export default function ListStudentPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages || loading}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, localPagination.totalPages))}
+                  disabled={currentPage === localPagination.totalPages || loading}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />

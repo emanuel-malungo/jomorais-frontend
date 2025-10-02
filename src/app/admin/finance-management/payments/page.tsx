@@ -151,17 +151,64 @@ export default function PaymentsPage() {
     return filterObj;
   }, [debouncedSearchTerm, statusFilter]);
   
-  // Hooks da API
-  const { pagamentos, isLoading: loading, error, pagination, refetch } = usePagamentosPrincipais(currentPage, itemsPerPage, filters);
+  // Hooks da API - Carregar TODOS os pagamentos para pesquisa global
+  const { pagamentos: allPagamentos, isLoading: loading, error, pagination, refetch } = usePagamentosPrincipais(1, 1000, filters);
   const { deletePagamentoPrincipal: deletePagamento, isDeleting: deleteLoading } = useDeletePagamentoPrincipal();
 
 
 
-  // Usar paginação da API
-  const totalPages = pagination?.totalPages || 1;
-  const startIndex = ((pagination?.currentPage || 1) - 1) * (pagination?.itemsPerPage || 10) + 1;
-  const endIndex = Math.min((pagination?.currentPage || 1) * (pagination?.itemsPerPage || 10), pagination?.totalItems || 0);
-  const currentPayments = pagamentos || [];
+  // Filtros locais para pesquisa em TODOS os dados carregados
+  const filteredPagamentos = useMemo(() => {
+    if (!allPagamentos) return [];
+    
+    let filtered = [...allPagamentos];
+    
+    // Filtro por busca
+    if (debouncedSearchTerm) {
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      filtered = filtered.filter(pagamento => 
+        pagamento.aluno?.nome?.toLowerCase().includes(searchLower) ||
+        pagamento.tb_alunos?.nome?.toLowerCase().includes(searchLower) ||
+        pagamento.detalhes?.[0]?.tipoServico?.designacao?.toLowerCase().includes(searchLower) ||
+        pagamento.codigo?.toString().includes(searchLower)
+      );
+    }
+    
+    // Filtro por status
+    if (statusFilter !== "all") {
+      const statusNum = parseInt(statusFilter);
+      if (!isNaN(statusNum)) {
+        filtered = filtered.filter(pagamento => pagamento.status === statusNum);
+      }
+    }
+    
+    return filtered;
+  }, [allPagamentos, debouncedSearchTerm, statusFilter]);
+
+  // Paginação local dos resultados filtrados
+  const paginatedPagamentos = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredPagamentos.slice(startIndex, endIndex);
+  }, [filteredPagamentos, currentPage, itemsPerPage]);
+
+  // Cálculo da paginação local
+  const localPagination = useMemo(() => {
+    const totalItems = filteredPagamentos.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    return {
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1
+    };
+  }, [filteredPagamentos.length, currentPage, itemsPerPage]);
+
+  // Cálculos para exibição
+  const startIndex = ((currentPage - 1) * itemsPerPage) + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, localPagination.totalItems);
 
   const handleViewPayment = (paymentId: number) => {
     window.location.href = `/admin/finance-management/payments/details/${paymentId}`;
@@ -209,29 +256,29 @@ export default function PaymentsPage() {
 
   // Estatísticas calculadas dos dados reais
   const totalReceita = useMemo(() => {
-    if (pagamentos && pagination && pagamentos.length > 0) {
-      const mediaPorPagamento = pagamentos.reduce((sum: number, p) => sum + (p.valorEntregue || 0), 0) / pagamentos.length;
+    if (allPagamentos && pagination && allPagamentos.length > 0) {
+      const mediaPorPagamento = allPagamentos.reduce((sum: number, p) => sum + (p.valorEntregue || 0), 0) / allPagamentos.length;
       return mediaPorPagamento * pagination.totalItems;
     }
     return 0;
-  }, [pagamentos, pagination]);
+  }, [allPagamentos, pagination]);
   
   const totalPendente = useMemo(() => {
-    if (pagamentos && pagination && pagamentos.length > 0) {
-      const mediaPendentePorPagamento = pagamentos.reduce((sum: number, p) => sum + ((p.total || 0) - (p.valorEntregue || 0)), 0) / pagamentos.length;
+    if (allPagamentos && pagination && allPagamentos.length > 0) {
+      const mediaPendentePorPagamento = allPagamentos.reduce((sum: number, p) => sum + ((p.total || 0) - (p.valorEntregue || 0)), 0) / allPagamentos.length;
       return mediaPendentePorPagamento * pagination.totalItems;
     }
     return 0;
-  }, [pagamentos, pagination]);
+  }, [allPagamentos, pagination]);
   
   const totalPagamentos = pagination?.totalItems || 0;
   const pagamentosAtivos = useMemo(() => {
-    if (pagamentos && pagination && pagamentos.length > 0) {
-      const percentualAtivos = pagamentos.filter(p => p.status === 1).length / pagamentos.length;
+    if (allPagamentos && pagination && allPagamentos.length > 0) {
+      const percentualAtivos = allPagamentos.filter(p => p.status === 1).length / allPagamentos.length;
       return Math.round(percentualAtivos * pagination.totalItems);
     }
     return 0;
-  }, [pagamentos, pagination]);
+  }, [allPagamentos, pagination]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -505,7 +552,7 @@ export default function PaymentsPage() {
                 </Button>
               </div>
             </div>
-          ) : currentPayments.length === 0 ? (
+          ) : paginatedPagamentos.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
                 <Wallet className="h-8 w-8 text-gray-400 mx-auto mb-4" />
@@ -529,7 +576,7 @@ export default function PaymentsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentPayments.map((payment) => (
+                  {paginatedPagamentos.map((payment) => (
                   <TableRow key={payment.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -613,10 +660,10 @@ export default function PaymentsPage() {
               </Table>
 
               {/* Paginação */}
-              {totalPages > 1 && (
+              {localPagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex} a {endIndex} de {pagination?.totalItems || 0} pagamentos
+                Mostrando {startIndex} a {endIndex} de {localPagination.totalItems} pagamentos
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -632,7 +679,7 @@ export default function PaymentsPage() {
                   {(() => {
                     const maxPagesToShow = 5;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                    const endPage = Math.min(localPagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
                     
                     const pages = [];
@@ -670,18 +717,18 @@ export default function PaymentsPage() {
                     }
                     
                     // Última página
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
+                    if (endPage < localPagination.totalPages) {
+                      if (endPage < localPagination.totalPages - 1) {
                         pages.push(<span key="ellipsis2" className="px-2">...</span>);
                       }
                       pages.push(
                         <Button
-                          key={totalPages}
+                          key={localPagination.totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(totalPages)}
+                          onClick={() => setCurrentPage(localPagination.totalPages)}
                         >
-                          {totalPages}
+                          {localPagination.totalPages}
                         </Button>
                       );
                     }
@@ -692,8 +739,8 @@ export default function PaymentsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, localPagination.totalPages))}
+                  disabled={currentPage === localPagination.totalPages}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />
