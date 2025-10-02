@@ -188,7 +188,6 @@ export default class GeographicService {
   static async getAllComunas(): Promise<ApiResponse<Comuna[]>> {
     try {
       const response = await api.get("/api/geographic/comunas");
-      console.log(response.data.data, 'comunas');
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar comunas:", error);

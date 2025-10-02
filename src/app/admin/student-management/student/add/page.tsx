@@ -111,7 +111,6 @@ export default function AddStudentPage() {
 
   // Hooks geográficos
   const geographic = useGeographic();
-  console.log(geographic, 'geographic');
   const { documentTypes, loading: loadingDocTypes } = useDocumentTypes();
 
   // Watch para mudanças geográficas
