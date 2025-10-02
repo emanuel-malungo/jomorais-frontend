@@ -140,20 +140,67 @@ class FinancialServiceService {
   
   static async getTiposServicos(page: number = 1, limit: number = 10, filters?: ITipoServicoFilter): Promise<ITipoServicoListResponse> {
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(filters?.search && { search: filters.search }),
-        ...(filters?.tipoServico && { tipoServico: filters.tipoServico }),
-        ...(filters?.status && { status: filters.status }),
-        ...(filters?.categoria && { categoria: filters.categoria.toString() }),
-        ...(filters?.moeda && { moeda: filters.moeda.toString() })
-      });
+      console.log('🔍 getTiposServicos - Parâmetros recebidos:', { page, limit, filters });
       
-      const response = await api.get(`/api/financial-services/tipos-servicos?${params}`);
+      // Validar e limpar parâmetros
+      const cleanParams: Record<string, string> = {
+        page: Math.max(1, page).toString(),
+        limit: Math.max(1, Math.min(100, limit)).toString()
+      };
+
+      // Adicionar filtros apenas se válidos
+      if (filters?.search && filters.search.trim()) {
+        cleanParams.search = filters.search.trim();
+      }
+      
+      if (filters?.tipoServico && filters.tipoServico !== 'all') {
+        cleanParams.tipoServico = filters.tipoServico;
+      }
+      
+      if (filters?.status && filters.status !== 'all') {
+        cleanParams.status = filters.status;
+      }
+      
+      if (filters?.categoria && !isNaN(filters.categoria)) {
+        cleanParams.categoria = filters.categoria.toString();
+      }
+      
+      if (filters?.moeda && !isNaN(filters.moeda)) {
+        cleanParams.moeda = filters.moeda.toString();
+      }
+
+      const params = new URLSearchParams(cleanParams);
+      
+      const url = `/api/financial-services/tipos-servicos?${params}`;
+      console.log('🌐 URL da requisição:', url);
+      console.log('📋 Parâmetros da URL:', Object.fromEntries(params));
+      
+      // Tentar primeiro sem parâmetros para testar o endpoint
+      if (Object.keys(cleanParams).length === 2) { // apenas page e limit
+        console.log('🧪 Testando endpoint básico primeiro...');
+        try {
+          const testResponse = await api.get('/api/financial-services/tipos-servicos');
+          console.log('✅ Endpoint básico funciona:', testResponse.data);
+        } catch (testError: any) {
+          console.log('❌ Endpoint básico falhou:', testError.response?.data);
+        }
+      }
+      
+      const response = await api.get(url);
+      console.log('✅ Resposta da API:', response.data);
       return response.data;
-    } catch (error) {
-      console.error("Erro ao buscar tipos de serviços:", error);
+    } catch (error: any) {
+      console.error("❌ Erro ao buscar tipos de serviços:", {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          params: error.config?.params
+        }
+      });
       throw error;
     }
   }

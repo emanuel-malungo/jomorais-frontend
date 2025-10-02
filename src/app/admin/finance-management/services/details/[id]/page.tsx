@@ -28,87 +28,16 @@ import {
   TrendingUp,
   FileText
 } from 'lucide-react';
-
-interface Service {
-  id: number;
-  nome: string;
-  categoria: string;
-  descricao: string;
-  valor: number;
-  tipo_cobranca: string;
-  obrigatorio: boolean;
-  aplicavel_classes: string[];
-  data_inicio: string;
-  data_fim: string;
-  status: string;
-  observacoes: string;
-  total_estudantes: number;
-  estudantes_inscritos: number;
-  receita_total: number;
-}
+import { useTipoServico } from '@/hooks/useFinancialService';
+import { ITipoServico } from '@/types/financialService.types';
 
 export default function ServiceDetails() {
   const params = useParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  const [service, setService] = useState<Service | null>(null);
-
-  // Dados mockados dos serviços
-  const servicesData: Service[] = [
-    {
-      id: 1,
-      nome: "Transporte Escolar",
-      categoria: "transporte",
-      descricao: "Serviço de transporte escolar para estudantes com rotas definidas pela manhã e tarde",
-      valor: 15000,
-      tipo_cobranca: "mensal",
-      obrigatorio: false,
-      aplicavel_classes: ["1", "2", "3", "4", "5", "6"],
-      data_inicio: "2024-02-01",
-      data_fim: "2024-11-30",
-      status: "ativo",
-      observacoes: "Transporte disponível para estudantes do ensino primário",
-      total_estudantes: 180,
-      estudantes_inscritos: 95,
-      receita_total: 1425000
-    },
-    {
-      id: 2,
-      nome: "Alimentação Escolar",
-      categoria: "alimentacao",
-      descricao: "Serviço de refeições balanceadas durante o período escolar",
-      valor: 8000,
-      tipo_cobranca: "mensal",
-      obrigatorio: false,
-      aplicavel_classes: [],
-      data_inicio: "2024-02-01",
-      data_fim: "2024-11-30",
-      status: "ativo",
-      observacoes: "Refeições preparadas seguindo normas nutricionais",
-      total_estudantes: 450,
-      estudantes_inscritos: 320,
-      receita_total: 2560000
-    }
-  ];
-
-  useEffect(() => {
-    const loadService = async () => {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const serviceId = parseInt(params.id as string);
-      const foundService = servicesData.find(s => s.id === serviceId);
-      
-      if (foundService) {
-        setService(foundService);
-      }
-      
-      setLoading(false);
-    };
-
-    loadService();
-  }, [params.id]);
+  
+  const serviceId = parseInt(params.id as string);
+  const { tipoServico: service, loading, error } = useTipoServico(serviceId);
 
   const handleEdit = () => {
     router.push(`/admin/finance-management/services/edit/${params.id}`);
@@ -166,6 +95,22 @@ export default function ServiceDetails() {
     );
   }
 
+  if (error) {
+    return (
+      <Container>
+        <div className="text-center py-12">
+          <Briefcase className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">Erro ao carregar serviço</h2>
+          <p className="text-muted-foreground mb-6">{error}</p>
+          <Button onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar para Serviços
+          </Button>
+        </div>
+      </Container>
+    );
+  }
+
   if (!service) {
     return (
       <Container>
@@ -182,7 +127,18 @@ export default function ServiceDetails() {
     );
   }
 
-  const taxaAdesao = (service.estudantes_inscritos / service.total_estudantes) * 100;
+  // Dados mockados para campos não disponíveis na API
+  const mockData = {
+    estudantes_inscritos: 95,
+    total_estudantes: 180,
+    receita_total: service.preco * 95, // Estimativa baseada no preço
+    aplicavel_classes: ["1", "2", "3", "4", "5", "6"],
+    data_inicio: "2024-02-01",
+    data_fim: "2024-11-30",
+    observacoes: "Configurações adicionais podem ser definidas pelo administrador"
+  };
+
+  const taxaAdesao = (mockData.estudantes_inscritos / mockData.total_estudantes) * 100;
 
   return (
     <Container>
@@ -199,8 +155,8 @@ export default function ServiceDetails() {
             <span>Voltar</span>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{service.nome}</h1>
-            <p className="text-muted-foreground">{getCategoriaLabel(service.categoria)}</p>
+            <h1 className="text-2xl font-bold text-foreground">{service.designacao}</h1>
+            <p className="text-muted-foreground">{service.tb_categoria_servicos?.designacao || 'Categoria não definida'}</p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -217,9 +173,9 @@ export default function ServiceDetails() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                <p className="text-sm font-medium text-muted-foreground">Preço</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {service.valor.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                  {service.preco.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                 </p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
@@ -234,7 +190,7 @@ export default function ServiceDetails() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Estudantes Inscritos</p>
-                <p className="text-2xl font-bold text-foreground">{service.estudantes_inscritos}</p>
+                <p className="text-2xl font-bold text-foreground">{mockData.estudantes_inscritos}</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-lg">
                 <Users className="h-6 w-6 text-blue-600" />
@@ -261,9 +217,9 @@ export default function ServiceDetails() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
+                <p className="text-sm font-medium text-muted-foreground">Receita Estimada</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {service.receita_total.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                  {mockData.receita_total.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                 </p>
               </div>
               <div className="p-3 bg-orange-100 rounded-lg">
@@ -296,11 +252,11 @@ export default function ServiceDetails() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Nome</label>
-                  <p className="text-foreground">{service.nome}</p>
+                  <p className="text-foreground">{service.designacao}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Categoria</label>
-                  <p className="text-foreground">{getCategoriaLabel(service.categoria)}</p>
+                  <p className="text-foreground">{service.tb_categoria_servicos?.designacao || 'Não definida'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Descrição</label>
@@ -313,10 +269,10 @@ export default function ServiceDetails() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Tipo</label>
+                  <label className="text-sm font-medium text-muted-foreground">Tipo de Serviço</label>
                   <div className="mt-1">
-                    <Badge className={service.obrigatorio ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}>
-                      {service.obrigatorio ? 'Obrigatório' : 'Opcional'}
+                    <Badge className="bg-blue-100 text-blue-800">
+                      {service.tipoServico}
                     </Badge>
                   </div>
                 </div>
@@ -333,20 +289,36 @@ export default function ServiceDetails() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Valor</label>
+                  <label className="text-sm font-medium text-muted-foreground">Preço</label>
                   <p className="text-foreground">
-                    {service.valor.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                    {service.preco.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Tipo de Cobrança</label>
-                  <p className="text-foreground">{getTipoCobrancaLabel(service.tipo_cobranca)}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Moeda</label>
+                  <p className="text-foreground">{service.tb_moedas?.designacao || 'AOA'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Receita Mensal Estimada</label>
                   <p className="text-foreground">
-                    {(service.valor * service.estudantes_inscritos).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                    {(service.preco * mockData.estudantes_inscritos).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                   </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Aplicar Multa</label>
+                  <div className="mt-1">
+                    <Badge className={service.aplicarMulta ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}>
+                      {service.aplicarMulta ? 'Sim' : 'Não'}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Aplicar Desconto</label>
+                  <div className="mt-1">
+                    <Badge className={service.aplicarDesconto ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      {service.aplicarDesconto ? 'Sim' : 'Não'}
+                    </Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -364,9 +336,9 @@ export default function ServiceDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {service.aplicavel_classes.length > 0 ? (
+                {mockData.aplicavel_classes.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {service.aplicavel_classes.map((classe) => (
+                    {mockData.aplicavel_classes.map((classe: string) => (
                       <Badge key={classe} className="bg-blue-100 text-blue-800">
                         {classe}ª Classe
                       </Badge>
@@ -390,21 +362,25 @@ export default function ServiceDetails() {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Data de Início</label>
                   <p className="text-foreground">
-                    {service.data_inicio ? new Date(service.data_inicio).toLocaleDateString('pt-BR') : 'Não definida'}
+                    {mockData.data_inicio ? new Date(mockData.data_inicio).toLocaleDateString('pt-BR') : 'Não definida'}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Data de Fim</label>
                   <p className="text-foreground">
-                    {service.data_fim ? new Date(service.data_fim).toLocaleDateString('pt-BR') : 'Não definida'}
+                    {mockData.data_fim ? new Date(mockData.data_fim).toLocaleDateString('pt-BR') : 'Não definida'}
                   </p>
                 </div>
-                {service.observacoes && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Observações</label>
-                    <p className="text-foreground">{service.observacoes}</p>
-                  </div>
-                )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                  <p className="text-foreground">{mockData.observacoes}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Valor da Multa</label>
+                  <p className="text-foreground">
+                    {service.valorMulta ? service.valorMulta.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' }) : 'Não definido'}
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -421,17 +397,17 @@ export default function ServiceDetails() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center p-6 bg-blue-50 rounded-lg">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">{service.estudantes_inscritos}</div>
+                  <div className="text-3xl font-bold text-blue-600 mb-2">{mockData.estudantes_inscritos}</div>
                   <div className="text-sm font-medium text-blue-800">Estudantes Inscritos</div>
                 </div>
                 <div className="text-center p-6 bg-gray-50 rounded-lg">
                   <div className="text-3xl font-bold text-gray-600 mb-2">
-                    {service.total_estudantes - service.estudantes_inscritos}
+                    {mockData.total_estudantes - mockData.estudantes_inscritos}
                   </div>
                   <div className="text-sm font-medium text-gray-800">Não Inscritos</div>
                 </div>
                 <div className="text-center p-6 bg-green-50 rounded-lg">
-                  <div className="text-3xl font-bold text-green-600 mb-2">{service.total_estudantes}</div>
+                  <div className="text-3xl font-bold text-green-600 mb-2">{mockData.total_estudantes}</div>
                   <div className="text-sm font-medium text-green-800">Total Elegíveis</div>
                 </div>
               </div>
@@ -464,15 +440,15 @@ export default function ServiceDetails() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Receita Total</label>
+                    <label className="text-sm font-medium text-muted-foreground">Receita Total Estimada</label>
                     <p className="text-xl font-bold text-foreground">
-                      {service.receita_total.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                      {mockData.receita_total.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Receita Mensal</label>
+                    <label className="text-sm font-medium text-muted-foreground">Receita Mensal Estimada</label>
                     <p className="text-xl font-bold text-foreground">
-                      {(service.valor * service.estudantes_inscritos).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                      {(service.preco * mockData.estudantes_inscritos).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                     </p>
                   </div>
                 </div>

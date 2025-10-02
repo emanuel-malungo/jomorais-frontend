@@ -87,6 +87,7 @@ const statusOptions = [
 export default function ServicesPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [tipoServicoFilter, setTipoServicoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -94,17 +95,97 @@ export default function ServicesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingServiceId, setDeletingServiceId] = useState<number | null>(null);
 
-  // Filtros para API
-  const filters = useMemo((): ITipoServicoFilter => ({
-    search: searchTerm || undefined,
-    tipoServico: tipoServicoFilter !== "all" ? tipoServicoFilter : undefined,
-    status: statusFilter !== "all" ? statusFilter : undefined,
-  }), [searchTerm, tipoServicoFilter, statusFilter]);
+  // Debounce para o termo de busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
 
-  // Hooks da API
-  const { tiposServicos, loading, error, pagination, refetch } = useTiposServicos(currentPage, itemsPerPage, filters);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset da página quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, tipoServicoFilter, statusFilter]);
+
+  // Filtros para API - Temporariamente desabilitados devido a erro 400
+  const filters = useMemo((): ITipoServicoFilter => ({
+    // search: debouncedSearchTerm || undefined,
+    // tipoServico: tipoServicoFilter !== "all" ? tipoServicoFilter : undefined,
+    // status: statusFilter !== "all" ? statusFilter : undefined,
+  }), [debouncedSearchTerm, tipoServicoFilter, statusFilter]);
+
+  // Hooks da API - Carregar TODOS os serviços para pesquisa local
+  const { tiposServicos: allTiposServicos, loading, error, pagination, refetch } = useTiposServicos(1, 1000, filters); // Carregar até 1000 serviços
+
+  // Filtros locais para pesquisa em TODOS os dados carregados
+  const filteredTiposServicos = useMemo(() => {
+    if (!allTiposServicos) return [];
+    
+    let filtered = [...allTiposServicos];
+    
+    // Filtro por busca
+    if (debouncedSearchTerm) {
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      filtered = filtered.filter(servico => 
+        servico.designacao?.toLowerCase().includes(searchLower) ||
+        servico.descricao?.toLowerCase().includes(searchLower) ||
+        servico.tipoServico?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filtro por tipo de serviço
+    if (tipoServicoFilter !== "all") {
+      filtered = filtered.filter(servico => 
+        servico.tipoServico === tipoServicoFilter
+      );
+    }
+    
+    // Filtro por status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(servico => 
+        servico.status === statusFilter
+      );
+    }
+    
+    return filtered;
+  }, [allTiposServicos, debouncedSearchTerm, tipoServicoFilter, statusFilter]);
+
+  // Paginação local dos resultados filtrados
+  const paginatedTiposServicos = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredTiposServicos.slice(startIndex, endIndex);
+  }, [filteredTiposServicos, currentPage, itemsPerPage]);
+
+  // Cálculo da paginação local
+  const localPagination = useMemo(() => {
+    const totalItems = filteredTiposServicos.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    return {
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1
+    };
+  }, [filteredTiposServicos.length, currentPage, itemsPerPage]);
   const { relatorio, loading: relatorioLoading } = useRelatorioFinanceiro();
   const { deleteTipoServico, loading: deleteLoading } = useDeleteTipoServico();
+
+  // Debug logs
+  useEffect(() => {
+    console.log('🔍 Filtros atuais:', filters);
+    console.log('📊 Dados carregados:', { 
+      allTiposServicos: allTiposServicos?.length || 0, 
+      filteredTiposServicos: filteredTiposServicos?.length || 0,
+      loading, 
+      error,
+      pagination 
+    });
+  }, [filters, allTiposServicos, filteredTiposServicos, loading, error, pagination]);
 
   // Funções de navegação
   const handleViewService = (serviceId: number) => {
@@ -371,12 +452,20 @@ export default function ServicesPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar por aluno, matrícula ou descrição..."
+                  placeholder="Buscar por nome, descrição ou tipo de serviço..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                🔍 Pesquisa em TODOS os serviços carregados 
+                {(debouncedSearchTerm || tipoServicoFilter !== "all" || statusFilter !== "all") && (
+                  <span className="font-medium text-[#3B6C4D]">
+                    {" "}• {filteredTiposServicos.length} de {allTiposServicos?.length || 0} resultados
+                  </span>
+                )}
+              </p>
             </div>
             <div className="flex gap-4">
               <Select value={tipoServicoFilter} onValueChange={setTipoServicoFilter}>
@@ -439,7 +528,37 @@ export default function ServicesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tiposServicos?.map((service) => (
+                {paginatedTiposServicos?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-12">
+                      <div className="flex flex-col items-center space-y-4">
+                        <Search className="h-12 w-12 text-muted-foreground" />
+                        <div>
+                          <h3 className="text-lg font-medium text-foreground">Nenhum serviço encontrado</h3>
+                          <p className="text-muted-foreground">
+                            {debouncedSearchTerm || tipoServicoFilter !== "all" || statusFilter !== "all" 
+                              ? "Tente ajustar os filtros de pesquisa"
+                              : "Não há serviços cadastrados"
+                            }
+                          </p>
+                        </div>
+                        {(debouncedSearchTerm || tipoServicoFilter !== "all" || statusFilter !== "all") && (
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              setSearchTerm("");
+                              setTipoServicoFilter("all");
+                              setStatusFilter("all");
+                            }}
+                          >
+                            Limpar filtros
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedTiposServicos?.map((service) => (
                   <TableRow key={service.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -513,29 +632,20 @@ export default function ServicesPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
-                {(!tiposServicos || tiposServicos.length === 0) && (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">
-                      <div className="flex flex-col items-center space-y-3">
-                        <FileText className="h-12 w-12 text-muted-foreground" />
-                        <div>
-                          <p className="text-lg font-medium text-muted-foreground">Nenhum serviço encontrado</p>
-                          <p className="text-sm text-muted-foreground">Tente ajustar os filtros ou adicione um novo serviço</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
           </div>
 
           {/* Paginação */}
-          {pagination && pagination.totalPages > 1 && (
+          {localPagination && localPagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, pagination.totalItems)} de {pagination.totalItems} serviços
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, localPagination.totalItems)} de {localPagination.totalItems} serviços
+                {(debouncedSearchTerm || tipoServicoFilter !== "all" || statusFilter !== "all") && (
+                  <span className="text-[#3B6C4D] font-medium"> (filtrados de {allTiposServicos?.length || 0} total)</span>
+                )}
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -550,7 +660,7 @@ export default function ServicesPage() {
                 <div className="flex items-center space-x-1">
                   {(() => {
                     const maxPagesToShow = 5;
-                    const totalPages = pagination?.totalPages || 1;
+                    const totalPages = localPagination.totalPages;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
@@ -599,7 +709,7 @@ export default function ServicesPage() {
                           key={totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(pagination?.totalPages || 1)}
+                          onClick={() => setCurrentPage(localPagination.totalPages)}
                         >
                           {totalPages}
                         </Button>
@@ -612,8 +722,8 @@ export default function ServicesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination?.totalPages || 1))}
-                  disabled={currentPage === (pagination?.totalPages || 1)}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, localPagination.totalPages))}
+                  disabled={!localPagination.hasNextPage}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />

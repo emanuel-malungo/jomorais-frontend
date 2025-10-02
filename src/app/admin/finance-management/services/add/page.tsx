@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
@@ -19,50 +19,46 @@ import {
   Calendar,
   Settings
 } from 'lucide-react';
+import { useCreateTipoServico, useMoedas, useCategorias } from '@/hooks/useFinancialService';
+import { ITipoServicoInput } from '@/types/financialService.types';
 
 export default function AddService() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    nome: '',
-    categoria: '',
+  
+  // Hooks da API
+  const { createTipoServico, loading: creating, error: createError } = useCreateTipoServico();
+  const { moedas, loading: moedasLoading } = useMoedas(1, 100);
+  const { categorias, loading: categoriasLoading } = useCategorias(1, 100);
+  
+  const [formData, setFormData] = useState<ITipoServicoInput>({
+    designacao: '',
+    preco: 0,
     descricao: '',
-    valor: '',
-    tipo_cobranca: 'unico',
-    obrigatorio: false,
-    aplicavel_classes: [] as string[],
-    data_inicio: '',
-    data_fim: '',
-    observacoes: '',
-    status: 'ativo'
+    codigo_Utilizador: 1, // Será obtido do contexto do usuário
+    codigo_Moeda: 1, // Padrão AOA
+    tipoServico: 'Propina',
+    status: 'Activo',
+    aplicarMulta: false,
+    aplicarDesconto: false,
+    valorMulta: 0,
+    categoria: null
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     
     try {
-      // Simular criação do serviço
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('📤 Enviando dados para API:', formData);
+      const response = await createTipoServico(formData);
+      console.log('✅ Serviço criado com sucesso:', response);
       router.push('/admin/finance-management/services');
     } catch (error) {
-      console.error('Erro ao criar serviço:', error);
-    } finally {
-      setLoading(false);
+      console.error('❌ Erro ao criar serviço:', error);
     }
   };
 
   const handleBack = () => {
     router.back();
-  };
-
-  const handleClasseToggle = (classe: string) => {
-    setFormData(prev => ({
-      ...prev,
-      aplicavel_classes: prev.aplicavel_classes.includes(classe)
-        ? prev.aplicavel_classes.filter(c => c !== classe)
-        : [...prev.aplicavel_classes, classe]
-    }));
   };
 
   return (
@@ -91,17 +87,17 @@ export default function AddService() {
               <Button
                 variant="outline"
                 onClick={handleBack}
-                disabled={loading}
+                disabled={creating}
               >
                 <X className="h-4 w-4 mr-2" />
                 Cancelar
               </Button>
               <Button
                 form="service-form"
-                disabled={loading}
+                disabled={creating}
                 className="bg-[#3B6C4D] hover:bg-[#2d5016] text-white"
               >
-                {loading ? (
+                {creating ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                 ) : (
                   <Save className="h-4 w-4 mr-2" />
@@ -115,6 +111,24 @@ export default function AddService() {
 
       {/* Formulário */}
       <div className="max-w-4xl mx-auto py-8 space-y-8">
+        {createError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <X className="h-5 w-5 text-red-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Erro ao criar serviço
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{createError}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <form id="service-form" onSubmit={handleSubmit} className="space-y-8">
           {/* Informações Básicas */}
           <Card className="border-l-4 border-l-blue-500">
@@ -132,8 +146,8 @@ export default function AddService() {
                   </label>
                   <input
                     type="text"
-                    value={formData.nome}
-                    onChange={(e) => setFormData({...formData, nome: e.target.value})}
+                    value={formData.designacao}
+                    onChange={(e) => setFormData({...formData, designacao: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
                     placeholder="Ex: Transporte Escolar"
                     required
@@ -144,20 +158,17 @@ export default function AddService() {
                     Categoria *
                   </label>
                   <select
-                    value={formData.categoria}
-                    onChange={(e) => setFormData({...formData, categoria: e.target.value})}
+                    value={formData.categoria || ''}
+                    onChange={(e) => setFormData({...formData, categoria: e.target.value ? parseInt(e.target.value) : null})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
-                    required
+                    disabled={categoriasLoading}
                   >
                     <option value="">Selecionar categoria</option>
-                    <option value="transporte">Transporte</option>
-                    <option value="alimentacao">Alimentação</option>
-                    <option value="material">Material Escolar</option>
-                    <option value="uniforme">Uniforme</option>
-                    <option value="atividades">Atividades Extracurriculares</option>
-                    <option value="seguro">Seguro Escolar</option>
-                    <option value="certificados">Certificados e Documentos</option>
-                    <option value="outros">Outros</option>
+                    {categorias.map(categoria => (
+                      <option key={categoria.codigo} value={categoria.codigo}>
+                        {categoria.designacao}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -189,12 +200,12 @@ export default function AddService() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Valor (AOA) *
+                    Preço *
                   </label>
                   <input
                     type="number"
-                    value={formData.valor}
-                    onChange={(e) => setFormData({...formData, valor: e.target.value})}
+                    value={formData.preco}
+                    onChange={(e) => setFormData({...formData, preco: parseFloat(e.target.value) || 0})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
                     placeholder="Ex: 15000"
                     min="0"
@@ -204,128 +215,109 @@ export default function AddService() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Tipo de Cobrança *
+                    Moeda *
                   </label>
                   <select
-                    value={formData.tipo_cobranca}
-                    onChange={(e) => setFormData({...formData, tipo_cobranca: e.target.value})}
+                    value={formData.codigo_Moeda}
+                    onChange={(e) => setFormData({...formData, codigo_Moeda: parseInt(e.target.value)})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
+                    disabled={moedasLoading}
                     required
                   >
-                    <option value="unico">Pagamento Único</option>
-                    <option value="mensal">Mensal</option>
-                    <option value="trimestral">Trimestral</option>
-                    <option value="anual">Anual</option>
+                    {moedas.map(moeda => (
+                      <option key={moeda.codigo} value={moeda.codigo}>
+                        {moeda.designacao}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="obrigatorio"
-                  checked={formData.obrigatorio}
-                  onChange={(e) => setFormData({...formData, obrigatorio: e.target.checked})}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-border rounded"
-                />
-                <label htmlFor="obrigatorio" className="text-sm font-medium text-foreground">
-                  Serviço obrigatório para todos os estudantes
-                </label>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Classes Aplicáveis */}
-          <Card className="border-l-4 border-l-purple-500">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Settings className="h-5 w-5 text-purple-600" />
-                <span>Classes Aplicáveis</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-4">
-                  Selecionar classes onde o serviço será aplicado:
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {Array.from({length: 12}, (_, i) => i + 1).map((classe) => (
-                    <label key={classe} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.aplicavel_classes.includes(classe.toString())}
-                        onChange={() => handleClasseToggle(classe.toString())}
-                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-border rounded"
-                      />
-                      <span className="text-sm text-foreground">{classe}ª Classe</span>
-                    </label>
-                  ))}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="aplicarMulta"
+                    checked={formData.aplicarMulta}
+                    onChange={(e) => setFormData({...formData, aplicarMulta: e.target.checked})}
+                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-border rounded"
+                  />
+                  <label htmlFor="aplicarMulta" className="text-sm font-medium text-foreground">
+                    Aplicar multa por atraso
+                  </label>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Se nenhuma classe for selecionada, o serviço será aplicável a todas as classes
-                </p>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="aplicarDesconto"
+                    checked={formData.aplicarDesconto}
+                    onChange={(e) => setFormData({...formData, aplicarDesconto: e.target.checked})}
+                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-border rounded"
+                  />
+                  <label htmlFor="aplicarDesconto" className="text-sm font-medium text-foreground">
+                    Aplicar desconto
+                  </label>
+                </div>
               </div>
+              {formData.aplicarMulta && (
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Valor da Multa
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.valorMulta}
+                    onChange={(e) => setFormData({...formData, valorMulta: parseFloat(e.target.value) || 0})}
+                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
+                    placeholder="Ex: 1000"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Período de Vigência */}
+          {/* Configurações Adicionais */}
           <Card className="border-l-4 border-l-orange-500">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-orange-600" />
-                <span>Período de Vigência</span>
+                <Settings className="h-5 w-5 text-orange-600" />
+                <span>Configurações Adicionais</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Data de Início
+                    Tipo de Serviço *
                   </label>
-                  <input
-                    type="date"
-                    value={formData.data_inicio}
-                    onChange={(e) => setFormData({...formData, data_inicio: e.target.value})}
+                  <select
+                    value={formData.tipoServico}
+                    onChange={(e) => setFormData({...formData, tipoServico: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
-                  />
+                    required
+                  >
+                    <option value="Propina">Propina</option>
+                    <option value="Taxa">Taxa</option>
+                    <option value="Multa">Multa</option>
+                    <option value="Certificado">Certificado</option>
+                    <option value="Outro">Outro</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Data de Fim
+                    Status *
                   </label>
-                  <input
-                    type="date"
-                    value={formData.data_fim}
-                    onChange={(e) => setFormData({...formData, data_fim: e.target.value})}
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
-                  />
+                    required
+                  >
+                    <option value="Activo">Ativo</option>
+                    <option value="Inactivo">Inativo</option>
+                  </select>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Status *
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
-                  required
-                >
-                  <option value="ativo">Ativo</option>
-                  <option value="inativo">Inativo</option>
-                  <option value="suspenso">Suspenso</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Observações
-                </label>
-                <textarea
-                  value={formData.observacoes}
-                  onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
-                  placeholder="Observações adicionais sobre o serviço..."
-                />
               </div>
             </CardContent>
           </Card>
