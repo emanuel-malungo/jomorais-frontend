@@ -44,7 +44,18 @@ export default class StudentService {
 
     static async createStudent(studentData: Student): Promise<Student> {
         try {
-            const response = await api.post("/api/student-management/alunos", studentData);
+            // Criar cópia dos dados para não modificar o original
+            const cleanData = { ...studentData };
+            
+            // Remover campos que não existem no backend
+            // @ts-ignore - removendo campos auxiliares do frontend
+            delete cleanData.provincia;
+            // @ts-ignore
+            delete cleanData.municipio;
+            // @ts-ignore
+            delete cleanData.codigo_Utilizador;
+            
+            const response = await api.post("/api/student-management/alunos", cleanData);
             
             const apiResponse = response.data;
             
@@ -61,7 +72,18 @@ export default class StudentService {
 
     static async updateStudent(id: number, studentData: Student): Promise<Student> {
         try {
-            const response = await api.put(`/api/student-management/alunos/${id}`, studentData);
+            // Criar cópia dos dados para não modificar o original
+            const cleanData = { ...studentData };
+            
+            // Remover campos que não existem no backend
+            // @ts-ignore - removendo campos auxiliares do frontend
+            delete cleanData.provincia;
+            // @ts-ignore
+            delete cleanData.municipio;
+            // @ts-ignore
+            delete cleanData.codigo_Utilizador;
+            
+            const response = await api.put(`/api/student-management/alunos/${id}`, cleanData);
             
             const apiResponse = response.data;
             
