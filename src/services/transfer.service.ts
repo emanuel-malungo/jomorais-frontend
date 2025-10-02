@@ -1,3 +1,4 @@
+import { toast } from "react-toastify"
 import { ITransfer, ITransferInput, ITransferListResponse } from '@/types/transfer.types'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -40,25 +41,45 @@ class TransferService {
 
   // Criar nova transferência
   async createTransfer(data: ITransferInput): Promise<ITransfer> {
-    return this.request<ITransfer>('/transferencias', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    try {
+      const result = await this.request<ITransfer>('/transferencias', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      toast.success("Transferência criada com sucesso!")
+      return result
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao criar transferência")
+      throw error
+    }
   }
 
   // Atualizar transferência
   async updateTransfer(id: number, data: ITransferInput): Promise<ITransfer> {
-    return this.request<ITransfer>(`/transferencias/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
+    try {
+      const result = await this.request<ITransfer>(`/transferencias/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+      toast.success("Transferência atualizada com sucesso!")
+      return result
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao atualizar transferência")
+      throw error
+    }
   }
 
   // Excluir transferência
   async deleteTransfer(id: number): Promise<void> {
-    return this.request<void>(`/transferencias/${id}`, {
-      method: 'DELETE',
-    })
+    try {
+      await this.request<void>(`/transferencias/${id}`, {
+        method: 'DELETE',
+      })
+      toast.success("Transferência excluída com sucesso!")
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao excluir transferência")
+      throw error
+    }
   }
 }
 

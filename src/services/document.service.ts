@@ -1,4 +1,5 @@
 import api from "@/utils/api.utils";
+import { toast } from "react-toastify";
 import {
   IDocumentType,
   IDocumentNumbering,
@@ -90,11 +91,15 @@ export default class DocumentService {
       const apiResponse: IApiResponse<IDocumentNumbering> = response.data;
 
       if (apiResponse.success) {
+        toast.success(apiResponse.message || "Numeração atualizada com sucesso!");
         return apiResponse.data;
       } else {
+        toast.error(apiResponse.message || "Erro ao atualizar numeração de documento");
         throw new Error(apiResponse.message || "Erro ao atualizar numeração de documento");
       }
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar numeração de documento";
+      toast.error(errorMessage);
       console.error("Erro ao atualizar numeração de documento:", error);
       throw error;
     }
@@ -111,11 +116,15 @@ export default class DocumentService {
       const apiResponse: IApiResponse<IDocumentNumbering> = response.data;
 
       if (apiResponse.success) {
+        toast.success(apiResponse.message || "Numeração criada com sucesso!");
         return apiResponse.data;
       } else {
+        toast.error(apiResponse.message || "Erro ao criar numeração de documento");
         throw new Error(apiResponse.message || "Erro ao criar numeração de documento");
       }
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar numeração de documento";
+      toast.error(errorMessage);
       console.error("Erro ao criar numeração de documento:", error);
       throw error;
     }
@@ -126,10 +135,15 @@ export default class DocumentService {
       const response = await api.delete(`/api/institutional-management/numeracao-documentos/${id}`);
       const apiResponse: IApiResponse<null> = response.data;
 
-      if (!apiResponse.success) {
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Numeração deletada com sucesso!");
+      } else {
+        toast.error(apiResponse.message || "Erro ao deletar numeração de documento");
         throw new Error(apiResponse.message || "Erro ao deletar numeração de documento");
       }
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao deletar numeração de documento";
+      toast.error(errorMessage);
       console.error("Erro ao deletar numeração de documento:", error);
       throw error;
     }

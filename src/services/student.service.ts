@@ -61,13 +61,15 @@ export default class StudentService {
             const apiResponse = response.data;
             
             if (apiResponse.success) {
-                toast.success('Aluno criado com sucesso!');
+                toast.success(apiResponse.message || 'Aluno criado com sucesso!');
                 return apiResponse.data;
             } else {
-                throw new Error(apiResponse.message || 'Erro ao criar aluno');
                 toast.error(apiResponse.message || 'Erro ao criar aluno');
+                throw new Error(apiResponse.message || 'Erro ao criar aluno');
             }
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao criar aluno';
+            toast.error(errorMessage);
             console.error("Erro ao criar aluno:", error);
             throw error;
         }
@@ -91,13 +93,15 @@ export default class StudentService {
             const apiResponse = response.data;
             
             if (apiResponse.success) {
-                toast.success('Aluno atualizado com sucesso!');
+                toast.success(apiResponse.message || 'Aluno atualizado com sucesso!');
                 return apiResponse.data;
             } else {
-                throw new Error(apiResponse.message || 'Erro ao atualizar aluno');
                 toast.error(apiResponse.message || 'Erro ao atualizar aluno');
+                throw new Error(apiResponse.message || 'Erro ao atualizar aluno');
             }
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao atualizar aluno';
+            toast.error(errorMessage);
             console.error("Erro ao atualizar aluno:", error);
             throw error;
         }
@@ -109,11 +113,15 @@ export default class StudentService {
             
             const apiResponse = response.data;
             
-            if (!apiResponse.success) {
+            if (apiResponse.success) {
+                toast.success(apiResponse.message || 'Aluno deletado com sucesso!');
+            } else {
                 toast.error(apiResponse.message || 'Erro ao deletar aluno');
                 throw new Error(apiResponse.message || 'Erro ao deletar aluno');
             }
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao deletar aluno';
+            toast.error(errorMessage);
             console.error("Erro ao deletar aluno:", error);
             throw error;
         }

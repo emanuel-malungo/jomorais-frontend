@@ -1,4 +1,5 @@
 import api from "@/utils/api.utils"
+import { toast } from "react-toastify"
 import { 
   IConfirmation, 
   IConfirmationInput, 
@@ -28,10 +29,12 @@ export default class ConfirmationService {
       const apiResponse = response.data
       if (apiResponse.success) {
         console.log('Service: Confirmação criada com sucesso:', apiResponse.data)
+        toast.success(apiResponse.message || "Confirmação criada com sucesso!")
         return apiResponse.data
       }
       
       console.error('Service: API retornou success=false:', apiResponse.message)
+      toast.error(apiResponse.message || "Erro ao criar confirmação")
       throw new Error(apiResponse.message || "Erro ao criar confirmação")
     } catch (error: any) {
       console.error('Service: Erro na requisição:', error)
@@ -42,10 +45,14 @@ export default class ConfirmationService {
       
       // Se a resposta está vazia, pode ser problema de CORS ou servidor
       if (error.response?.status === 400 && (!error.response?.data || Object.keys(error.response.data).length === 0)) {
-        throw new Error('Erro 400: Servidor retornou resposta vazia. Verifique se o backend está funcionando corretamente.')
+        const errorMsg = 'Erro 400: Servidor retornou resposta vazia. Verifique se o backend está funcionando corretamente.';
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
       }
       
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar confirmação";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 
@@ -70,29 +77,57 @@ export default class ConfirmationService {
   }
 
   static async updateConfirmation(id: number, payload: Partial<IConfirmationInput>): Promise<IConfirmation> {
-    const response = await api.put(`/api/student-management/confirmacoes/${id}`, payload)
-    const apiResponse = response.data
-    if (apiResponse.success) {
-      return apiResponse.data
+    try {
+      const response = await api.put(`/api/student-management/confirmacoes/${id}`, payload)
+      const apiResponse = response.data
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Confirmação atualizada com sucesso!")
+        return apiResponse.data
+      }
+      toast.error(apiResponse.message || "Erro ao atualizar confirmação")
+      throw new Error(apiResponse.message || "Erro ao atualizar confirmação")
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar confirmação";
+      toast.error(errorMessage);
+      console.error("Erro ao atualizar confirmação:", error);
+      throw error;
     }
-    throw new Error(apiResponse.message || "Erro ao atualizar confirmação")
   }
 
   static async deleteConfirmation(id: number): Promise<void> {
-    const response = await api.delete(`/api/student-management/confirmacoes/${id}`)
-    const apiResponse = response.data
-    if (!apiResponse.success) {
-      throw new Error(apiResponse.message || "Erro ao deletar confirmação")
+    try {
+      const response = await api.delete(`/api/student-management/confirmacoes/${id}`)
+      const apiResponse = response.data
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Confirmação deletada com sucesso!")
+      } else {
+        toast.error(apiResponse.message || "Erro ao deletar confirmação")
+        throw new Error(apiResponse.message || "Erro ao deletar confirmação")
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao deletar confirmação";
+      toast.error(errorMessage);
+      console.error("Erro ao deletar confirmação:", error);
+      throw error;
     }
   }
 
   static async batchConfirmation(payload: IConfirmationInput[]): Promise<IConfirmation[]> {
-    const response = await api.post("/api/student-management/confirmacoes/batch", { confirmacoes: payload })
-    const apiResponse = response.data
-    if (apiResponse.success) {
-      return apiResponse.data
+    try {
+      const response = await api.post("/api/student-management/confirmacoes/batch", { confirmacoes: payload })
+      const apiResponse = response.data
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Confirmações criadas em lote com sucesso!")
+        return apiResponse.data
+      }
+      toast.error(apiResponse.message || "Erro ao criar confirmações em lote")
+      throw new Error(apiResponse.message || "Erro ao criar confirmações em lote")
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar confirmações em lote";
+      toast.error(errorMessage);
+      console.error("Erro ao criar confirmações em lote:", error);
+      throw error;
     }
-    throw new Error(apiResponse.message || "Erro ao criar confirmações em lote")
   }
 
   static async getConfirmationsByClassAndYear(params: IConfirmationsByClassAndYear): Promise<IConfirmation[]> {

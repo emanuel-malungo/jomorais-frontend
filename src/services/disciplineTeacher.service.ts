@@ -1,3 +1,4 @@
+import { toast } from "react-toastify"
 import { 
   IDisciplinaDocenteResponse, 
   IDisciplinaDocenteInput, 
@@ -47,25 +48,46 @@ class DisciplineTeacherService {
 
   // Criar nova associação disciplina-docente
   async createDisciplinaDocente(data: IDisciplinaDocenteInput): Promise<IDisciplinaDocenteActionResponse> {
-    return this.request<IDisciplinaDocenteActionResponse>('/api/academic-staff/disciplinas-docente', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    try {
+      const result = await this.request<IDisciplinaDocenteActionResponse>('/api/academic-staff/disciplinas-docente', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      toast.success(result.message || "Disciplina associada ao docente com sucesso!");
+      return result;
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao associar disciplina ao docente");
+      throw error;
+    }
   }
 
   // Atualizar associação disciplina-docente
   async updateDisciplinaDocente(id: number, data: IDisciplinaDocenteInput): Promise<IDisciplinaDocenteActionResponse> {
-    return this.request<IDisciplinaDocenteActionResponse>(`/api/academic-staff/disciplinas-docente/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    try {
+      const result = await this.request<IDisciplinaDocenteActionResponse>(`/api/academic-staff/disciplinas-docente/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      toast.success(result.message || "Associação atualizada com sucesso!");
+      return result;
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao atualizar associação");
+      throw error;
+    }
   }
 
   // Excluir associação disciplina-docente
   async deleteDisciplinaDocente(id: number): Promise<IDisciplinaDocenteActionResponse> {
-    return this.request<IDisciplinaDocenteActionResponse>(`/api/academic-staff/disciplinas-docente/${id}`, {
-      method: 'DELETE',
-    });
+    try {
+      const result = await this.request<IDisciplinaDocenteActionResponse>(`/api/academic-staff/disciplinas-docente/${id}`, {
+        method: 'DELETE',
+      });
+      toast.success(result.message || "Associação removida com sucesso!");
+      return result;
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao remover associação");
+      throw error;
+    }
   }
 }
 

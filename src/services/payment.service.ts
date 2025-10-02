@@ -1,4 +1,5 @@
 import api from "@/utils/api.utils";
+import { toast } from "react-toastify";
 import {
   IFormaPagamento,
   IFormaPagamentoInput,
@@ -58,8 +59,16 @@ export default class PaymentService {
   static async createPagamentoPrincipal(data: IPagamentoPrincipalInput): Promise<IPagamentoPrincipalResponse> {
     try {
       const response = await api.post('/api/payment-management/pagamentos-principais', data);
-      return response.data;
-    } catch (error) {
+      const apiResponse = response.data;
+      
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Pagamento criado com sucesso!");
+      }
+      
+      return apiResponse;
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar pagamento principal";
+      toast.error(errorMessage);
       console.error("Erro ao criar pagamento principal:", error);
       throw error;
     }
@@ -68,8 +77,16 @@ export default class PaymentService {
   static async updatePagamentoPrincipal(id: number, data: IPagamentoPrincipalInput): Promise<IPagamentoPrincipalResponse> {
     try {
       const response = await api.put(`/api/payment-management/pagamentos-principais/${id}`, data);
-      return response.data;
-    } catch (error) {
+      const apiResponse = response.data;
+      
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Pagamento atualizado com sucesso!");
+      }
+      
+      return apiResponse;
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar pagamento principal";
+      toast.error(errorMessage);
       console.error("Erro ao atualizar pagamento principal:", error);
       throw error;
     }
@@ -78,8 +95,16 @@ export default class PaymentService {
   static async deletePagamentoPrincipal(id: number): Promise<IPaymentActionResponse> {
     try {
       const response = await api.delete(`/api/payment-management/pagamentos-principais/${id}`);
-      return response.data;
-    } catch (error) {
+      const apiResponse = response.data;
+      
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Pagamento excluído com sucesso!");
+      }
+      
+      return apiResponse;
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao excluir pagamento principal";
+      toast.error(errorMessage);
       console.error("Erro ao excluir pagamento principal:", error);
       throw error;
     }

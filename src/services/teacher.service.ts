@@ -1,3 +1,4 @@
+import { toast } from "react-toastify"
 import { 
   IDocente, 
   IDocenteInput, 
@@ -54,25 +55,46 @@ class TeacherService {
 
   // Criar docente
   async createDocente(data: IDocenteInput): Promise<IDocenteResponse> {
-    return this.request<IDocenteResponse>('/api/academic-staff/docentes', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    try {
+      const result = await this.request<IDocenteResponse>('/api/academic-staff/docentes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      toast.success(result.message || "Docente criado com sucesso!")
+      return result
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao criar docente")
+      throw error
+    }
   }
 
   // Atualizar docente
   async updateDocente(id: number, data: IDocenteInput): Promise<IDocenteResponse> {
-    return this.request<IDocenteResponse>(`/api/academic-staff/docentes/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
+    try {
+      const result = await this.request<IDocenteResponse>(`/api/academic-staff/docentes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+      toast.success(result.message || "Docente atualizado com sucesso!")
+      return result
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao atualizar docente")
+      throw error
+    }
   }
 
   // Excluir docente
   async deleteDocente(id: number): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>(`/api/academic-staff/docentes/${id}`, {
-      method: 'DELETE',
-    })
+    try {
+      const result = await this.request<{ success: boolean; message: string }>(`/api/academic-staff/docentes/${id}`, {
+        method: 'DELETE',
+      })
+      toast.success(result.message || "Docente excluído com sucesso!")
+      return result
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao excluir docente")
+      throw error
+    }
   }
 
   // ===============================
@@ -100,17 +122,31 @@ class TeacherService {
 
   // Criar associação disciplina-docente
   async createDisciplinaDocente(data: { codigoCurso: number; codigoDisciplina: number; codigoDocente: number }): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>('/api/academic-staff/disciplinas-docente', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    try {
+      const result = await this.request<{ success: boolean; message: string }>('/api/academic-staff/disciplinas-docente', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      toast.success(result.message || "Disciplina associada ao docente com sucesso!")
+      return result
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao associar disciplina ao docente")
+      throw error
+    }
   }
 
   // Excluir associação disciplina-docente
   async deleteDisciplinaDocente(id: number): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>(`/api/academic-staff/disciplinas-docente/${id}`, {
-      method: 'DELETE',
-    })
+    try {
+      const result = await this.request<{ success: boolean; message: string }>(`/api/academic-staff/disciplinas-docente/${id}`, {
+        method: 'DELETE',
+      })
+      toast.success(result.message || "Associação removida com sucesso!")
+      return result
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao remover associação")
+      throw error
+    }
   }
 
   // ===============================

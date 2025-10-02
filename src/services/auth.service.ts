@@ -1,4 +1,5 @@
 import api from "@/utils/api.utils";
+import { toast } from "react-toastify";
 import {
     LegacyLoginCredentials,
     LegacyRegisterData,
@@ -21,10 +22,13 @@ export default class authService {
             if (response.data.success && response.data.data.token) {
                 localStorage.setItem('token', response.data.data.token);
                 localStorage.setItem('user', JSON.stringify(response.data.data.user));
+                toast.success(response.data.message || 'Login realizado com sucesso!');
             }
             
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao fazer login';
+            toast.error(errorMessage);
             console.error("Erro ao fazer login:", error);
             throw error;
         }
@@ -38,8 +42,11 @@ export default class authService {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             
+            toast.success(response.data.message || 'Logout realizado com sucesso!');
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao fazer logout';
+            toast.error(errorMessage);
             console.error("Erro ao fazer logout:", error);
             
             // Mesmo se der erro no servidor, limpar localStorage
@@ -63,8 +70,15 @@ export default class authService {
     static async register(userData: LegacyRegisterData): Promise<AuthResponse<LegacyUser>> {
         try {
             const response = await api.post("/api/auth/legacy/register", userData);
+            
+            if (response.data.success) {
+                toast.success(response.data.message || 'Usuário registrado com sucesso!');
+            }
+            
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao registrar usuário';
+            toast.error(errorMessage);
             console.error("Erro ao registrar usuário:", error);
             throw error;
         }
@@ -103,10 +117,13 @@ export default class authService {
             if (response.data.success && response.data.data.token) {
                 localStorage.setItem('token', response.data.data.token);
                 localStorage.setItem('user', JSON.stringify(response.data.data.user));
+                toast.success(response.data.message || 'Login realizado com sucesso!');
             }
             
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao fazer login';
+            toast.error(errorMessage);
             console.error("Erro ao fazer login (sistema moderno):", error);
             throw error;
         }
@@ -115,8 +132,15 @@ export default class authService {
     static async modernRegister(userData: ModernRegisterData): Promise<AuthResponse<ModernUser>> {
         try {
             const response = await api.post("/api/auth/register", userData);
+            
+            if (response.data.success) {
+                toast.success(response.data.message || 'Usuário registrado com sucesso!');
+            }
+            
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao registrar usuário';
+            toast.error(errorMessage);
             console.error("Erro ao registrar usuário (sistema moderno):", error);
             throw error;
         }

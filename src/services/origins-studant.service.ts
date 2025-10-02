@@ -1,4 +1,5 @@
 import api from "@/utils/api.utils";
+import { toast } from "react-toastify";
 import { Origin, OriginPayload, ApiResponse } from "@/types/origins.types";
 
 export default class OriginsStudentService {
@@ -8,9 +9,15 @@ export default class OriginsStudentService {
             const response = await api.post("/api/student-management/proveniencias", data);
             const apiResponse: ApiResponse<Origin> = response.data;
 
-            if (apiResponse.success) return apiResponse.data;
+            if (apiResponse.success) {
+                toast.success(apiResponse.message || "Proveniência criada com sucesso!");
+                return apiResponse.data;
+            }
+            toast.error(apiResponse.message || "Erro ao criar proveniência");
             throw new Error(apiResponse.message || "Erro ao criar proveniência");
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar proveniência";
+            toast.error(errorMessage);
             console.error("Erro ao criar proveniência:", error);
             throw error;
         }
@@ -29,7 +36,7 @@ export default class OriginsStudentService {
                 return { data: apiResponse.data, pagination: apiResponse.pagination };
             }
             throw new Error(apiResponse.message || "Erro ao buscar proveniências");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao buscar proveniências:", error);
             throw error;
         }
@@ -43,7 +50,7 @@ export default class OriginsStudentService {
 
             if (apiResponse.success) return apiResponse.data;
             throw new Error(apiResponse.message || "Erro ao buscar proveniência");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao buscar proveniência:", error);
             throw error;
         }
@@ -55,9 +62,15 @@ export default class OriginsStudentService {
             const response = await api.put(`/api/student-management/proveniencias/${id}`, data);
             const apiResponse: ApiResponse<Origin> = response.data;
 
-            if (apiResponse.success) return apiResponse.data;
+            if (apiResponse.success) {
+                toast.success(apiResponse.message || "Proveniência atualizada com sucesso!");
+                return apiResponse.data;
+            }
+            toast.error(apiResponse.message || "Erro ao atualizar proveniência");
             throw new Error(apiResponse.message || "Erro ao atualizar proveniência");
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar proveniência";
+            toast.error(errorMessage);
             console.error("Erro ao atualizar proveniência:", error);
             throw error;
         }
@@ -69,10 +82,15 @@ export default class OriginsStudentService {
             const response = await api.delete(`/api/student-management/proveniencias/${id}`);
             const apiResponse: ApiResponse<null> = response.data;
 
-            if (!apiResponse.success) {
+            if (apiResponse.success) {
+                toast.success(apiResponse.message || "Proveniência deletada com sucesso!");
+            } else {
+                toast.error(apiResponse.message || "Erro ao deletar proveniência");
                 throw new Error(apiResponse.message || "Erro ao deletar proveniência");
             }
-        } catch (error) {
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || "Erro ao deletar proveniência";
+            toast.error(errorMessage);
             console.error("Erro ao deletar proveniência:", error);
             throw error;
         }

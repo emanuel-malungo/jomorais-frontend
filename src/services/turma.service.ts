@@ -1,15 +1,25 @@
 import api from "@/utils/api.utils"
+import { toast } from "react-toastify"
 import { ITurma, ITurmaInput, ITurmaListResponse } from "@/types/turma.types"
 
 class TurmaService {
   async createTurma(payload: ITurmaInput): Promise<ITurma> {
-    const response = await api.post("/api/academic-management/turmas", payload)
-    const apiResponse = response.data
+    try {
+      const response = await api.post("/api/academic-management/turmas", payload)
+      const apiResponse = response.data
 
-    if (apiResponse.success) {
-      return apiResponse.data
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Turma criada com sucesso!")
+        return apiResponse.data
+      }
+      toast.error(apiResponse.message || "Erro ao criar turma")
+      throw new Error(apiResponse.message || "Erro ao criar turma")
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar turma"
+      toast.error(errorMessage)
+      console.error("Erro ao criar turma:", error)
+      throw error
     }
-    throw new Error(apiResponse.message || "Erro ao criar turma")
   }
 
   async getTurmas(page = 1, limit = 10, search = ""): Promise<ITurmaListResponse> {
@@ -38,21 +48,40 @@ class TurmaService {
   }
 
   async updateTurma(id: number, payload: ITurmaInput): Promise<ITurma> {
-    const response = await api.put(`/api/academic-management/turmas/${id}`, payload)
-    const apiResponse = response.data
+    try {
+      const response = await api.put(`/api/academic-management/turmas/${id}`, payload)
+      const apiResponse = response.data
 
-    if (apiResponse.success) {
-      return apiResponse.data
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Turma atualizada com sucesso!")
+        return apiResponse.data
+      }
+      toast.error(apiResponse.message || "Erro ao atualizar turma")
+      throw new Error(apiResponse.message || "Erro ao atualizar turma")
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar turma"
+      toast.error(errorMessage)
+      console.error("Erro ao atualizar turma:", error)
+      throw error
     }
-    throw new Error(apiResponse.message || "Erro ao atualizar turma")
   }
 
   async deleteTurma(id: number): Promise<void> {
-    const response = await api.delete(`/api/academic-management/turmas/${id}`)
-    const apiResponse = response.data
+    try {
+      const response = await api.delete(`/api/academic-management/turmas/${id}`)
+      const apiResponse = response.data
 
-    if (!apiResponse.success) {
-      throw new Error(apiResponse.message || "Erro ao deletar turma")
+      if (apiResponse.success) {
+        toast.success(apiResponse.message || "Turma deletada com sucesso!")
+      } else {
+        toast.error(apiResponse.message || "Erro ao deletar turma")
+        throw new Error(apiResponse.message || "Erro ao deletar turma")
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao deletar turma"
+      toast.error(errorMessage)
+      console.error("Erro ao deletar turma:", error)
+      throw error
     }
   }
 }
