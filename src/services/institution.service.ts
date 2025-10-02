@@ -1,6 +1,6 @@
 import { IInstitution, IInstitutionInput, IInstitutionResponse, IInstitutionListResponse } from '@/types/institution.types'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 class InstitutionService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {

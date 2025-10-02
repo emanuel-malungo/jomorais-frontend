@@ -23,7 +23,6 @@ import {
   Settings,
   BarChart3,
   School,
-  Clock,
   MapPin,
   Wallet,
   Shield,
@@ -67,7 +66,6 @@ const menuItems: MenuItem[] = [
       { title: "Disciplinas", icon: BookOpen, href: "/admin/academic-management/discipline" },
       { title: "Classes", icon: GraduationCap, href: "/admin/academic-management/classes" },
       { title: "Turmas", icon: School, href: "/admin/academic-management/turmas" },
-      { title: "Horários", icon: Clock, href: "/admin/academic-management/hours" },
       { title: "Notas", icon: FileText, href: "/admin/academic-management/notes" }
     ]
   },

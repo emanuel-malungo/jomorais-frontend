@@ -7,7 +7,7 @@ import {
   IDisciplinaDocenteResponse
 } from '@/types/teacher.types'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 class TeacherService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {

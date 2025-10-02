@@ -2,9 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
+import StatCard from '@/components/layout/StatCard';
+import { 
+  useTrimestres, 
+  useTiposNota, 
+  useRelatorioAvaliacao,
+  useDeleteTrimestre,
+  useDeleteTipoNota,
+  useCreateTrimestre,
+  useCreateTipoNota
+} from '@/hooks/useAcademicEvaluation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -35,6 +47,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   FileText,
   Search,
   Filter,
@@ -54,197 +74,180 @@ import {
   Activity,
   Award,
   Calendar,
+  Settings,
+  BarChart3,
+  Loader2,
 } from 'lucide-react';
 
-// Dados mockados das notas
-const mockGrades = [
-  {
-    id: 1,
-    aluno: "Ana Silva Santos",
-    disciplina: "Matemática",
-    professor: "Prof. João Silva",
-    turma: "10ª A",
-    trimestre: "1º Trimestre",
-    nota: 16.5,
-    situacao: "Aprovado",
-    observacoes: "Excelente desempenho",
-    dataAvaliacao: "2024-03-15"
-  },
-  {
-    id: 2,
-    aluno: "Carlos Manuel Ferreira",
-    disciplina: "Português",
-    professor: "Prof. Maria Santos",
-    turma: "10ª A",
-    trimestre: "1º Trimestre",
-    nota: 14.0,
-    situacao: "Aprovado",
-    observacoes: "Bom aproveitamento",
-    dataAvaliacao: "2024-03-18"
-  },
-  {
-    id: 3,
-    aluno: "Beatriz Costa Lima",
-    disciplina: "Informática",
-    professor: "Prof. Carlos Mendes",
-    turma: "11ª B",
-    trimestre: "2º Trimestre",
-    nota: 18.5,
-    situacao: "Aprovado",
-    observacoes: "Desempenho excepcional",
-    dataAvaliacao: "2024-06-10"
-  },
-  {
-    id: 4,
-    aluno: "David Nunes Pereira",
-    disciplina: "História",
-    professor: "Prof. Ana Costa",
-    turma: "12ª C",
-    trimestre: "1º Trimestre",
-    nota: 12.0,
-    situacao: "Aprovado",
-    observacoes: "Precisa melhorar",
-    dataAvaliacao: "2024-03-22"
-  },
-  {
-    id: 5,
-    aluno: "Eduarda Mendes Silva",
-    disciplina: "Física",
-    professor: "Prof. Pedro Lima",
-    turma: "11ª A",
-    trimestre: "2º Trimestre",
-    nota: 8.5,
-    situacao: "Reprovado",
-    observacoes: "Necessita recuperação",
-    dataAvaliacao: "2024-06-15"
-  },
-  {
-    id: 6,
-    aluno: "Francisco José Costa",
-    disciplina: "Química",
-    professor: "Prof. Isabel Ferreira",
-    turma: "12ª B",
-    trimestre: "1º Trimestre",
-    nota: 15.5,
-    situacao: "Aprovado",
-    observacoes: "Bom desempenho",
-    dataAvaliacao: "2024-03-25"
-  },
-  {
-    id: 7,
-    aluno: "Gabriela Santos Lima",
-    disciplina: "Biologia",
-    professor: "Prof. Fernando Costa",
-    turma: "11ª C",
-    trimestre: "2º Trimestre",
-    nota: 17.0,
-    situacao: "Aprovado",
-    observacoes: "Muito bom",
-    dataAvaliacao: "2024-06-20"
-  },
-  {
-    id: 8,
-    aluno: "Hugo Manuel Pereira",
-    disciplina: "Geografia",
-    professor: "Prof. Beatriz Lima",
-    turma: "10ª B",
-    trimestre: "1º Trimestre",
-    nota: 9.5,
-    situacao: "Recuperação",
-    observacoes: "Precisa de apoio",
-    dataAvaliacao: "2024-03-28"
-  }
-];
-
-const trimestreOptions = [
-  { value: "all", label: "Todos os Trimestres" },
-  { value: "1", label: "1º Trimestre" },
-  { value: "2", label: "2º Trimestre" },
-  { value: "3", label: "3º Trimestre" },
-];
-
-const situacaoOptions = [
-  { value: "all", label: "Todas as Situações" },
-  { value: "aprovado", label: "Aprovado" },
-  { value: "reprovado", label: "Reprovado" },
-  { value: "recuperacao", label: "Recuperação" },
-];
+// Sistema de Configurações de Avaliação Acadêmica
+// Gerencia tipos de avaliação, tipos de nota, trimestres e relatórios
 
 export default function NotesPage() {
-  const [grades, setGrades] = useState(mockGrades);
-  const [filteredGrades, setFilteredGrades] = useState(mockGrades);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [trimestreFilter, setTrimestreFilter] = useState("all");
-  const [situacaoFilter, setSituacaoFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+  // Hooks da API real para configurações de avaliação
+  const { trimestres, loading: trimestresLoading, error: trimestresError } = useTrimestres(1, 100);
+  const { tiposNota, loading: tiposNotaLoading, error: tiposNotaError } = useTiposNota(1, 100);
+  const { relatorio, loading: relatorioLoading, error: relatorioError } = useRelatorioAvaliacao();
+  
+  // Hooks para exclusão
+  const { deleteTrimestre, loading: deletingTrimestre } = useDeleteTrimestre();
+  const { deleteTipoNota, loading: deletingTipoNota } = useDeleteTipoNota();
+  
+  // Hooks para criação
+  const { createTrimestre, loading: creatingTrimestre } = useCreateTrimestre();
+  const { createTipoNota, loading: creatingTipoNota } = useCreateTipoNota();
+  
+  // Estados para modal de confirmação de exclusão
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{id: number, nome: string, tipo: 'trimestre' | 'tipoNota'} | null>(null);
+  
+  // Estados para modais de criação
+  const [showCreateTrimestreModal, setShowCreateTrimestreModal] = useState(false);
+  const [showCreateTipoNotaModal, setShowCreateTipoNotaModal] = useState(false);
+  
+  // Estados dos formulários
+  const [trimestreForm, setTrimestreForm] = useState({
+    designacao: '',
+    dataInicio: '',
+    dataFim: ''
+  });
+  
+  const [tipoNotaForm, setTipoNotaForm] = useState({
+    designacao: '',
+    positivaMinima: '',
+    status: 1
+  });
 
-  // Filtrar notas
-  useEffect(() => {
-    let filtered = grades;
+  // Estados de loading combinados
+  const isLoading = trimestresLoading || tiposNotaLoading || relatorioLoading;
+  const hasError = trimestresError && tiposNotaError && relatorioError; // Só mostra erro se TODOS falharem
+  
+  // Log para debug
+  console.log('Estados:', {
+    trimestresLoading, tiposNotaLoading, relatorioLoading,
+    trimestresError, tiposNotaError, relatorioError,
+    trimestres: trimestres?.length, tiposNota: tiposNota?.length, relatorio
+  });
 
-    if (searchTerm) {
-      filtered = filtered.filter(grade =>
-        grade.aluno.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        grade.disciplina.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        grade.professor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        grade.turma.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  // Funções para gerenciar exclusão
+  const handleDeleteClick = (item: {id: number, nome: string, tipo: 'trimestre' | 'tipoNota'}) => {
+    setItemToDelete(item);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    try {
+      if (itemToDelete.tipo === 'trimestre') {
+        await deleteTrimestre(itemToDelete.id);
+      } else {
+        await deleteTipoNota(itemToDelete.id);
+      }
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      // Recarregar dados seria feito aqui se necessário
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
     }
+  };
 
-    if (trimestreFilter !== "all") {
-      filtered = filtered.filter(grade => 
-        grade.trimestre.includes(trimestreFilter + "º")
-      );
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
+  };
+
+  // Funções para gerenciar criação de trimestre
+  const handleCreateTrimestre = async () => {
+    try {
+      await createTrimestre({
+        designacao: trimestreForm.designacao,
+        dataInicio: trimestreForm.dataInicio,
+        dataFim: trimestreForm.dataFim
+      });
+      setShowCreateTrimestreModal(false);
+      setTrimestreForm({ designacao: '', dataInicio: '', dataFim: '' });
+      // Recarregar dados seria feito aqui se necessário
+    } catch (error) {
+      console.error('Erro ao criar trimestre:', error);
     }
+  };
 
-    if (situacaoFilter !== "all") {
-      filtered = filtered.filter(grade => 
-        grade.situacao.toLowerCase() === situacaoFilter
-      );
+  const handleCancelCreateTrimestre = () => {
+    setShowCreateTrimestreModal(false);
+    setTrimestreForm({ designacao: '', dataInicio: '', dataFim: '' });
+  };
+
+  // Funções para gerenciar criação de tipo de nota
+  const handleCreateTipoNota = async () => {
+    try {
+      await createTipoNota({
+        designacao: tipoNotaForm.designacao,
+        positivaMinima: parseFloat(tipoNotaForm.positivaMinima),
+        status: tipoNotaForm.status
+      });
+      setShowCreateTipoNotaModal(false);
+      setTipoNotaForm({ designacao: '', positivaMinima: '', status: 1 });
+      // Recarregar dados seria feito aqui se necessário
+    } catch (error) {
+      console.error('Erro ao criar tipo de nota:', error);
     }
-
-    setFilteredGrades(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, trimestreFilter, situacaoFilter, grades]);
-
-  // Paginação
-  const totalPages = Math.ceil(filteredGrades.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentGrades = filteredGrades.slice(startIndex, endIndex);
-
-  const handleViewGrade = (gradeId: number) => {
-    window.location.href = `/admin/academic-management/notes/details/${gradeId}`;
   };
 
-  const handleEditGrade = (gradeId: number) => {
-    window.location.href = `/admin/academic-management/notes/edit/${gradeId}`;
+  const handleCancelCreateTipoNota = () => {
+    setShowCreateTipoNotaModal(false);
+    setTipoNotaForm({ designacao: '', positivaMinima: '', status: 1 });
   };
 
-  const handleDeleteGrade = (gradeId: number) => {
-    console.log("Excluir nota:", gradeId);
-    // Implementar confirmação e exclusão
-  };
+  if (isLoading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando configurações de avaliação...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
-  // Estatísticas das notas
-  const estatisticasNotas = [
-    { situacao: "Aprovados", count: grades.filter(g => g.situacao === "Aprovado").length },
-    { situacao: "Reprovados", count: grades.filter(g => g.situacao === "Reprovado").length },
-    { situacao: "Recuperação", count: grades.filter(g => g.situacao === "Recuperação").length }
-  ];
-
-  const getNotaColor = (nota: number) => {
-    if (nota >= 16) return "text-green-600 bg-green-50 border-green-200";
-    if (nota >= 14) return "text-blue-600 bg-blue-50 border-blue-200";
-    if (nota >= 10) return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    return "text-red-600 bg-red-50 border-red-200";
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-AO');
-  };
+  if (hasError) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-md">
+            <div className="text-red-500 mb-4">
+              <FileText className="h-12 w-12 mx-auto mb-2" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao Carregar Dados</h2>
+            <p className="text-gray-600 mb-2">Não foi possível carregar as configurações de avaliação.</p>
+            
+            {/* Detalhes do erro para debug */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
+              <p className="text-sm text-red-800 font-semibold mb-2">Detalhes do erro:</p>
+              <p className="text-xs text-red-700 mb-1">Trimestres: {trimestresError || 'OK'}</p>
+              <p className="text-xs text-red-700 mb-1">Tipos de Nota: {tiposNotaError || 'OK'}</p>
+              <p className="text-xs text-red-700 mb-1">Relatório: {relatorioError || 'OK'}</p>
+              <p className="text-xs text-red-700">API URL: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Button onClick={() => window.location.reload()} className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 w-full">
+                Tentar Novamente
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => console.log('Logs:', { trimestresError, tiposNotaError, relatorioError })}
+                className="w-full"
+              >
+                Ver Logs no Console
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -259,41 +262,15 @@ export default function NotesPage() {
                 </div>
                 <div>
                   <h1 className="text-4xl font-bold text-gray-900">
-                    Notas
+                    Configurações de Avaliação
                   </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">Gestão de Notas e Avaliações</p>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">Tipos de Avaliação, Notas e Trimestres</p>
                 </div>
               </div>
               <p className="text-gray-600 text-sm max-w-2xl">
-                Gerencie todas as notas e avaliações dos alunos. Organize por trimestres, disciplinas e turmas, 
-                visualize desempenho acadêmico e mantenha o controle das aprovações.
+                Configure os tipos de avaliação, escalas de notas, trimestres acadêmicos e visualize 
+                estatísticas do sistema de avaliação.
               </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exportar Notas
-              </Button>
-
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Importar Notas
-              </Button>
-
-              <Button
-                onClick={() => window.location.href = '/admin/academic-management/notes/add'}
-                className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Nova Nota
-              </Button>
             </div>
           </div>
         </div>
@@ -303,324 +280,409 @@ export default function NotesPage() {
         <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
       </div>
 
-      {/* Stats Cards seguindo padrão do Dashboard */}
+
+      {/* Stats Cards das Configurações */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        {/* Card Total de Notas */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
-              <FileText className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+12.5%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Notas</p>
-            <p className="text-3xl font-bold text-gray-900">{grades.length}</p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+        <StatCard
+          title="Trimestres"
+          value={relatorio ? relatorio.resumo.totalTrimestres.toString() : "0"}
+          change="Configurados"
+          changeType="neutral"
+          icon={Calendar}
+          color="text-[#182F59]"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
+        />
 
-        {/* Cards por situação */}
-        {estatisticasNotas.map((stat, index) => {
-          const colors = [
-            { bg: "from-emerald-50 via-white to-emerald-50/50", icon: "from-emerald-500 to-green-600", text: "text-emerald-600" },
-            { bg: "from-red-50 via-white to-red-50/50", icon: "from-red-500 to-red-600", text: "text-red-600" },
-            { bg: "from-amber-50 via-white to-yellow-50/50", icon: "from-[#FFD002] to-[#FFC107]", text: "text-[#FFD002]" }
-          ];
-          const color = colors[index];
+        <StatCard
+          title="Tipos de Nota"
+          value={relatorio ? relatorio.resumo.totalTiposNota.toString() : "0"}
+          change={relatorio ? `${relatorio.resumo.tiposNotaAtivos} Ativos` : "Ativos"}
+          changeType="neutral"
+          icon={Award}
+          color="text-emerald-600"
+          bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
+          accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
+        />
 
-          return (
-            <div key={stat.situacao} className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${color.bg} border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm`}>
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${color.icon} shadow-sm`}>
-                  <Award className="h-6 w-6 text-white" />
-                </div>
-                <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                  <Activity className="h-3 w-3 text-blue-500" />
-                  <span className="font-bold text-xs text-blue-600">Atual</span>
-                </div>
-              </div>
-              <div>
-                <p className={`text-sm font-semibold mb-2 ${color.text}`}>{stat.situacao}</p>
-                <p className="text-3xl font-bold text-gray-900">{stat.count}</p>
-              </div>
-              
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-              <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-            </div>
-          );
-        })}
+        <StatCard
+          title="Tipos Avaliação"
+          value={relatorio ? relatorio.resumo.totalTiposAvaliacao.toString() : "0"}
+          change="Configurados"
+          changeType="neutral"
+          icon={Settings}
+          color="text-purple-600"
+          bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
+          accentColor="bg-gradient-to-br from-purple-500 to-purple-600"
+        />
+
+        <StatCard
+          title="Tipos Pauta"
+          value={relatorio ? relatorio.resumo.totalTiposPauta.toString() : "0"}
+          change="Disponíveis"
+          changeType="up"
+          icon={Activity}
+          color="text-[#FFD002]"
+          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
+          accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
+        />
       </div>
 
-      {/* Filtros e Busca */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filtros e Busca</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+      {/* Tabelas de Dados CRUD */}
+      <div className="space-y-8">
+        {/* Tabela de Trimestres */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-[#F9CD1D]" />
+              <span>Trimestres Acadêmicos</span>
+            </CardTitle>
+            <Button 
+              onClick={() => setShowCreateTrimestreModal(true)}
+              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Trimestre
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {trimestres && trimestres.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Designação</TableHead>
+                      <TableHead>Período</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trimestres.map((trimestre) => (
+                      <TableRow key={trimestre.codigo}>
+                        <TableCell className="font-medium">
+                          {trimestre.designacao || `Trimestre ${trimestre.codigo}`}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {trimestre.dataInicio ? new Date(trimestre.dataInicio).getFullYear() : 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-green-100 text-green-800">
+                            Ativo
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/details/${trimestre.codigo}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Detalhes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/edit/${trimestre.codigo}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteClick({
+                                  id: trimestre.codigo, 
+                                  nome: trimestre.designacao || `Trimestre ${trimestre.codigo}`, 
+                                  tipo: 'trimestre'
+                                })}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum trimestre encontrado</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tabela de Tipos de Nota */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center space-x-2">
+              <Award className="h-5 w-5 text-emerald-600" />
+              <span>Tipos de Nota</span>
+            </CardTitle>
+            <Button 
+              onClick={() => setShowCreateTipoNotaModal(true)}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Tipo de Nota
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {tiposNota && tiposNota.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Designação</TableHead>
+                      <TableHead>Nota Mínima</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tiposNota.map((tipo) => (
+                      <TableRow key={tipo.codigo}>
+                        <TableCell className="font-medium">
+                          {tipo.designacao || `Tipo ${tipo.codigo}`}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {tipo.positivaMinima || 10}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={tipo.status === 1 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                            {tipo.status === 1 ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/details/${tipo.codigo}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Detalhes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/edit/${tipo.codigo}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteClick({
+                                  id: tipo.codigo, 
+                                  nome: tipo.designacao || `Tipo ${tipo.codigo}`, 
+                                  tipo: 'tipoNota'
+                                })}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum tipo de nota encontrado</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Modal de Criação de Trimestre */}
+      <Dialog open={showCreateTrimestreModal} onOpenChange={setShowCreateTrimestreModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-[#F9CD1D] rounded-full flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-white" />
+              </div>
+              <span>Novo Trimestre</span>
+            </DialogTitle>
+            <DialogDescription>
+              Adicione um novo trimestre acadêmico ao sistema.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="trimestre-designacao">Designação *</Label>
+              <Input
+                id="trimestre-designacao"
+                value={trimestreForm.designacao}
+                onChange={(e) => setTrimestreForm(prev => ({ ...prev, designacao: e.target.value }))}
+                placeholder="Ex: 1º Trimestre 2024"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="trimestre-inicio">Data Início</Label>
                 <Input
-                  placeholder="Buscar por aluno, disciplina, professor ou turma..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  id="trimestre-inicio"
+                  type="date"
+                  value={trimestreForm.dataInicio}
+                  onChange={(e) => setTrimestreForm(prev => ({ ...prev, dataInicio: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="trimestre-fim">Data Fim</Label>
+                <Input
+                  id="trimestre-fim"
+                  type="date"
+                  value={trimestreForm.dataFim}
+                  onChange={(e) => setTrimestreForm(prev => ({ ...prev, dataFim: e.target.value }))}
                 />
               </div>
             </div>
-            <div className="flex gap-4">
-              <Select value={trimestreFilter} onValueChange={setTrimestreFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Trimestre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {trimestreOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          </div>
 
-              <Select value={situacaoFilter} onValueChange={setSituacaoFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Situação" />
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelCreateTrimestre}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateTrimestre}
+              disabled={creatingTrimestre || !trimestreForm.designacao}
+              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90"
+            >
+              {creatingTrimestre && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Criar Trimestre
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Criação de Tipo de Nota */}
+      <Dialog open={showCreateTipoNotaModal} onOpenChange={setShowCreateTipoNotaModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-emerald-600 rounded-full flex items-center justify-center">
+                <Award className="h-5 w-5 text-white" />
+              </div>
+              <span>Novo Tipo de Nota</span>
+            </DialogTitle>
+            <DialogDescription>
+              Adicione um novo tipo de nota ao sistema de avaliação.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="tipo-nota-designacao">Designação *</Label>
+              <Input
+                id="tipo-nota-designacao"
+                value={tipoNotaForm.designacao}
+                onChange={(e) => setTipoNotaForm(prev => ({ ...prev, designacao: e.target.value }))}
+                placeholder="Ex: Nota Quantitativa"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="tipo-nota-minima">Nota Mínima Positiva</Label>
+              <Input
+                id="tipo-nota-minima"
+                type="number"
+                min="0"
+                max="20"
+                step="0.1"
+                value={tipoNotaForm.positivaMinima}
+                onChange={(e) => setTipoNotaForm(prev => ({ ...prev, positivaMinima: e.target.value }))}
+                placeholder="Ex: 10"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="tipo-nota-status">Status</Label>
+              <Select 
+                value={tipoNotaForm.status.toString()} 
+                onValueChange={(value) => setTipoNotaForm(prev => ({ ...prev, status: parseInt(value) }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {situacaoOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="1">Ativo</SelectItem>
+                  <SelectItem value="0">Inativo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Tabela de Notas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
-              <span>Registro de Notas</span>
-            </div>
-            <Badge variant="outline" className="text-sm">
-              {filteredGrades.length} notas encontradas
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Aluno</TableHead>
-                  <TableHead>Disciplina</TableHead>
-                  <TableHead>Professor</TableHead>
-                  <TableHead>Turma</TableHead>
-                  <TableHead>Trimestre</TableHead>
-                  <TableHead>Nota</TableHead>
-                  <TableHead>Situação</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentGrades.map((grade) => (
-                  <TableRow key={grade.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-[#F9CD1D]" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{grade.aluno}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <BookOpen className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-900">{grade.disciplina}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm text-gray-900">{grade.professor}</p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        {grade.turma}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                        {grade.trimestre}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getNotaColor(grade.nota)}>
-                        {grade.nota.toFixed(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={grade.situacao === "Aprovado" ? "default" : grade.situacao === "Reprovado" ? "destructive" : "secondary"}
-                        className={
-                          grade.situacao === "Aprovado" ? "bg-emerald-100 text-emerald-800" : 
-                          grade.situacao === "Reprovado" ? "bg-red-100 text-red-800" :
-                          "bg-yellow-100 text-yellow-800"
-                        }
-                      >
-                        {grade.situacao}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{formatDate(grade.dataAvaliacao)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewGrade(grade.id)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditGrade(grade.id)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteGrade(grade.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelCreateTipoNota}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateTipoNota}
+              disabled={creatingTipoNota || !tipoNotaForm.designacao}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {creatingTipoNota && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Criar Tipo de Nota
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          {/* Paginação */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between space-x-2 py-4">
-              <div className="text-sm text-gray-500">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredGrades.length)} de {filteredGrades.length} notas
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
               </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Anterior
-                </Button>
-                <div className="flex items-center space-x-1">
-                  {(() => {
-                    const maxPagesToShow = 5;
-                    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-                    const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
-                    const pages = [];
-                    
-                    // Primeira página
-                    if (adjustedStartPage > 1) {
-                      pages.push(
-                        <Button
-                          key={1}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(1)}
-                        >
-                          1
-                        </Button>
-                      );
-                      if (adjustedStartPage > 2) {
-                        pages.push(<span key="ellipsis1" className="px-2">...</span>);
-                      }
-                    }
-                    
-                    // Páginas do meio
-                    for (let i = adjustedStartPage; i <= endPage; i++) {
-                      pages.push(
-                        <Button
-                          key={i}
-                          variant={currentPage === i ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(i)}
-                          className={currentPage === i ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
-                        >
-                          {i}
-                        </Button>
-                      );
-                    }
-                    
-                    // Última página
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
-                        pages.push(<span key="ellipsis2" className="px-2">...</span>);
-                      }
-                      pages.push(
-                        <Button
-                          key={totalPages}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(totalPages)}
-                        >
-                          {totalPages}
-                        </Button>
-                      );
-                    }
-                    
-                    return pages;
-                  })()}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                >
-                  Próximo
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              <span>Confirmar Exclusão</span>
+            </DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir {itemToDelete?.nome}?
+              <br />
+              <span className="text-red-600 font-medium">Esta ação não pode ser desfeita.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmDelete}
+              disabled={deletingTrimestre || deletingTipoNota}
+            >
+              {(deletingTrimestre || deletingTipoNota) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }
