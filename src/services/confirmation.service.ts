@@ -59,8 +59,9 @@ export default class ConfirmationService {
   }
 
   static async getConfirmations(page = 1, limit = 10, search = ""): Promise<IConfirmationListResponse> {
+    // Buscar sem filtro no backend - busca será feita no frontend
     const response = await api.get("/api/student-management/confirmacoes", {
-      params: { page, limit, search }
+      params: { page, limit }
     })
     const apiResponse = response.data
     if (apiResponse.success) {

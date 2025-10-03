@@ -7,8 +7,9 @@ import {
   IConfirmationsByClassAndYear 
 } from "@/types/confirmation.types"
 
-// Listagem com paginação
+// Listagem com paginação e busca local
 export function useConfirmations(page = 1, limit = 10, search = "") {
+  const [allConfirmations, setAllConfirmations] = useState<IConfirmation[]>([])
   const [confirmations, setConfirmations] = useState<IConfirmation[]>([])
   const [pagination, setPagination] = useState<IConfirmationListResponse["pagination"] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -18,8 +19,23 @@ export function useConfirmations(page = 1, limit = 10, search = "") {
     try {
       setLoading(true)
       setError(null)
-      const { data, pagination } = await ConfirmationService.getConfirmations(page, limit, search)
-      setConfirmations(data)
+      // Buscar sem filtro no backend
+      const { data, pagination } = await ConfirmationService.getConfirmations(page, limit, "")
+      setAllConfirmations(data)
+      
+      // Aplicar busca localmente
+      const filteredData = search ? data.filter((confirmation: IConfirmation) => {
+        const nomeAluno = confirmation.tb_matriculas?.tb_alunos?.nome?.toLowerCase() || ''
+        const designacaoTurma = confirmation.tb_turmas?.designacao?.toLowerCase() || ''
+        const classificacao = confirmation.classificacao?.toLowerCase() || ''
+        const searchLower = search.toLowerCase()
+        
+        return nomeAluno.includes(searchLower) || 
+               designacaoTurma.includes(searchLower) || 
+               classificacao.includes(searchLower)
+      }) : data
+      
+      setConfirmations(filteredData)
       setPagination(pagination)
     } catch (err: any) {
       setError(err.message || "Erro ao carregar confirmações")

@@ -66,6 +66,7 @@ import {
   Loader2,
   Save,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import { useMatriculas, useCreateMatricula, useUpdateMatricula, useDeleteMatricula } from '@/hooks/useMatricula';
 import { IMatriculaInput } from '@/types/matricula.types';
@@ -90,7 +91,8 @@ export default function EnrollmentsListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
-  const { matriculas, pagination, loading, error, refetch } = useMatriculas(currentPage, itemsPerPage, searchTerm);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const { matriculas, pagination, loading, error, refetch } = useMatriculas(currentPage, itemsPerPage, debouncedSearchTerm);
   const { createMatricula, loading: createLoading } = useCreateMatricula();
   const { deleteMatricula, loading: deleteLoading } = useDeleteMatricula();
   
@@ -102,6 +104,36 @@ export default function EnrollmentsListPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{id: number, nome: string} | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Debounce para busca
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1); // Reset para primeira página quando buscar
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Filtrar matrículas localmente
+  const filteredMatriculas = matriculas.filter((matricula: any) => {
+    // Filtro por status
+    if (statusFilter !== "all" && matricula.codigoStatus.toString() !== statusFilter) {
+      return false;
+    }
+    
+    // Filtro por curso
+    if (courseFilter !== "all" && matricula.codigo_Curso.toString() !== courseFilter) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  // Reset página quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, courseFilter]);
 
   // Funções para gerenciar matrículas
   const handleDeleteClick = (matricula: any) => {
@@ -234,7 +266,10 @@ export default function EnrollmentsListPage() {
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Matrículas</p>
-            <p className="text-3xl font-bold text-gray-900">{matriculas.length}</p>
+            <p className="text-3xl font-bold text-gray-900">{filteredMatriculas.length}</p>
+            {filteredMatriculas.length !== matriculas.length && (
+              <p className="text-xs text-gray-500">de {matriculas.length} total</p>
+            )}
           </div>
           
           {/* Decorative elements */}
@@ -256,8 +291,11 @@ export default function EnrollmentsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-emerald-600">Matrículas Ativas</p>
             <p className="text-3xl font-bold text-gray-900">
-              {matriculas.filter(e => e.codigoStatus === 1).length}
+              {filteredMatriculas.filter(e => e.codigoStatus === 1).length}
             </p>
+            {filteredMatriculas.filter(e => e.codigoStatus === 1).length !== matriculas.filter(e => e.codigoStatus === 1).length && (
+              <p className="text-xs text-gray-500">de {matriculas.filter(e => e.codigoStatus === 1).length} total</p>
+            )}
           </div>
           
           {/* Decorative elements */}
@@ -279,8 +317,11 @@ export default function EnrollmentsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-[#FFD002]">Com Confirmação</p>
             <p className="text-3xl font-bold text-gray-900">
-              {matriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length}
+              {filteredMatriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length}
             </p>
+            {filteredMatriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length !== matriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length && (
+              <p className="text-xs text-gray-500">de {matriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length} total</p>
+            )}
           </div>
           
           {/* Decorative elements */}
@@ -302,8 +343,11 @@ export default function EnrollmentsListPage() {
           <div>
             <p className="text-sm font-semibold mb-2 text-red-600">Sem Confirmação</p>
             <p className="text-3xl font-bold text-gray-900">
-              {matriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length}
+              {filteredMatriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length}
             </p>
+            {filteredMatriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length !== matriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length && (
+              <p className="text-xs text-gray-500">de {matriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length} total</p>
+            )}
           </div>
           
           {/* Decorative elements */}
@@ -409,14 +453,24 @@ export default function EnrollmentsListPage() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ) : matriculas.length === 0 ? (
+                ) : filteredMatriculas.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
-                      <p className="text-gray-600">Nenhuma matrícula encontrada.</p>
+                      <div className="flex flex-col items-center space-y-2">
+                        <AlertCircle className="h-8 w-8 text-gray-400" />
+                        <p className="text-gray-600">
+                          {searchTerm || statusFilter !== "all" || courseFilter !== "all" 
+                            ? "Nenhuma matrícula encontrada com os filtros aplicados." 
+                            : "Nenhuma matrícula encontrada."}
+                        </p>
+                        {(searchTerm || statusFilter !== "all" || courseFilter !== "all") && (
+                          <p className="text-sm text-gray-500">Tente ajustar os filtros de busca.</p>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  matriculas.map((enrollment) => (
+                  filteredMatriculas.map((enrollment) => (
                   <TableRow key={enrollment.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">

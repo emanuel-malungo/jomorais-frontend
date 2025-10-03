@@ -10,8 +10,9 @@ import {
   IBatchResponse
 } from "@/types/matricula.types"
 
-// Listagem com paginação
+// Listagem com paginação e busca local
 export function useMatriculas(page = 1, limit = 10, search = "") {
+  const [allMatriculas, setAllMatriculas] = useState<IMatricula[]>([])
   const [matriculas, setMatriculas] = useState<IMatricula[]>([])
   const [pagination, setPagination] = useState<IMatriculaListResponse["pagination"] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -21,8 +22,20 @@ export function useMatriculas(page = 1, limit = 10, search = "") {
     try {
       setLoading(true)
       setError(null)
-      const { data, pagination } = await MatriculaService.getMatriculas(page, limit, search)
-      setMatriculas(data)
+      // Buscar sem filtro no backend
+      const { data, pagination } = await MatriculaService.getMatriculas(page, limit, "")
+      setAllMatriculas(data)
+      
+      // Aplicar busca localmente
+      const filteredData = search ? data.filter((matricula: IMatricula) => {
+        const nomeAluno = matricula.tb_alunos?.nome?.toLowerCase() || ''
+        const nomeCurso = matricula.tb_cursos?.designacao?.toLowerCase() || ''
+        const searchLower = search.toLowerCase()
+        
+        return nomeAluno.includes(searchLower) || nomeCurso.includes(searchLower)
+      }) : data
+      
+      setMatriculas(filteredData)
       setPagination(pagination)
     } catch (err: any) {
       setError(err.message || "Erro ao carregar matrículas")

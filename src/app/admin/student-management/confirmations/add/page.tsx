@@ -134,15 +134,33 @@ export default function AddConfirmationPage() {
       
       const data = response.data;
       if (data.success && data.data) {
-        // Filtrar localmente por nome do aluno ou curso
-        const filtered = data.data.filter((enrollment: any) =>
-          enrollment.tb_alunos?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          enrollment.tb_cursos?.designacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          enrollment.tb_alunos?.email?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        // Filtrar localmente por nome do aluno, curso, email, telefone, pais
+        const searchLower = searchTerm.toLowerCase();
+        const filtered = data.data.filter((enrollment: any) => {
+          const aluno = enrollment.tb_alunos;
+          const curso = enrollment.tb_cursos;
+          
+          if (!aluno) return false;
+          
+          const nome = aluno.nome?.toLowerCase() || '';
+          const email = aluno.email?.toLowerCase() || '';
+          const telefone = aluno.telefone || '';
+          const pai = aluno.pai?.toLowerCase() || '';
+          const mae = aluno.mae?.toLowerCase() || '';
+          const documento = aluno.n_documento_identificacao || '';
+          const cursoNome = curso?.designacao?.toLowerCase() || '';
+          
+          return nome.includes(searchLower) ||
+                 email.includes(searchLower) ||
+                 telefone.includes(searchTerm) ||
+                 pai.includes(searchLower) ||
+                 mae.includes(searchLower) ||
+                 documento.includes(searchTerm) ||
+                 cursoNome.includes(searchLower);
+        });
         
         console.log(`${filtered.length} resultados encontrados para "${searchTerm}"`);
-        setSearchResults(filtered.slice(0, 10)); // Limitar a 10 resultados
+        setSearchResults(filtered); // Mostrar TODOS os resultados encontrados
         setShowSearchResults(true);
       }
     } catch (error) {
@@ -576,9 +594,9 @@ export default function AddConfirmationPage() {
               {showSearchResults && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Resultados da Busca
+                    Resultados da Busca {searchResults.length > 0 && `(${searchResults.length} encontrado${searchResults.length !== 1 ? 's' : ''})`}
                   </label>
-                  <div className="max-h-60 overflow-y-auto border rounded-lg">
+                  <div className="max-h-80 overflow-y-auto border rounded-lg">
                     {loadingSearch ? (
                       <div className="p-4 text-center text-gray-500">
                         Buscando...
@@ -676,7 +694,7 @@ export default function AddConfirmationPage() {
                   
                   {/* Resultados da busca de turmas */}
                   {showTurmaSearchResults && (
-                    <div className="max-h-60 overflow-y-auto border rounded-lg">
+                    <div className="max-h-80 overflow-y-auto border rounded-lg">
                       {loadingTurmaSearch ? (
                         <div className="p-4 text-center text-gray-500">
                           Buscando turmas...
