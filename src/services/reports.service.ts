@@ -389,23 +389,8 @@ class ReportsService {
     let yPosition = margin;
 
     // Header do documento
-    doc.setFontSize(20);
-    doc.setTextColor(249, 205, 29); // Cor Jomorais
-    doc.text('INSTITUTO MÉDIO POLITÉCNICO JOMORAIS', pageWidth / 2, yPosition, { align: 'center' });
-    
-    yPosition += 10;
-    doc.setFontSize(16);
-    doc.setTextColor(59, 108, 77); // Verde Jomorais
-    
-    const reportTitle = this.getReportTitle(reportType);
-    doc.text(reportTitle, pageWidth / 2, yPosition, { align: 'center' });
-    
-    yPosition += 15;
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-AO')} às ${new Date().toLocaleTimeString('pt-AO')}`, pageWidth / 2, yPosition, { align: 'center' });
-    
-    yPosition += 20;
+    await this.addHeader(doc, pageWidth, yPosition, reportType);
+    yPosition += 35;
 
     // Gerar conteúdo baseado no tipo de relatório
     if (reportType === 'students') {
@@ -438,6 +423,30 @@ class ReportsService {
     }
   }
 
+  private async addHeader(doc: any, pageWidth: number, startY: number, reportType: string): Promise<void> {
+    let yPosition = startY;
+    
+    // Título do instituto centralizado (sem logo)
+    doc.setFontSize(18);
+    doc.setTextColor(249, 205, 29); // Amarelo Jomorais
+    doc.text('INSTITUTO MÉDIO POLITÉCNICO JOMORAIS', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 12;
+    
+    // Título do relatório
+    doc.setFontSize(14);
+    doc.setTextColor(59, 108, 77); // Verde Jomorais
+    const reportTitle = this.getReportTitle(reportType);
+    doc.text(reportTitle, pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 10;
+    
+    // Data e hora
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-AO')} às ${new Date().toLocaleTimeString('pt-AO')}`, pageWidth / 2, yPosition, { align: 'center' });
+  }
+
   private async generateStudentPDF(doc: any, data: IStudentReport, startY: number): Promise<void> {
     console.log('📊 Gerando PDF profissional de alunos com dados:', data);
     let yPosition = startY;
@@ -449,9 +458,7 @@ class ReportsService {
     doc.addPage();
     yPosition = 20;
     
-    // Logo da escola (se disponível)
-    await this.addSchoolLogoToPDF(doc, yPosition);
-    yPosition += 40;
+    // Logo já incluída no header principal
 
     // SEÇÃO 2: ESTATÍSTICAS E RESUMOS
     yPosition = await this.addStatisticsSectionToPDF(doc, data, yPosition);
@@ -462,11 +469,15 @@ class ReportsService {
     
     // Buscar TODOS os alunos para o PDF com relacionamentos
     console.log('📋 Buscando alunos com relacionamentos para PDF...');
+    
+    // Primeiro, buscar para saber o total
     const studentsResponse = await studentService.getAllStudents(1, 10);
     const totalItems = studentsResponse.pagination?.totalItems || 0;
     const limitValue = typeof totalItems === 'number' && totalItems > 0 ? totalItems : 1000;
     
-    console.log(`📊 Buscando ${limitValue} alunos para o PDF...`);
+    console.log(`📊 Buscando ${limitValue} alunos para o PDF com relacionamentos...`);
+    
+    // Buscar todos os alunos - a API deve incluir tb_matriculas com relacionamentos
     const allStudentsResponse = await studentService.getAllStudents(1, limitValue);
     const students = allStudentsResponse.students;
 
@@ -546,29 +557,40 @@ class ReportsService {
         console.log('🔍 tb_matriculas:', student.tb_matriculas);
       }
       
-      // Classe e Curso - buscar de diferentes formas
+      // Classe e Curso - buscar dados reais de cada aluno
       let classe = 'N/A';
       let curso = 'N/A';
       
-      // Método 1: Tentar pegar da estrutura de matrícula do aluno
+      // Log detalhado da estrutura para debug
+      if (index < 5) {
+        console.log(`🔍 Aluno ${index + 1} (${student.nome}):`, {
+          codigo: student.codigo,
+          tb_matriculas: student.tb_matriculas,
+          estrutura: typeof student.tb_matriculas,
+          isArray: Array.isArray(student.tb_matriculas)
+        });
+      }
+      
+      // Método 1: Buscar na estrutura de matrícula do aluno
       if (Array.isArray(student.tb_matriculas) && student.tb_matriculas.length > 0) {
-        const matricula = student.tb_matriculas[0];
+        // Se tb_matriculas é um array, pegar a primeira matrícula ativa
+        const matriculaAtiva = student.tb_matriculas.find((m: any) => m.codigoStatus === 1) || student.tb_matriculas[0];
         
-        // Tentar diferentes caminhos para classe
-        classe = matricula.tb_turmas?.tb_classes?.designacao || 
-                 matricula.tb_classes?.designacao ||
-                 matricula.classe?.designacao ||
-                 matricula.tb_turma?.tb_classe?.designacao ||
-                 'N/A';
-        
-        // Tentar diferentes caminhos para curso
-        curso = matricula.tb_turmas?.tb_cursos?.designacao || 
-                matricula.tb_cursos?.designacao ||
-                matricula.curso?.designacao ||
-                matricula.tb_turma?.tb_curso?.designacao ||
-                'N/A';
+        if (matriculaAtiva) {
+          // Tentar diferentes estruturas possíveis
+          classe = matriculaAtiva.tb_turmas?.tb_classes?.designacao || 
+                   matriculaAtiva.tb_classes?.designacao ||
+                   matriculaAtiva.classe?.designacao ||
+                   'N/A';
+          
+          curso = matriculaAtiva.tb_turmas?.tb_cursos?.designacao || 
+                  matriculaAtiva.tb_cursos?.designacao ||
+                  matriculaAtiva.curso?.designacao ||
+                  'N/A';
+        }
       }
       else if (student.tb_matriculas && typeof student.tb_matriculas === 'object') {
+        // Se tb_matriculas é um objeto único
         const matricula = student.tb_matriculas as any;
         
         classe = matricula.tb_turmas?.tb_classes?.designacao || 
@@ -582,41 +604,38 @@ class ReportsService {
                 'N/A';
       }
       
-      // Método 2: Se não encontrou, tentar buscar nas turmas carregadas
+      // Método 2: Buscar nas turmas carregadas usando códigos de relacionamento
       if ((classe === 'N/A' || curso === 'N/A') && turmas.length > 0) {
-        // Buscar turma que pode estar relacionada ao aluno
-        const turmaRelacionada = turmas.find(turma => {
-          // Lógica para encontrar turma relacionada (pode precisar ajustar)
-          return turma.designacao && turma.designacao.includes(student.codigo?.toString() || '');
-        });
+        // Tentar encontrar turma através de códigos de relacionamento
+        let codigoTurma = null;
         
-        if (turmaRelacionada) {
-          if (classe === 'N/A') {
-            classe = turmaRelacionada.tb_classes?.designacao || 'N/A';
-          }
-          if (curso === 'N/A') {
-            curso = turmaRelacionada.tb_cursos?.designacao || 'N/A';
+        if (Array.isArray(student.tb_matriculas) && student.tb_matriculas.length > 0) {
+          codigoTurma = student.tb_matriculas[0]?.codigoTurma || student.tb_matriculas[0]?.codigo_Turma;
+        } else if (student.tb_matriculas) {
+          codigoTurma = (student.tb_matriculas as any)?.codigoTurma || (student.tb_matriculas as any)?.codigo_Turma;
+        }
+        
+        if (codigoTurma) {
+          const turmaRelacionada = turmas.find(turma => turma.codigo === codigoTurma);
+          
+          if (turmaRelacionada) {
+            if (classe === 'N/A') {
+              classe = turmaRelacionada.tb_classes?.designacao || 'N/A';
+            }
+            if (curso === 'N/A') {
+              curso = turmaRelacionada.tb_cursos?.designacao || 'N/A';
+            }
           }
         }
       }
       
-      // Método 3: Fallback com dados padrão baseados no aluno
-      if (classe === 'N/A') {
-        // Tentar inferir classe baseado no código do aluno ou outros dados
-        classe = '10ª Classe'; // Fallback temporário
-      }
-      if (curso === 'N/A') {
-        // Tentar inferir curso baseado no código do aluno ou outros dados  
-        curso = 'Informática'; // Fallback temporário
-      }
-      
-      // Log para debug nos primeiros alunos
-      if (index < 3) {
-        console.log(`🔍 Aluno ${index + 1} (${student.nome}):`, {
-          classe,
-          curso,
-          tb_matriculas: student.tb_matriculas,
-          codigo: student.codigo
+      // Log final para debug nos primeiros alunos
+      if (index < 5) {
+        console.log(`📊 Resultado Aluno ${index + 1}:`, {
+          nome: student.nome,
+          classe: classe,
+          curso: curso,
+          encontrouDados: classe !== 'N/A' && curso !== 'N/A'
         });
       }
       
@@ -637,92 +656,6 @@ class ReportsService {
     });
   }
 
-  private async addSchoolLogoToPDF(doc: any, yPosition: number): Promise<void> {
-    try {
-      // Tentar carregar logo real da escola
-      const logoUrls = [
-        '/src/assets/images/icon.png',  // Logo principal do sistema
-        '/assets/images/icon.png',      // Caminho alternativo
-        '/icon.png',                    // Caminho público
-        '/logo-jomorais.png',           // Fallback criado
-        '/logo-jomorais.svg'            // SVG fallback
-      ];
-      
-      let logoCarregada = false;
-      
-      for (const logoUrl of logoUrls) {
-        try {
-          console.log(`🔍 Tentando carregar logo: ${logoUrl}`);
-          
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          
-          await new Promise((resolve, reject) => {
-            img.onload = () => {
-              try {
-                // Adicionar logo real ao PDF com tamanho adequado
-                const format = logoUrl.includes('.png') ? 'PNG' : 'JPEG';
-                doc.addImage(img, format, 20, yPosition - 20, 40, 30);
-                console.log(`✅ Logo real adicionada ao PDF: ${logoUrl}`);
-                logoCarregada = true;
-                resolve(true);
-              } catch (error) {
-                console.log('⚠️ Erro ao adicionar logo real:', error);
-                reject(error);
-              }
-            };
-            
-            img.onerror = () => {
-              console.log(`⚠️ Logo não encontrada em: ${logoUrl}`);
-              reject(new Error('Logo não encontrada'));
-            };
-            
-            // Tentar carregar a imagem
-            img.src = logoUrl;
-          });
-          
-          if (logoCarregada) break; // Se carregou, sair do loop
-          
-        } catch (error) {
-          console.log(`⚠️ Falha ao carregar ${logoUrl}:`, error);
-          continue; // Tentar próxima URL
-        }
-      }
-      
-      if (!logoCarregada) {
-        throw new Error('Nenhuma logo encontrada');
-      }
-      
-    } catch (error) {
-      // Fallback: Adicionar logo estilizada com texto
-      console.log('📷 Usando logo de texto como fallback');
-      
-      // Fundo amarelo Jomorais para a logo
-      doc.setFillColor(249, 205, 29);
-      doc.rect(20, yPosition - 20, 80, 30, 'F');
-      
-      // Borda elegante
-      doc.setDrawColor(24, 47, 89);
-      doc.setLineWidth(2);
-      doc.rect(20, yPosition - 20, 80, 30);
-      
-      // Texto da logo principal
-      doc.setFontSize(18);
-      doc.setTextColor(24, 47, 89); // Azul Jomorais
-      doc.text('JOMORAIS', 25, yPosition - 8);
-      
-      // Subtítulo
-      doc.setFontSize(9);
-      doc.setTextColor(59, 108, 77); // Verde Jomorais
-      doc.text('Instituto Médio Politécnico', 25, yPosition - 1);
-      
-      // Elemento decorativo
-      doc.setFillColor(59, 108, 77);
-      doc.circle(90, yPosition - 5, 3, 'F');
-      
-      console.log('📷 Logo de texto estilizada adicionada');
-    }
-  }
 
   private async addStatisticsSectionToPDF(doc: any, data: IStudentReport, startY: number): Promise<number> {
     let yPosition = startY;
