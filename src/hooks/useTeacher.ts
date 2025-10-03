@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IDocente, IDocenteInput, IEspecialidade } from '@/types/teacher.types';
+import { IDocente, IDocenteInput, IEspecialidade, IDocenteListResponse } from '@/types/teacher.types';
 import teacherService from '@/services/teacher.service';
 
 // Hook para buscar todos os docentes
@@ -7,7 +7,7 @@ export function useDocentes(page: number = 1, limit: number = 10, search?: strin
   const [docentes, setDocentes] = useState<IDocente[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pagination, setPagination] = useState<any>(null)
+  const [pagination, setPagination] = useState<IDocenteListResponse['pagination'] | null>(null)
 
   const fetchDocentes = useCallback(async () => {
     try {
@@ -16,7 +16,7 @@ export function useDocentes(page: number = 1, limit: number = 10, search?: strin
       const response = await teacherService.getDocentes(page, limit, search)
       setDocentes(response.data)
       setPagination(response.pagination)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar docentes')
     } finally {
       setLoading(false)
@@ -50,7 +50,7 @@ export function useDocente(id: number) {
       setError(null)
       const response = await teacherService.getDocenteById(id)
       setDocente(response.data)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar docente')
     } finally {
       setLoading(false)
@@ -80,7 +80,7 @@ export function useCreateDocente() {
       setError(null)
       const response = await teacherService.createDocente(data)
       return response.data
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao criar docente')
       return null
     } finally {
@@ -106,7 +106,7 @@ export function useUpdateDocente() {
       setError(null)
       const response = await teacherService.updateDocente(id, data)
       return response.data
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao atualizar docente')
       return null
     } finally {
@@ -132,7 +132,7 @@ export function useDeleteDocente() {
       setError(null)
       await teacherService.deleteDocente(id)
       return true
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao excluir docente')
       return false
     } finally {
@@ -159,7 +159,7 @@ export function useEspecialidades() {
       setError(null)
       const response = await teacherService.getEspecialidades()
       setEspecialidades(response.data)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar especialidades')
     } finally {
       setLoading(false)
@@ -177,3 +177,21 @@ export function useEspecialidades() {
     refetch: fetchEspecialidades
   }
 }
+
+// Hook principal para listar docentes (alias para useDocentes)
+export function useTeacher(page: number = 1, limit: number = 10, search?: string) {
+  return useDocentes(page, limit, search)
+}
+
+// Export default para compatibilidade
+const useTeacherDefault = {
+  useDocentes,
+  useDocente,
+  useCreateDocente,
+  useUpdateDocente,
+  useDeleteDocente,
+  useEspecialidades,
+  useTeacher
+}
+
+export default useTeacherDefault

@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import turmaService from "@/services/turma.service"
 import { ITurma, ITurmaInput, ITurmaListResponse } from "@/types/turma.types"
 
 // Hook para listar turmas
 export const useTurmas = () => {
   const [turmas, setTurmas] = useState<ITurma[]>([])
-  const [pagination, setPagination] = useState<any>(null)
+  const [pagination, setPagination] = useState<ITurmaListResponse['pagination'] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchTurmas = async (page = 1, limit = 10, search = "") => {
+  const fetchTurmas = useCallback(async (page = 1, limit = 10, search = "") => {
     try {
       setIsLoading(true)
       setError(null)
@@ -18,14 +18,14 @@ export const useTurmas = () => {
       console.log('Hook useTurmas: Resposta recebida:', response)
       setTurmas(response.data)
       setPagination(response.pagination)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Hook useTurmas: Erro ao buscar turmas:', error)
-      setError(error.message || "Erro ao buscar turmas")
+      setError(error instanceof Error ? error.message : "Erro ao buscar turmas")
       setTurmas([])
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   return {
     turmas,
@@ -43,7 +43,7 @@ export const useTurma = (id: number) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchTurma = async () => {
+  const fetchTurma = useCallback(async () => {
     if (!id) return
 
     try {
@@ -51,17 +51,17 @@ export const useTurma = (id: number) => {
       setError(null)
       const response = await turmaService.getTurmaById(id)
       setTurma(response)
-    } catch (error: any) {
-      setError(error.message || "Erro ao buscar turma")
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Erro ao buscar turma")
       setTurma(null)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [id])
 
   useEffect(() => {
     fetchTurma()
-  }, [id])
+  }, [fetchTurma])
 
   return {
     turma,
@@ -82,8 +82,8 @@ export const useCreateTurma = () => {
       setError(null)
       const response = await turmaService.createTurma(data)
       return response
-    } catch (error: any) {
-      setError(error.message || "Erro ao criar turma")
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Erro ao criar turma")
       throw error
     } finally {
       setIsLoading(false)
@@ -108,8 +108,8 @@ export const useUpdateTurma = () => {
       setError(null)
       const response = await turmaService.updateTurma(id, data)
       return response
-    } catch (error: any) {
-      setError(error.message || "Erro ao atualizar turma")
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Erro ao atualizar turma")
       throw error
     } finally {
       setIsLoading(false)
@@ -134,8 +134,8 @@ export const useDeleteTurma = () => {
       setError(null)
       await turmaService.deleteTurma(id)
       return true
-    } catch (error: any) {
-      setError(error.message || "Erro ao deletar turma")
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Erro ao deletar turma")
       throw error
     } finally {
       setIsLoading(false)
@@ -161,25 +161,25 @@ export const useTurmaManager = () => {
   // Effect para carregar dados quando parâmetros mudarem
   useEffect(() => {
     fetchTurmas(currentPage, limit, searchTerm)
-  }, [currentPage, limit, searchTerm])
+  }, [currentPage, limit, searchTerm, fetchTurmas])
 
-  const handleSearch = (term: string) => {
+  const handleSearch = useCallback((term: string) => {
     setSearchTerm(term)
     setCurrentPage(1) // Reset para primeira página ao fazer busca
-  }
+  }, [])
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)
-  }
+  }, [])
 
-  const handleLimitChange = (newLimit: number) => {
+  const handleLimitChange = useCallback((newLimit: number) => {
     setLimit(newLimit)
     setCurrentPage(1)
-  }
+  }, [])
 
-  const refetch = () => {
+  const refetch = useCallback(() => {
     fetchTurmas(currentPage, limit, searchTerm)
-  }
+  }, [fetchTurmas, currentPage, limit, searchTerm])
 
   // Estatísticas básicas
   const stats = {

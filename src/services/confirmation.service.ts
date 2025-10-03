@@ -36,21 +36,23 @@ export default class ConfirmationService {
       console.error('Service: API retornou success=false:', apiResponse.message)
       toast.error(apiResponse.message || "Erro ao criar confirmação")
       throw new Error(apiResponse.message || "Erro ao criar confirmação")
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Service: Erro na requisição:', error)
-      console.error('Service: Status:', error.response?.status)
-      console.error('Service: Headers da resposta:', error.response?.headers)
-      console.error('Service: Data da resposta:', error.response?.data)
-      console.error('Service: Config da requisição:', error.config)
+      
+      const axiosError = error as any; // Type assertion for axios error
+      console.error('Service: Status:', axiosError.response?.status)
+      console.error('Service: Headers da resposta:', axiosError.response?.headers)
+      console.error('Service: Data da resposta:', axiosError.response?.data)
+      console.error('Service: Config da requisição:', axiosError.config)
       
       // Se a resposta está vazia, pode ser problema de CORS ou servidor
-      if (error.response?.status === 400 && (!error.response?.data || Object.keys(error.response.data).length === 0)) {
+      if (axiosError.response?.status === 400 && (!axiosError.response?.data || Object.keys(axiosError.response.data).length === 0)) {
         const errorMsg = 'Erro 400: Servidor retornou resposta vazia. Verifique se o backend está funcionando corretamente.';
         toast.error(errorMsg);
         throw new Error(errorMsg);
       }
       
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar confirmação";
+      const errorMessage = axiosError?.response?.data?.message || axiosError?.message || "Erro ao criar confirmação";
       toast.error(errorMessage);
       throw error;
     }

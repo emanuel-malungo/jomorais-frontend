@@ -81,4 +81,5 @@ class InstitutionService {
   }
 }
 
-export default new InstitutionService()
+const institutionService = new InstitutionService();
+export default institutionService;

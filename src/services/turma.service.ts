@@ -86,4 +86,5 @@ class TurmaService {
   }
 }
 
-export default new TurmaService()
+const turmaService = new TurmaService();
+export default turmaService;

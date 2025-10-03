@@ -1,11 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
 import usersService from "@/services/users.service";
 
+interface IUser {
+  id: string;
+  nome: string;
+  email: string;
+  perfil: string;
+  status: string;
+}
+
+interface IUserInput {
+  nome: string;
+  email: string;
+  perfil: string;
+  status: string;
+  senha?: string;
+}
+
 export function useUsersLegacy(initialPage = 1, initialLimit = 10) {
-  const [users, setUsers] = useState([]);
-  const [meta, setMeta] = useState(null);
+  const [users, setUsers] = useState<IUser[]>([]);
+  const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [page, setPage] = useState(initialPage);
   const [limit, setLimit] = useState(initialLimit);
@@ -19,17 +35,17 @@ export function useUsersLegacy(initialPage = 1, initialLimit = 10) {
 
       setUsers(response.data || []);
       setMeta(response.meta || null);
-    } catch (err) {
-      setError(err);
+    } catch (err: unknown) {
+      console.error("Error fetching users:", err);
+      setError(err instanceof Error ? err.message : "Erro ao buscar usuários");
     } finally {
       setLoading(false);
     }
   }, [page, limit]);
 
-  // Busca inicial e quando page/limit mudarem
   useEffect(() => {
-    fetchUsers(page, limit);
-  }, [fetchUsers, page, limit]);
+    fetchUsers();
+  }, [fetchUsers]);
 
   return {
     users,
@@ -49,15 +65,18 @@ export function useCreateUser() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createUser = useCallback(async (userData: any) => {
+  const createUser = useCallback(async (userData: IUserInput) => {
     try {
       setLoading(true);
       setError(null);
+      
+      const token = localStorage.getItem('token');
       
       const response = await fetch('/api/users/legacy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(userData)
       });
@@ -69,8 +88,8 @@ export function useCreateUser() {
       }
 
       return data.data;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao criar usuário';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao criar usuário';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -86,14 +105,14 @@ export function useUpdateUser() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateUser = useCallback(async (userId: number, userData: any) => {
+  const updateUser = useCallback(async (id: string, userData: Partial<IUserInput>) => {
     try {
       setLoading(true);
       setError(null);
       
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`/api/users/legacy/${userId}`, {
+      const response = await fetch(`/api/users/legacy/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -109,8 +128,8 @@ export function useUpdateUser() {
       }
 
       return data.data;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao atualizar usuário';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar usuário';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -121,19 +140,19 @@ export function useUpdateUser() {
   return { updateUser, loading, error };
 }
 
-// Hook para deletar usuário
+// Hook para excluir usuário
 export function useDeleteUser() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const deleteUser = useCallback(async (userId: number) => {
+  const deleteUser = useCallback(async (id: string) => {
     try {
       setLoading(true);
       setError(null);
       
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`/api/users/legacy/${userId}`, {
+      const response = await fetch(`/api/users/legacy/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -147,8 +166,8 @@ export function useDeleteUser() {
       }
 
       return data;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao excluir usuário';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir usuário';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {

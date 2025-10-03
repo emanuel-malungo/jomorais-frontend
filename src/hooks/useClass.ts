@@ -9,7 +9,7 @@ export const useClasses = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchClasses = async (page = 1, limit = 10, search = "") => {
+  const fetchClasses = async (page = 1, limit = 100, search = "") => {
     try {
       setIsLoading(true)
       setError(null)
@@ -23,6 +23,11 @@ export const useClasses = () => {
       setIsLoading(false)
     }
   }
+
+  // Carregar classes automaticamente
+  useEffect(() => {
+    fetchClasses()
+  }, [])
 
   return {
     classes,

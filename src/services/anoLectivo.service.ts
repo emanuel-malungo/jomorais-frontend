@@ -100,4 +100,5 @@ class AnoLectivoService {
   }
 }
 
-export default new AnoLectivoService()
+const anoLectivoService = new AnoLectivoService();
+export default anoLectivoService;

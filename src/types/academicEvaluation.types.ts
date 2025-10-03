@@ -222,7 +222,7 @@ export interface IEstatisticasNotas {
 export interface IAcademicEvaluationActionResponse {
   success: boolean;
   message: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 // ===============================

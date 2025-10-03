@@ -1,0 +1,16 @@
+<svg width="120" height="60" viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fundo amarelo Jomorais -->
+  <rect width="120" height="60" fill="#F9CD1D" rx="8"/>
+  
+  <!-- Texto JOMORAIS -->
+  <text x="60" y="25" font-family="Arial, sans-serif" font-size="16" font-weight="bold" 
+        text-anchor="middle" fill="#182F59">JOMORAIS</text>
+  
+  <!-- Subtítulo -->
+  <text x="60" y="40" font-family="Arial, sans-serif" font-size="8" 
+        text-anchor="middle" fill="#3B6C4D">Instituto Médio Politécnico</text>
+  
+  <!-- Elemento decorativo -->
+  <circle cx="15" cy="30" r="8" fill="#3B6C4D" opacity="0.3"/>
+  <circle cx="105" cy="30" r="8" fill="#3B6C4D" opacity="0.3"/>
+</svg>

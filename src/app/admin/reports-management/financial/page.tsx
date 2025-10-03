@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,11 +27,17 @@ import {
   Receipt,
   FileText,
   Wallet,
+  Loader2,
+  AlertCircle,
+  Calendar,
 } from 'lucide-react';
+import { useFinancialReports } from '@/hooks/useReports';
 
 export default function FinancialReportsPage() {
   const [reportType, setReportType] = useState("");
   const [dateRange, setDateRange] = useState("");
+  
+  const { report, isLoading, error, generateReport, exportToPDF, exportToExcel } = useFinancialReports();
 
   const reportTypes = [
     { value: "receitas", label: "Relatório de Receitas" },
@@ -48,6 +54,19 @@ export default function FinancialReportsPage() {
     { value: "trimestre", label: "Este Trimestre" },
     { value: "ano", label: "Este Ano" },
   ];
+
+  // Carregar relatório inicial
+  useEffect(() => {
+    generateReport();
+  }, [generateReport]);
+
+  const handleGenerateReport = () => {
+    const filters = {
+      startDate: dateRange === 'mes' ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+      endDate: new Date().toISOString(),
+    };
+    generateReport(filters);
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -87,72 +106,84 @@ export default function FinancialReportsPage() {
         <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
-              <DollarSign className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+18.5%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-emerald-600">Receita Total</p>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(2850000)}</p>
-          </div>
+      {/* Stats Cards - Dados Reais da API */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-[#F9CD1D]" />
+          <span className="ml-2 text-gray-600">Carregando dados financeiros...</span>
         </div>
+      ) : error ? (
+        <div className="flex items-center justify-center py-12">
+          <AlertCircle className="h-8 w-8 text-red-500 mr-2" />
+          <span className="text-red-600">{error}</span>
+        </div>
+      ) : report ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
+                <DollarSign className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                <TrendingUp className="h-3 w-3 text-emerald-500" />
+                <span className="font-bold text-xs text-emerald-600">+18.5%</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-2 text-emerald-600">Receita Total</p>
+              <p className="text-3xl font-bold text-gray-900">{formatCurrency(report.totalRevenue)}</p>
+            </div>
+          </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
-              <Receipt className="h-6 w-6 text-white" />
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
+                <Receipt className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                <Activity className="h-3 w-3 text-blue-500" />
+                <span className="font-bold text-xs text-blue-600">Recebido</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-blue-500" />
-              <span className="font-bold text-xs text-blue-600">Recebido</span>
+            <div>
+              <p className="text-sm font-semibold mb-2 text-[#182F59]">Pagamentos Recebidos</p>
+              <p className="text-3xl font-bold text-gray-900">{formatCurrency(report.totalPaid)}</p>
             </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#182F59]">Pagamentos Recebidos</p>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(2650000)}</p>
-          </div>
-        </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#FFC107] shadow-sm">
-              <CreditCard className="h-6 w-6 text-white" />
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#FFC107] shadow-sm">
+                <CreditCard className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                <TrendingUp className="h-3 w-3 text-yellow-500" />
+                <span className="font-bold text-xs text-yellow-600">Pendente</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-yellow-500" />
-              <span className="font-bold text-xs text-yellow-600">Pendente</span>
+            <div>
+              <p className="text-sm font-semibold mb-2 text-[#FFD002]">Valores Pendentes</p>
+              <p className="text-3xl font-bold text-gray-900">{formatCurrency(report.totalPending)}</p>
             </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Valores Pendentes</p>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(200000)}</p>
-          </div>
-        </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-sm">
-              <Wallet className="h-6 w-6 text-white" />
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-sm">
+                <Wallet className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                <Activity className="h-3 w-3 text-red-500" />
+                <span className="font-bold text-xs text-red-600">{report.defaultRate.toFixed(1)}%</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-red-500" />
-              <span className="font-bold text-xs text-red-600">7.5%</span>
+            <div>
+              <p className="text-sm font-semibold mb-2 text-red-600">Taxa de Inadimplência</p>
+              <p className="text-3xl font-bold text-gray-900">{report.defaultRate.toFixed(1)}%</p>
             </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-red-600">Taxa de Inadimplência</p>
-            <p className="text-3xl font-bold text-gray-900">7.5%</p>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Gerador de Relatórios */}
       <Card className="mb-8">
@@ -202,15 +233,31 @@ export default function FinancialReportsPage() {
           </div>
 
           <div className="flex gap-4">
-            <Button className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Gerar Relatório
+            <Button 
+              onClick={handleGenerateReport}
+              disabled={isLoading}
+              className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <BarChart3 className="w-4 h-4 mr-2" />
+              )}
+              {isLoading ? 'Gerando...' : 'Gerar Relatório'}
             </Button>
-            <Button variant="outline">
+            <Button 
+              variant="outline" 
+              onClick={exportToPDF}
+              disabled={!report || isLoading}
+            >
               <Download className="w-4 h-4 mr-2" />
               Exportar PDF
             </Button>
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={exportToExcel}
+              disabled={!report || isLoading}
+            >
               <Download className="w-4 h-4 mr-2" />
               Exportar Excel
             </Button>
@@ -274,6 +321,142 @@ export default function FinancialReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Seção de Relatórios Detalhados com Dados Reais */}
+      {report && (
+        <>
+          {/* Análise de Pagamentos por Mês */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Calendar className="h-5 w-5" />
+                <span>Evolução de Pagamentos por Mês</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {report.paymentsByMonth.map((monthData, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{monthData.month}</span>
+                      <span className="text-sm font-bold">{formatCurrency(monthData.amount)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className="bg-[#F9CD1D] h-3 rounded-full transition-all duration-500" 
+                        style={{ width: `${Math.min((monthData.amount / Math.max(...report.paymentsByMonth.map(m => m.amount))) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Análise por Tipo de Serviço */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Receipt className="h-5 w-5" />
+                <span>Receitas por Tipo de Serviço</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {report.paymentsByService.map((service, index) => (
+                  <div key={index} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-gray-900 text-sm">{service.service}</h4>
+                      <Badge variant="outline">{formatCurrency(service.amount)}</Badge>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-[#3B6C4D] h-2 rounded-full" 
+                        style={{ width: `${Math.min((service.amount / Math.max(...report.paymentsByService.map(s => s.amount))) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {((service.amount / report.totalPaid) * 100).toFixed(1)}% do total
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Resumo Financeiro */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <DollarSign className="h-5 w-5" />
+                <span>Resumo Financeiro</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="text-center p-6 bg-emerald-50 rounded-lg">
+                  <div className="text-3xl font-bold text-emerald-600 mb-2">{formatCurrency(report.totalRevenue)}</div>
+                  <div className="text-sm text-emerald-700">Receita Total</div>
+                  <div className="text-xs text-emerald-600 mt-1">100% do faturamento</div>
+                </div>
+                
+                <div className="text-center p-6 bg-blue-50 rounded-lg">
+                  <div className="text-3xl font-bold text-blue-600 mb-2">{formatCurrency(report.totalPaid)}</div>
+                  <div className="text-sm text-blue-700">Valores Recebidos</div>
+                  <div className="text-xs text-blue-600 mt-1">{((report.totalPaid / report.totalRevenue) * 100).toFixed(1)}% da receita</div>
+                </div>
+                
+                <div className="text-center p-6 bg-yellow-50 rounded-lg">
+                  <div className="text-3xl font-bold text-yellow-600 mb-2">{formatCurrency(report.totalPending)}</div>
+                  <div className="text-sm text-yellow-700">Valores Pendentes</div>
+                  <div className="text-xs text-yellow-600 mt-1">{((report.totalPending / report.totalRevenue) * 100).toFixed(1)}% da receita</div>
+                </div>
+                
+                <div className="text-center p-6 bg-red-50 rounded-lg">
+                  <div className="text-3xl font-bold text-red-600 mb-2">{formatCurrency(report.totalOverdue)}</div>
+                  <div className="text-sm text-red-700">Valores em Atraso</div>
+                  <div className="text-xs text-red-600 mt-1">{((report.totalOverdue / report.totalRevenue) * 100).toFixed(1)}% da receita</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Indicadores de Performance */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <BarChart3 className="h-5 w-5" />
+                <span>Indicadores de Performance</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center p-6 border rounded-lg">
+                  <div className="text-4xl font-bold text-[#182F59] mb-2">{report.defaultRate.toFixed(1)}%</div>
+                  <div className="text-sm text-gray-700">Taxa de Inadimplência</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {report.defaultRate < 5 ? 'Excelente' : report.defaultRate < 10 ? 'Bom' : 'Atenção necessária'}
+                  </div>
+                </div>
+                
+                <div className="text-center p-6 border rounded-lg">
+                  <div className="text-4xl font-bold text-[#F9CD1D] mb-2">{report.averagePaymentTime}</div>
+                  <div className="text-sm text-gray-700">Tempo Médio de Pagamento</div>
+                  <div className="text-xs text-gray-500 mt-1">dias</div>
+                </div>
+                
+                <div className="text-center p-6 border rounded-lg">
+                  <div className="text-4xl font-bold text-[#3B6C4D] mb-2">{((report.totalPaid / report.totalRevenue) * 100).toFixed(1)}%</div>
+                  <div className="text-sm text-gray-700">Taxa de Recebimento</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {((report.totalPaid / report.totalRevenue) * 100) > 90 ? 'Excelente' : 'Em desenvolvimento'}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </Container>
   );
 }

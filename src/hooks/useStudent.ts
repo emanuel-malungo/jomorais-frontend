@@ -85,8 +85,9 @@ export const useStudent = (): UseStudentReturn => {
                 loading: false,
                 error: null,
             }));
-        } catch (error: any) {
-            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao buscar alunos';
+        } catch (error: unknown) {
+            const axiosError = error as any;
+            const errorMessage = axiosError?.response?.data?.message || axiosError?.message || 'Erro ao buscar alunos';
             setError(errorMessage);
         }
     }, [setLoading, clearError, setError]);
@@ -104,8 +105,9 @@ export const useStudent = (): UseStudentReturn => {
                 loading: false,
                 error: null,
             }));
-        } catch (error: any) {
-            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao buscar aluno';
+        } catch (error: unknown) {
+            const axiosError = error as any;
+            const errorMessage = axiosError?.response?.data?.message || axiosError?.message || 'Erro ao buscar aluno';
             setError(errorMessage);
         }
     }, [setLoading, clearError, setError]);
@@ -124,8 +126,9 @@ export const useStudent = (): UseStudentReturn => {
                 loading: false,
                 error: null,
             }));
-        } catch (error: any) {
-            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao criar aluno';
+        } catch (error: unknown) {
+            const axiosError = error as any;
+            const errorMessage = axiosError?.response?.data?.message || axiosError?.message || 'Erro ao criar aluno';
             setError(errorMessage);
         }
     }, [setLoading, clearError, setError]);
@@ -146,8 +149,9 @@ export const useStudent = (): UseStudentReturn => {
                 loading: false,
                 error: null,
             }));
-        } catch (error: any) {
-            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao atualizar aluno';
+        } catch (error: unknown) {
+            const axiosError = error as any;
+            const errorMessage = axiosError?.response?.data?.message || axiosError?.message || 'Erro ao atualizar aluno';
             setError(errorMessage);
         }
     }, [setLoading, clearError, setError]);
@@ -166,8 +170,9 @@ export const useStudent = (): UseStudentReturn => {
                 loading: false,
                 error: null,
             }));
-        } catch (error: any) {
-            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao deletar aluno';
+        } catch (error: unknown) {
+            const axiosError = error as any;
+            const errorMessage = axiosError?.response?.data?.message || axiosError?.message || 'Erro ao excluir aluno';
             setError(errorMessage);
         }
     }, [setLoading, clearError, setError]);

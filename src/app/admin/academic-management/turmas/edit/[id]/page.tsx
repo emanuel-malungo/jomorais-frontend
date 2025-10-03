@@ -36,7 +36,7 @@ import { useCourses } from '@/hooks/useCourse';
 import { useSalas } from '@/hooks/useSala';
 import { usePeriodos } from '@/hooks/usePeriodo';
 import { useAnosLectivos } from '@/hooks/useAnoLectivo';
-import { useTeacher } from '@/hooks/useTeacher';
+import { useDocentes } from '@/hooks/useTeacher';
 
 // Dados vêm da API real através dos hooks
 
@@ -55,7 +55,7 @@ export default function EditTurmaPage() {
   const { salas, isLoading: salasLoading, fetchSalas } = useSalas();
   const { periodos, isLoading: periodosLoading, fetchPeriodos } = usePeriodos();
   const { anosLectivos, isLoading: anosLoading, fetchAnosLectivos } = useAnosLectivos();
-  const { teachers, loading: teachersLoading, getAllTeachers } = useTeacher();
+  const { docentes: teachers, loading: teachersLoading, refetch: getAllTeachers } = useDocentes();
 
   // Estados do formulário
   const [formData, setFormData] = useState({

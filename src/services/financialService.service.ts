@@ -181,24 +181,26 @@ class FinancialServiceService {
         try {
           const testResponse = await api.get('/api/financial-services/tipos-servicos');
           console.log('✅ Endpoint básico funciona:', testResponse.data);
-        } catch (testError: any) {
-          console.log('❌ Endpoint básico falhou:', testError.response?.data);
+        } catch (testError: unknown) {
+          const testAxiosError = testError as any;
+          console.log('❌ Endpoint básico falhou:', testAxiosError.response?.data);
         }
       }
       
       const response = await api.get(url);
       console.log('✅ Resposta da API:', response.data);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const axiosError = error as any;
       console.error("❌ Erro ao buscar tipos de serviços:", {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
+        message: axiosError.message,
+        status: axiosError.response?.status,
+        statusText: axiosError.response?.statusText,
+        data: axiosError.response?.data,
         config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          params: error.config?.params
+          url: axiosError.config?.url,
+          method: axiosError.config?.method,
+          params: axiosError.config?.params
         }
       });
       throw error;

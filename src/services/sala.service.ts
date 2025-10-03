@@ -93,4 +93,5 @@ class SalaService {
   }
 }
 
-export default new SalaService()
+const salaService = new SalaService();
+export default salaService;

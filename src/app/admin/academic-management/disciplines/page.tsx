@@ -52,9 +52,9 @@ import {
   Activity,
 } from 'lucide-react';
 import { Disciplina, Curso } from '@/types/academic-management.types';
-import { Discipline } from '@/types/discipline.types';
+import { IDiscipline } from '@/types/discipline.types';
 import StatCard from '@/components/layout/StatCard';
-import { useDiscipline } from '@/hooks';
+import { useDisciplines } from '@/hooks';
 
 // Dados mockados baseados na estrutura do backend - mantidos como fallback
 const mockDisciplinas: Disciplina[] = [
@@ -132,8 +132,8 @@ const cursoOptions = [
 ];
 
 export default function DisciplinesListPage() {
-  const { disciplines, loading, error, pagination, getAllDisciplines } = useDiscipline();
-  const [filteredDisciplinas, setFilteredDisciplinas] = useState<Discipline[]>([]);
+  const { disciplines, loading, error, pagination, refetch } = useDisciplines();
+  const [filteredDisciplinas, setFilteredDisciplinas] = useState<IDiscipline[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [cursoFilter, setCursoFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -141,27 +141,26 @@ export default function DisciplinesListPage() {
 
   // Carregar disciplinas quando o componente for montado
   useEffect(() => {
-    getAllDisciplines(currentPage, itemsPerPage);
-  }, [getAllDisciplines, currentPage, itemsPerPage]);
+    if (refetch) {
+      refetch();
+    }
+  }, [refetch, currentPage, itemsPerPage]);
 
   // Filtrar disciplinas
   useEffect(() => {
     let filtered = disciplines;
 
     if (searchTerm) {
-      filtered = filtered.filter((disciplina: Discipline) =>
+      filtered = filtered.filter((disciplina: IDiscipline) =>
         disciplina.designacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        disciplina.codigo_disciplina?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        disciplina.descricao?.toLowerCase().includes(searchTerm.toLowerCase())
+        disciplina.codigo.toString().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Filtro por curso - usando as classes relacionadas como proxy
+    // Filtro por curso
     if (cursoFilter !== "all") {
-      filtered = filtered.filter((disciplina: Discipline) => 
-        disciplina.tb_disciplinas_classes?.some(dc => 
-          dc.tb_classes.codigo.toString() === cursoFilter
-        )
+      filtered = filtered.filter((disciplina: IDiscipline) => 
+        disciplina.codigo_Curso.toString() === cursoFilter
       );
     }
 
@@ -190,8 +189,8 @@ export default function DisciplinesListPage() {
   // Estatísticas por curso - usando dados do hook
   const disciplinasPorCurso = mockCursos.map(curso => ({
     curso: curso.designacao,
-    count: disciplines.filter((d: Discipline) => 
-      d.tb_disciplinas_classes?.some(dc => dc.tb_classes.codigo === curso.codigo)
+    count: disciplines.filter((d: IDiscipline) => 
+      d.codigo_Curso === curso.codigo
     ).length
   }));
 
@@ -390,18 +389,18 @@ export default function DisciplinesListPage() {
                       <div className="flex items-center space-x-2">
                         <GraduationCap className="h-4 w-4 text-gray-400" />
                         <span className="font-medium text-gray-900">
-                          {disciplina.tb_disciplinas_classes?.[0]?.tb_classes?.designacao || "N/A"}
+                          {disciplina.tb_cursos?.designacao || "N/A"}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-gray-50">
-                        {disciplina.codigo_disciplina}
+                        {disciplina.codigo}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <p className="text-sm text-gray-600 max-w-xs truncate" title={disciplina.descricao}>
-                        {disciplina.descricao || disciplina.observacoes || "Sem observações"}
+                      <p className="text-sm text-gray-600 max-w-xs truncate">
+                        {disciplina.status === 1 ? "Ativa" : "Inativa"}
                       </p>
                     </TableCell>
                     <TableCell className="text-right">

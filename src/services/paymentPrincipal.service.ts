@@ -4,7 +4,8 @@ import {
   IPagamentoPrincipal,
   IPagamentoPrincipalResponse,
   IPagamentoPrincipalListResponse,
-  IAlunoBasicoResponse
+  IAlunoBasicoResponse,
+  IAlunoBasico
 } from '@/types/financialService.types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -52,8 +53,8 @@ class PaymentPrincipalService {
   async getPagamentosPrincipais(
     page: number = 1, 
     limit: number = 10, 
-    filters: any = {}
-  ): Promise<{ data: IPagamentoPrincipal[]; pagination: any }> {
+    filters: Record<string, unknown> = {}
+  ): Promise<{ data: IPagamentoPrincipal[]; pagination: Record<string, unknown> }> {
     try {
       // Construir parâmetros apenas com valores válidos
       const params = new URLSearchParams();
@@ -71,20 +72,56 @@ class PaymentPrincipalService {
 
       const url = `${BASE_URL}/api/payment-management/pagamentos-principais?${params}`;
 
+      console.log('🌐 Fazendo requisição para:', url);
+      console.log('🔑 Headers enviados:', this.getAuthHeaders());
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
 
+      console.log('📡 Status da resposta:', response.status);
+      console.log('📡 Status text:', response.statusText);
+      console.log('📡 Headers da resposta:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erro ao buscar pagamentos principais');
+        let errorMessage = `Erro HTTP ${response.status}`;
+        let responseText = '';
+        try {
+          responseText = await response.text();
+          console.log('📄 Texto da resposta de erro:', responseText);
+          
+          // Tentar fazer parse como JSON
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          console.log('⚠️ Resposta não é JSON válido:', responseText);
+          errorMessage = `${errorMessage}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
+      const responseText = await response.text();
+      console.log('📄 Texto bruto da resposta:', responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ Erro ao fazer parse do JSON:', e);
+        throw new Error(`Dados inválidos: Resposta não é um JSON válido. Recebido: ${responseText.substring(0, 200)}...`);
+      }
+      
+      console.log('🔍 Resposta da API de pagamentos (parsed):', result);
+      console.log('🔍 Tipo da resposta:', typeof result);
+      console.log('🔍 É array?', Array.isArray(result));
+      console.log('🔍 Tem success?', result.success);
+      console.log('🔍 Tem data?', result.data);
+      console.log('🔍 Estrutura completa:', JSON.stringify(result, null, 2));
       
       // Verificar se a resposta tem estrutura esperada
       if (result.success && Array.isArray(result.data)) {
+        console.log('✅ Estrutura padrão reconhecida (com success)');
         return {
           data: result.data,
           pagination: result.pagination || {
@@ -94,7 +131,15 @@ class PaymentPrincipalService {
             itemsPerPage: limit
           }
         };
+      } else if (result.data && Array.isArray(result.data) && result.pagination) {
+        console.log('✅ Estrutura com data e pagination (sem success)');
+        // Estrutura: { data: [...], pagination: {...} }
+        return {
+          data: result.data,
+          pagination: result.pagination
+        };
       } else if (Array.isArray(result)) {
+        console.log('✅ Array direto reconhecido');
         // Se a API retornar diretamente um array
         return {
           data: result,
@@ -105,11 +150,44 @@ class PaymentPrincipalService {
             itemsPerPage: limit
           }
         };
+      } else if (result.data && Array.isArray(result.data)) {
+        console.log('✅ Estrutura alternativa reconhecida (só data)');
+        // Estrutura alternativa sem success e sem pagination
+        return {
+          data: result.data,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(result.data.length / limit),
+            totalItems: result.data.length,
+            itemsPerPage: limit
+          }
+        };
+      } else if (result.message && !result.data) {
+        console.log('⚠️ API retornou apenas mensagem, sem dados');
+        // API retornou mensagem mas sem dados
+        return {
+          data: [],
+          pagination: {
+            currentPage: page,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: limit
+          }
+        };
       } else {
-        throw new Error('Estrutura de resposta da API não reconhecida');
+        console.error('❌ Estrutura de resposta não reconhecida:', result);
+        console.error('❌ Chaves disponíveis:', Object.keys(result));
+        console.error('❌ Tipo de result.data:', typeof result.data, Array.isArray(result.data));
+        console.error('❌ Tipo de result.pagination:', typeof result.pagination);
+        throw new Error(`Dados inválidos: Estrutura de resposta da API não reconhecida. Recebido: ${JSON.stringify(result).substring(0, 500)}...`);
       }
     } catch (error) {
-      console.error('Erro ao buscar pagamentos principais:', error);
+      console.error('❌ Erro ao buscar pagamentos principais:', error);
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Erro de conexão: Não foi possível conectar ao servidor. Verifique se o backend está rodando.');
+      }
+      
       throw error;
     }
   }
@@ -199,7 +277,7 @@ class PaymentPrincipalService {
   // ALUNOS (para seleção)
   // ===============================
 
-  async getAlunosBasicos(): Promise<any[]> {
+  async getAlunosBasicos(): Promise<IAlunoBasico[]> {
     try {
       // Buscar todos os alunos com limite alto para garantir que pegue todos
       const params = new URLSearchParams();
@@ -219,7 +297,17 @@ class PaymentPrincipalService {
       }
 
       const result = await response.json();
-      return result.data || [];
+      const rawData = result.data || [];
+      
+      // Transform raw API data to IAlunoBasico format
+      const alunosBasicos: IAlunoBasico[] = rawData.map((aluno: Record<string, unknown>) => ({
+        codigo: (aluno.codigo as number) || (aluno.id as number),
+        nome: (aluno.nome as string) || (aluno.name as string) || 'Nome não informado',
+        dataNascimento: aluno.dataNascimento as string || aluno.data_nascimento as string,
+        sexo: aluno.sexo as string || aluno.gender as string
+      }));
+      
+      return alunosBasicos;
     } catch (error) {
       console.error('Erro ao buscar alunos:', error);
       throw error;

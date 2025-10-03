@@ -61,7 +61,7 @@ export interface ModernUser {
 // RESPOSTA DA API
 // ===============================
 
-export interface AuthResponse<T = any> {
+export interface AuthResponse<T = Record<string, unknown>> {
     success: boolean;
     message: string;
     data?: T;

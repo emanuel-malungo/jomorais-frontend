@@ -93,4 +93,5 @@ class DisciplineService {
   }
 }
 
-export default new DisciplineService()
+const disciplineService = new DisciplineService();
+export default disciplineService;

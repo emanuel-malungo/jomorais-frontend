@@ -19,7 +19,9 @@ export interface IResponsibleCreate {
   status: number;
 }
 
-export interface IResponsibleUpdate extends IResponsibleCreate {}
+export interface IResponsibleUpdate extends Partial<IResponsibleCreate> {
+  codigo: number;
+}
 
 export interface IResponsibleResponse {
   success: boolean;

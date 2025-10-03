@@ -54,4 +54,5 @@ class PeriodoService {
   }
 }
 
-export default new PeriodoService()
+const periodoService = new PeriodoService();
+export default periodoService;

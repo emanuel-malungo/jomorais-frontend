@@ -151,64 +151,28 @@ export default function PaymentsPage() {
     return filterObj;
   }, [debouncedSearchTerm, statusFilter]);
   
-  // Hooks da API - Carregar TODOS os pagamentos para pesquisa global
-  const { pagamentos: allPagamentos, isLoading: loading, error, pagination, refetch } = usePagamentosPrincipais(1, 1000, filters);
+  // Hooks da API - Carregar pagamentos com limite razoável
+  const { pagamentos: allPagamentos, isLoading: loading, error, pagination, refetch } = usePagamentosPrincipais(currentPage, itemsPerPage, filters);
   const { deletePagamentoPrincipal: deletePagamento, isDeleting: deleteLoading } = useDeletePagamentoPrincipal();
 
 
 
-  // Filtros locais para pesquisa em TODOS os dados carregados
-  const filteredPagamentos = useMemo(() => {
-    if (!allPagamentos) return [];
-    
-    let filtered = [...allPagamentos];
-    
-    // Filtro por busca
-    if (debouncedSearchTerm) {
-      const searchLower = debouncedSearchTerm.toLowerCase();
-      filtered = filtered.filter(pagamento => 
-        pagamento.aluno?.nome?.toLowerCase().includes(searchLower) ||
-        pagamento.tb_alunos?.nome?.toLowerCase().includes(searchLower) ||
-        pagamento.detalhes?.[0]?.tipoServico?.designacao?.toLowerCase().includes(searchLower) ||
-        pagamento.codigo?.toString().includes(searchLower)
-      );
-    }
-    
-    // Filtro por status
-    if (statusFilter !== "all") {
-      const statusNum = parseInt(statusFilter);
-      if (!isNaN(statusNum)) {
-        filtered = filtered.filter(pagamento => pagamento.status === statusNum);
-      }
-    }
-    
-    return filtered;
-  }, [allPagamentos, debouncedSearchTerm, statusFilter]);
-
-  // Paginação local dos resultados filtrados
-  const paginatedPagamentos = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredPagamentos.slice(startIndex, endIndex);
-  }, [filteredPagamentos, currentPage, itemsPerPage]);
-
-  // Cálculo da paginação local
-  const localPagination = useMemo(() => {
-    const totalItems = filteredPagamentos.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    return {
-      currentPage,
-      totalPages,
-      totalItems,
-      itemsPerPage,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1
-    };
-  }, [filteredPagamentos.length, currentPage, itemsPerPage]);
+  // Usar dados diretamente da API (já filtrados e paginados)
+  const paginatedPagamentos = allPagamentos || [];
+  
+  // Usar paginação da API com tipos corretos
+  const localPagination = {
+    currentPage: (pagination?.currentPage as number) || 1,
+    totalPages: (pagination?.totalPages as number) || 1,
+    totalItems: (pagination?.totalItems as number) || 0,
+    itemsPerPage: (pagination?.itemsPerPage as number) || 10,
+    hasNextPage: currentPage < ((pagination?.totalPages as number) || 1),
+    hasPreviousPage: currentPage > 1
+  };
 
   // Cálculos para exibição
   const startIndex = ((currentPage - 1) * itemsPerPage) + 1;
-  const endIndex = Math.min(currentPage * itemsPerPage, localPagination.totalItems);
+  const endIndex = Math.min(currentPage * itemsPerPage, (pagination?.totalItems as number) || 0);
 
   const handleViewPayment = (paymentId: number) => {
     window.location.href = `/admin/finance-management/payments/details/${paymentId}`;
@@ -256,29 +220,29 @@ export default function PaymentsPage() {
 
   // Estatísticas calculadas dos dados reais
   const totalReceita = useMemo(() => {
-    if (allPagamentos && pagination && allPagamentos.length > 0) {
+    if (allPagamentos && localPagination && allPagamentos.length > 0) {
       const mediaPorPagamento = allPagamentos.reduce((sum: number, p) => sum + (p.valorEntregue || 0), 0) / allPagamentos.length;
-      return mediaPorPagamento * pagination.totalItems;
+      return mediaPorPagamento * localPagination.totalItems;
     }
     return 0;
-  }, [allPagamentos, pagination]);
+  }, [allPagamentos, localPagination]);
   
   const totalPendente = useMemo(() => {
-    if (allPagamentos && pagination && allPagamentos.length > 0) {
+    if (allPagamentos && localPagination && allPagamentos.length > 0) {
       const mediaPendentePorPagamento = allPagamentos.reduce((sum: number, p) => sum + ((p.total || 0) - (p.valorEntregue || 0)), 0) / allPagamentos.length;
-      return mediaPendentePorPagamento * pagination.totalItems;
+      return mediaPendentePorPagamento * localPagination.totalItems;
     }
     return 0;
-  }, [allPagamentos, pagination]);
+  }, [allPagamentos, localPagination]);
   
-  const totalPagamentos = pagination?.totalItems || 0;
+  const totalPagamentos = localPagination.totalItems;
   const pagamentosAtivos = useMemo(() => {
-    if (allPagamentos && pagination && allPagamentos.length > 0) {
+    if (allPagamentos && localPagination && allPagamentos.length > 0) {
       const percentualAtivos = allPagamentos.filter(p => p.status === 1).length / allPagamentos.length;
-      return Math.round(percentualAtivos * pagination.totalItems);
+      return Math.round(percentualAtivos * localPagination.totalItems);
     }
     return 0;
-  }, [allPagamentos, pagination]);
+  }, [allPagamentos, localPagination]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -530,7 +494,7 @@ export default function PaymentsPage() {
               <span>Registro de Pagamentos</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {pagination?.totalItems || 0} pagamentos encontrados
+              {localPagination.totalItems} pagamentos encontrados
             </Badge>
           </CardTitle>
         </CardHeader>

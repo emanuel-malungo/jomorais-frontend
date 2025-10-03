@@ -1,10 +1,17 @@
 import api from "@/utils/api.utils";
 import { toast } from "react-toastify";
-import { Student, StudentCreateData, StudentResponse } from "@/types/student.types";
+import { Student, StudentResponse } from "@/types/student.types";
+
+interface IPagination {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+}
 
 export default class StudentService {
 
-    static async getAllStudents(page: number, limit: number): Promise<{ students: Student[], pagination: any }> {
+    static async getAllStudents(page: number, limit: number): Promise<{ students: Student[], pagination: IPagination }> {
         try {
             const response = await api.get("/api/student-management/alunos", {
                 params: { page, limit },
@@ -15,7 +22,12 @@ export default class StudentService {
             if (apiResponse.success) {
                 return {
                     students: apiResponse.data,
-                    pagination: apiResponse.pagination
+                    pagination: apiResponse.pagination || {
+                        currentPage: page,
+                        totalPages: 1,
+                        totalItems: apiResponse.data.length,
+                        itemsPerPage: limit
+                    }
                 };
             } else {
                 throw new Error(apiResponse.message || 'Erro ao buscar alunos');

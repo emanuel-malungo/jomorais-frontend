@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { paymentPrincipalService } from '@/services/paymentPrincipal.service';
 import { 
   IPagamentoPrincipal, 
@@ -21,8 +21,8 @@ export const useCreatePagamentoPrincipal = () => {
     try {
       const pagamento = await paymentPrincipalService.createPagamentoPrincipal(data);
       return pagamento;
-    } catch (err: any) {
-      setError(err.message || 'Erro ao criar pagamento principal');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar pagamento principal');
       return null;
     } finally {
       setIsCreating(false);
@@ -43,13 +43,13 @@ export const useCreatePagamentoPrincipal = () => {
 export const usePagamentosPrincipais = (
   page: number = 1,
   limit: number = 10,
-  filters: any = {}
+  filters: Record<string, unknown> = {}
 ) => {
   const [pagamentos, setPagamentos] = useState<IPagamentoPrincipal[]>([]);
-  const [pagination, setPagination] = useState<any>(null);
+  const [pagination, setPagination] = useState<Record<string, unknown> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const fetchPagamentos = async () => {
+  const fetchPagamentos = useCallback(async (filters: Record<string, unknown> = {}) => {
     setIsLoading(true);
     setError(null);
     
@@ -61,17 +61,17 @@ export const usePagamentosPrincipais = (
       const result = await paymentPrincipalService.getPagamentosPrincipais(page, limit, filters);
       setPagamentos(result.data);
       setPagination(result.pagination);
-    } catch (err: any) {
-      console.error('❌ Erro ao buscar pagamentos:', err);
-      setError(err.message || 'Erro ao buscar pagamentos principais');
+    } catch (err: unknown) {
+      console.error(' Erro ao buscar pagamentos:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao buscar pagamentos principais');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, limit, JSON.stringify(filters)]);
 
   useEffect(() => {
-    fetchPagamentos();
-  }, [page, limit, JSON.stringify(filters)]);
+    fetchPagamentos(filters);
+  }, [fetchPagamentos, filters]);
 
   return {
     pagamentos,
@@ -101,8 +101,8 @@ export const usePagamentoPrincipal = (id: number | null) => {
       try {
         const result = await paymentPrincipalService.getPagamentoPrincipalById(id);
         setPagamento(result);
-      } catch (err: any) {
-        setError(err.message || 'Erro ao buscar pagamento principal');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Erro ao buscar pagamento principal');
         setPagamento(null);
       } finally {
         setIsLoading(false);
@@ -137,8 +137,8 @@ export const useUpdatePagamentoPrincipal = () => {
     try {
       const pagamento = await paymentPrincipalService.updatePagamentoPrincipal(id, data);
       return pagamento;
-    } catch (err: any) {
-      setError(err.message || 'Erro ao atualizar pagamento principal');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar pagamento principal');
       return null;
     } finally {
       setIsUpdating(false);
@@ -167,8 +167,8 @@ export const useDeletePagamentoPrincipal = () => {
     try {
       await paymentPrincipalService.deletePagamentoPrincipal(id);
       return true;
-    } catch (err: any) {
-      setError(err.message || 'Erro ao excluir pagamento principal');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao excluir pagamento principal');
       return false;
     } finally {
       setIsDeleting(false);

@@ -99,10 +99,7 @@ export default function TurmasPage() {
   const [cursoFilter, setCursoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Carregar dados iniciais da API
-  useEffect(() => {
-    refetch();
-  }, []);
+  // Os dados são carregados automaticamente pelo hook useTurmaManager
 
   // Aplicar filtros locais aos dados da API
   const filteredTurmas = useMemo(() => {

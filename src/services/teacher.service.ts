@@ -154,8 +154,8 @@ class TeacherService {
   // ===============================
 
   // Buscar turmas por docente
-  async getTurmasPorDocente(docenteId: number): Promise<any> {
-    return this.request<any>(`/api/academic-staff/docentes/${docenteId}/turmas`)
+  async getTurmasPorDocente(docenteId: number): Promise<{ data: Record<string, unknown>[] }> {
+    return this.request<{ data: Record<string, unknown>[] }>(`/api/academic-staff/docentes/${docenteId}/turmas`)
   }
 
   // Buscar docentes por turma
@@ -164,8 +164,8 @@ class TeacherService {
   }
 
   // Relatório acadêmico
-  async getRelatorioAcademico(): Promise<any> {
-    return this.request<any>('/api/academic-staff/relatorio')
+  async getRelatorioAcademico(): Promise<{ data: Record<string, unknown> }> {
+    return this.request<{ data: Record<string, unknown> }>('/api/academic-staff/relatorio')
   }
 }
 

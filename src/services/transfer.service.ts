@@ -83,4 +83,5 @@ class TransferService {
   }
 }
 
-export default new TransferService()
+const transferService = new TransferService();
+export default transferService;
