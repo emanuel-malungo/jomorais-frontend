@@ -27,6 +27,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 import {
   Users,
@@ -57,7 +65,7 @@ import { useStatus } from '@/hooks/useStatusControl';
 import { useCourses } from '@/hooks/useCourse';
 
 export default function ListStudentPage() {
-  const { students, loading, error, pagination, getAllStudents } = useStudent();
+  const { students, loading, error, pagination, getAllStudents, updateStudent, deleteStudent } = useStudent();
 
   // Buscar dados de status e cursos
   const { status } = useStatus(1, 100, ""); // Carregar todos os status
@@ -69,6 +77,11 @@ export default function ListStudentPage() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  
+  // Estados para modal de confirmação de exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Criar opções de status dinamicamente
   const statusOptions = useMemo(() => {
@@ -176,8 +189,40 @@ export default function ListStudentPage() {
   };
 
   const handleDeleteStudent = (studentId: number) => {
-    console.log("Excluir aluno:", studentId);
-    // Implementar confirmação e exclusão do aluno com o hook
+    const student = students.find(s => s.codigo === studentId);
+    if (student) {
+      setStudentToDelete(student);
+      setDeleteModalOpen(true);
+    }
+  };
+
+  const confirmDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    
+    try {
+      setDeleting(true);
+      await deleteStudent(studentToDelete.codigo!);
+      setDeleteModalOpen(false);
+      setStudentToDelete(null);
+      // Recarregar TODOS os alunos após exclusão (mesmo comportamento do carregamento inicial)
+      await getAllStudents(1, 1000);
+      // Resetar para primeira página se a página atual ficar vazia
+      const totalStudentsAfterDelete = students.length - 1;
+      const totalPagesAfterDelete = Math.ceil(totalStudentsAfterDelete / itemsPerPage);
+      if (currentPage > totalPagesAfterDelete && totalPagesAfterDelete > 0) {
+        setCurrentPage(totalPagesAfterDelete);
+      }
+      // Toast de sucesso já é exibido pelo StudentService.deleteStudent
+    } catch (error) {
+      console.error('Erro ao excluir aluno:', error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const cancelDeleteStudent = () => {
+    setDeleteModalOpen(false);
+    setStudentToDelete(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -546,6 +591,45 @@ export default function ListStudentPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza de que deseja excluir o aluno <strong>{studentToDelete?.nome}</strong>?
+              <br />
+              <span className="text-red-600 text-sm mt-2 block">
+                Esta ação não pode ser desfeita. Todos os dados relacionados ao aluno serão removidos.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={cancelDeleteStudent}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDeleteStudent}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Excluindo...</span>
+                </div>
+              ) : (
+                'Excluir Aluno'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }

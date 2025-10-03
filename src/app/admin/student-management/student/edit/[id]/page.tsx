@@ -6,6 +6,9 @@ import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import useStudent from '@/hooks/useStudent';
+import { Student } from '@/types/student.types';
+import { toast } from 'react-toastify';
 import {
   Card,
   CardContent,
@@ -70,44 +73,88 @@ const professions = [
   { codigo: 6, designacao: "Funcionário Público" },
 ];
 
-// Dados mockados do aluno para edição
-const mockStudentData = {
-  codigo: 1,
-  nome: "Ana Silva Santos",
-  pai: "João Santos",
-  mae: "Maria Silva",
-  email: "ana.santos@email.com",
-  telefone: "923456789",
-  dataNascimento: "2005-03-15",
-  sexo: "F",
-  morada: "Rua das Flores, 123, Luanda",
-  tipo_documento: "1",
-  n_documento_identificacao: "123456789LA041",
-  provinciaEmissao: "Luanda",
-  nome_encarregado: "João Santos",
-  telefone_encarregado: "912345678",
-  email_encarregado: "joao.santos@email.com",
-  profissao_encarregado: "1",
-  local_trabalho_encarregado: "Empresa ABC Lda",
-  curso: "1",
-  tipo_desconto: "50",
-  motivo_desconto: "Bolsa de estudos",
+// Dados iniciais vazios
+const initialFormData = {
+  codigo: 0,
+  nome: "",
+  pai: "",
+  mae: "",
+  email: "",
+  telefone: "",
+  dataNascimento: "",
+  sexo: "",
+  morada: "",
+  tipo_documento: "",
+  n_documento_identificacao: "",
+  provinciaEmissao: "",
+  nome_encarregado: "",
+  telefone_encarregado: "",
+  email_encarregado: "",
+  profissao_encarregado: "",
+  local_trabalho_encarregado: "",
+  curso: "",
+  tipo_desconto: "",
+  motivo_desconto: "",
 };
 
 export default function EditStudentPage() {
   const params = useParams();
   const router = useRouter();
+  const { student, loading, error, getStudentById, updateStudent } = useStudent();
   const [activeTab, setActiveTab] = useState("personal");
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState(mockStudentData);
+  const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const studentId = params.id;
+  const studentId = Array.isArray(params.id) ? params.id[0] : params.id as string;
 
+  // Carregar dados do aluno
   useEffect(() => {
-    // Em produção, buscar dados do aluno pela API
-    console.log("Carregando dados do aluno:", studentId);
-  }, [studentId]);
+    if (studentId) {
+      getStudentById(parseInt(studentId));
+    }
+  }, [studentId, getStudentById]);
+
+  // Preencher formulário quando dados do aluno chegarem
+  useEffect(() => {
+    if (student) {
+      // Função para converter data
+      const formatDate = (date: string | Record<string, unknown> | undefined): string => {
+        if (!date) return "";
+        if (typeof date === 'string') {
+          try {
+            return new Date(date).toISOString().split('T')[0];
+          } catch {
+            return "";
+          }
+        }
+        return "";
+      };
+
+      setFormData({
+        codigo: student.codigo || 0,
+        nome: student.nome || "",
+        pai: student.pai || "",
+        mae: student.mae || "",
+        email: student.email || "",
+        telefone: student.telefone || "",
+        dataNascimento: formatDate(student.dataNascimento),
+        sexo: student.sexo || "",
+        morada: student.morada || "",
+        tipo_documento: student.codigoTipoDocumento?.toString() || "",
+        n_documento_identificacao: student.n_documento_identificacao || "",
+        provinciaEmissao: "", // Campo não existe no tipo Student
+        nome_encarregado: student.tb_encarregados?.nome || "",
+        telefone_encarregado: student.tb_encarregados?.telefone || "",
+        email_encarregado: (student.tb_encarregados as any)?.email || "",
+        profissao_encarregado: (student.tb_encarregados as any)?.codigo_Profissao?.toString() || "",
+        local_trabalho_encarregado: (student.tb_encarregados as any)?.local_Trabalho || "",
+        curso: student.tb_matriculas?.tb_cursos?.codigo?.toString() || "",
+        tipo_desconto: student.desconto?.toString() || "",
+        motivo_desconto: student.motivo_Desconto || "",
+      });
+    }
+  }, [student]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -156,15 +203,147 @@ export default function EditStudentPage() {
     setIsLoading(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log("Dados atualizados:", formData);
-      router.push('/admin/student-management/list-student');
+      // Converter os dados do formulário para o formato esperado pela API
+      // Enviar apenas os campos que foram alterados e são permitidos na atualização
+      const studentData: any = {};
+      
+      // Campos que podem ser atualizados
+      if (formData.nome && formData.nome.trim()) {
+        studentData.nome = formData.nome.trim();
+      }
+      if (formData.pai && formData.pai.trim()) {
+        studentData.pai = formData.pai.trim();
+      }
+      if (formData.mae && formData.mae.trim()) {
+        studentData.mae = formData.mae.trim();
+      }
+      if (formData.email && formData.email.trim()) {
+        studentData.email = formData.email.trim();
+      }
+      if (formData.telefone && formData.telefone.trim()) {
+        studentData.telefone = formData.telefone.trim();
+      }
+      if (formData.dataNascimento) {
+        studentData.dataNascimento = new Date(formData.dataNascimento).toISOString();
+      }
+      if (formData.sexo) {
+        studentData.sexo = formData.sexo;
+      }
+      if (formData.morada && formData.morada.trim()) {
+        studentData.morada = formData.morada.trim();
+      }
+      if (formData.tipo_documento) {
+        studentData.codigoTipoDocumento = parseInt(formData.tipo_documento);
+      }
+      if (formData.n_documento_identificacao && formData.n_documento_identificacao.trim()) {
+        studentData.n_documento_identificacao = formData.n_documento_identificacao.trim();
+      }
+      if (formData.tipo_desconto) {
+        studentData.desconto = parseFloat(formData.tipo_desconto);
+      }
+      if (formData.motivo_desconto && formData.motivo_desconto.trim()) {
+        studentData.motivo_Desconto = formData.motivo_desconto.trim();
+      }
+      if (formData.provinciaEmissao && formData.provinciaEmissao.trim()) {
+        studentData.provinciaEmissao = formData.provinciaEmissao.trim();
+      }
+      
+      // Dados do encarregado (se foram alterados)
+      const encarregadoData: any = {};
+      if (formData.nome_encarregado && formData.nome_encarregado.trim()) {
+        encarregadoData.nome = formData.nome_encarregado.trim();
+      }
+      if (formData.telefone_encarregado && formData.telefone_encarregado.trim()) {
+        encarregadoData.telefone = formData.telefone_encarregado.trim();
+      }
+      if (formData.email_encarregado && formData.email_encarregado.trim()) {
+        encarregadoData.email = formData.email_encarregado.trim();
+      }
+      if (formData.profissao_encarregado) {
+        encarregadoData.codigo_Profissao = parseInt(formData.profissao_encarregado);
+      }
+      if (formData.local_trabalho_encarregado && formData.local_trabalho_encarregado.trim()) {
+        encarregadoData.local_Trabalho = formData.local_trabalho_encarregado.trim();
+      }
+      
+      // Se há dados do encarregado para atualizar, incluir no payload
+      if (Object.keys(encarregadoData).length > 0) {
+        studentData.encarregado = encarregadoData;
+      }
+
+      // Debug: console.log('Dados sendo enviados para a API:', studentData);
+
+      if (studentId && Object.keys(studentData).length > 0) {
+        await updateStudent(parseInt(studentId), studentData);
+      } else {
+        toast.info('Nenhuma alteração foi feita.');
+        return;
+      }
+      toast.success('Aluno atualizado com sucesso!');
+      router.push('/admin/student-management/student');
     } catch (error) {
       console.error("Erro ao atualizar aluno:", error);
+      toast.error('Erro ao atualizar aluno');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#182F59]"></div>
+            <span className="text-lg">Carregando dados do aluno...</span>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Erro ao carregar aluno</h2>
+              <p className="text-gray-600">{error}</p>
+            </div>
+            <Button onClick={() => router.back()} variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  // Not found state
+  if (!student && !loading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <User className="h-12 w-12 text-gray-400 mx-auto" />
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Aluno não encontrado</h2>
+              <p className="text-gray-600">O aluno solicitado não foi encontrado.</p>
+            </div>
+            <Button onClick={() => router.back()} variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>

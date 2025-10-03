@@ -97,8 +97,8 @@ export default class StudentService {
             delete cleanData.provincia;
             // @ts-ignore
             delete cleanData.municipio;
-            // @ts-ignore
-            delete cleanData.codigo_Utilizador;
+            
+            // Debug: console.log('Service - Dados antes de enviar:', cleanData);
             
             const response = await api.put(`/api/student-management/alunos/${id}`, cleanData);
             
