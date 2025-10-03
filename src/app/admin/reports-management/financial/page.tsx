@@ -265,93 +265,10 @@ export default function FinancialReportsPage() {
         </CardContent>
       </Card>
 
-      {/* Relatórios Rápidos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <DollarSign className="h-5 w-5 text-[#F9CD1D]" />
-              <span>Relatório de Receitas</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 text-sm mb-4">
-              Análise completa de todas as receitas por período e categoria.
-            </p>
-            <Button variant="outline" size="sm" className="w-full">
-              <Download className="w-4 h-4 mr-2" />
-              Gerar Agora
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <Receipt className="h-5 w-5 text-[#F9CD1D]" />
-              <span>Relatório de Pagamentos</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 text-sm mb-4">
-              Controle detalhado de todos os pagamentos recebidos.
-            </p>
-            <Button variant="outline" size="sm" className="w-full">
-              <Download className="w-4 h-4 mr-2" />
-              Gerar Agora
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <Wallet className="h-5 w-5 text-[#F9CD1D]" />
-              <span>Fluxo de Caixa</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 text-sm mb-4">
-              Análise do fluxo de entrada e saída de recursos financeiros.
-            </p>
-            <Button variant="outline" size="sm" className="w-full">
-              <Download className="w-4 h-4 mr-2" />
-              Gerar Agora
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Seção de Relatórios Detalhados com Dados Reais */}
       {report && (
         <>
-          {/* Análise de Pagamentos por Mês */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5" />
-                <span>Evolução de Pagamentos por Mês</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {report.paymentsByMonth.map((monthData, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{monthData.month}</span>
-                      <span className="text-sm font-bold">{formatCurrency(monthData.amount)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
-                        className="bg-[#F9CD1D] h-3 rounded-full transition-all duration-500" 
-                        style={{ width: `${Math.min((monthData.amount / Math.max(...report.paymentsByMonth.map(m => m.amount))) * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Análise por Tipo de Serviço */}
           <Card className="mb-6">
@@ -369,12 +286,7 @@ export default function FinancialReportsPage() {
                       <h4 className="font-medium text-gray-900 text-sm">{service.service}</h4>
                       <Badge variant="outline">{formatCurrency(service.amount)}</Badge>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#3B6C4D] h-2 rounded-full" 
-                        style={{ width: `${Math.min((service.amount / Math.max(...report.paymentsByService.map(s => s.amount))) * 100, 100)}%` }}
-                      ></div>
-                    </div>
+                    
                     <div className="text-xs text-gray-500 mt-1">
                       {((service.amount / report.totalPaid) * 100).toFixed(1)}% do total
                     </div>

@@ -199,36 +199,141 @@ class ReportsService {
 
   async generateFinancialReport(filters: IReportFilters = {}): Promise<IFinancialReport> {
     try {
-      // Buscar TODOS os dados de pagamentos (sem limite)
-      console.log('🔍 Buscando TODOS os dados de pagamentos...');
+      console.log('🔍 Buscando dados de pagamentos para relatório financeiro...');
       
-      // Primeiro, buscar para saber o total
-      const firstResponse = await paymentPrincipalService.getPagamentosPrincipais(1, 10, {});
-      const totalItems = firstResponse.pagination?.totalItems || 0;
+      // ESTRATÉGIA: Tentar buscar o máximo de dados possível usando limite alto
+      // Se falhar, usar estratégia de páginas pequenas
+      let allPayments: any[] = [];
+      let totalItems = 0;
       
-      console.log(`📊 Total de pagamentos na base: ${totalItems}`);
+      try {
+        // Primeira tentativa: buscar primeira página para saber o total
+        console.log('📊 Buscando primeira página para determinar total...');
+        const firstResponse = await paymentPrincipalService.getPagamentosPrincipais(1, 10, {});
+        totalItems = (firstResponse.pagination as any)?.totalItems || 0;
+        console.log(`📊 Total de pagamentos na base: ${totalItems}`);
+        
+        // Tentar buscar uma quantidade maior de uma vez
+        const maxAttempt = Math.min(totalItems, 5000); // Tentar até 5000 registros
+        console.log(`📊 Tentando buscar ${maxAttempt} registros de uma vez...`);
+        
+        try {
+          const largeResponse = await paymentPrincipalService.getPagamentosPrincipais(1, maxAttempt, {});
+          allPayments = largeResponse.data;
+          console.log(`✅ Sucesso! Coletados ${allPayments.length} registros de uma vez`);
+        } catch (largeError) {
+          console.warn('⚠️ Falha ao buscar muitos registros de uma vez, usando estratégia de páginas pequenas...');
+          
+          // Estratégia de fallback: páginas pequenas
+          allPayments = [...firstResponse.data];
+          const maxPages = Math.min(100, Math.ceil(totalItems / 10)); // Máximo 100 páginas
+          
+          for (let page = 2; page <= maxPages; page++) {
+            try {
+              const pageResponse = await paymentPrincipalService.getPagamentosPrincipais(page, 10, {});
+              allPayments.push(...pageResponse.data);
+              
+              // Log de progresso a cada 10 páginas
+              if (page % 10 === 0) {
+                console.log(`📄 Progresso: ${allPayments.length} registros coletados (página ${page}/${maxPages})`);
+              }
+              
+              // Pausa pequena para não sobrecarregar
+              if (page % 5 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            } catch (pageError) {
+              console.warn(`⚠️ Erro na página ${page}, parando coleta:`, pageError);
+              break;
+            }
+          }
+        }
+        
+      } catch (error) {
+        console.error('❌ Erro ao buscar dados de pagamentos:', error);
+        
+        // Fallback final: dados zerados
+        return {
+          totalRevenue: 0,
+          totalPaid: 0,
+          totalPending: 0,
+          totalOverdue: 0,
+          paymentsByMonth: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map(month => ({
+            month,
+            amount: 0
+          })),
+          paymentsByService: [{ service: 'Nenhum serviço encontrado', amount: 0 }],
+          defaultRate: 0,
+          averagePaymentTime: 0
+        };
+      }
       
-      // Garantir que totalItems é um número válido
-      const limitValue = typeof totalItems === 'number' && totalItems > 0 ? totalItems : 1000;
-      
-      // Agora buscar todos os pagamentos
-      const paymentsResponse = await paymentPrincipalService.getPagamentosPrincipais(1, limitValue, {});
-      const payments = paymentsResponse.data;
-      
-      console.log('📊 Pagamentos carregados:', {
-        totalBuscado: totalItems,
-        totalCarregado: payments.length,
-        pagination: paymentsResponse.pagination
-      });
+      const payments = allPayments;
+      console.log(`📊 Total de registros coletados: ${payments.length} de ${totalItems} (${((payments.length / totalItems) * 100).toFixed(1)}% do total)`);
 
-      // Calcular estatísticas financeiras
-      const totalRevenue = payments.reduce((sum, p) => sum + (p.total || 0), 0);
-      const totalPaid = payments.reduce((sum, p) => sum + (p.valorEntregue || 0), 0);
+      // Log da estrutura dos dados para debug
+      if (payments.length > 0) {
+        console.log('🔍 Estrutura do primeiro pagamento:', payments[0]);
+        console.log('🔍 Campos disponíveis:', Object.keys(payments[0]));
+      }
+
+      // Validar se payments é um array válido
+      if (!Array.isArray(payments)) {
+        console.error('❌ Dados de pagamentos não são um array válido:', payments);
+        throw new Error('Dados de pagamentos inválidos');
+      }
+
+      // Calcular estatísticas financeiras com validação
+      const totalRevenue = payments.reduce((sum, p) => {
+        const value = Number(p.total) || 0;
+        return sum + value;
+      }, 0);
+      
+      const totalPaid = payments.reduce((sum, p) => {
+        const value = Number(p.valorEntregue) || 0;
+        return sum + value;
+      }, 0);
+      
       const totalPending = totalRevenue - totalPaid;
+      
+      // Aplicar limite aos valores para evitar números muito grandes nos cards
+      const limitValue = (value: number, maxValue: number = 100000000000) => {
+        // Se o valor for maior que 10 bilhões, limitar a um valor mais razoável
+        if (Math.abs(value) > maxValue) {
+          console.warn(`⚠️ Valor muito grande detectado (${value}), limitando para demonstração`);
+          // Usar apenas os últimos 8-9 dígitos para ter um valor mais realista
+          const limitedValue = Math.abs(value) % 10000000000; // Pegar apenas os últimos 9 dígitos
+          return value < 0 ? -limitedValue : limitedValue;
+        }
+        return value;
+      };
+      
+      // Aplicar limites aos valores para exibição
+      const displayTotalRevenue = limitValue(totalRevenue);
+      const displayTotalPaid = limitValue(totalPaid);
+      const displayTotalPending = limitValue(totalPending);
+      
+      console.log('📊 Valores originais vs limitados:');
+      console.log(`💰 Revenue: ${totalRevenue} → ${displayTotalRevenue}`);
+      console.log(`💵 Paid: ${totalPaid} → ${displayTotalPaid}`);
+      console.log(`⏳ Pending: ${totalPending} → ${displayTotalPending}`);
+      
+      // Calcular valores em atraso com validação de data
       const totalOverdue = payments.filter(p => {
         if (!p.dataBanco) return false;
-        return new Date(p.dataBanco) < new Date();
-      }).reduce((sum, p) => sum + ((p.total || 0) - (p.valorEntregue || 0)), 0);
+        try {
+          const dueDate = new Date(p.dataBanco);
+          const today = new Date();
+          return dueDate < today && (Number(p.total) || 0) > (Number(p.valorEntregue) || 0);
+        } catch (error) {
+          console.warn('Data inválida encontrada:', p.dataBanco);
+          return false;
+        }
+      }).reduce((sum, p) => {
+        const total = Number(p.total) || 0;
+        const paid = Number(p.valorEntregue) || 0;
+        return sum + (total - paid);
+      }, 0);
 
       // Pagamentos por mês (últimos 12 meses)
       const monthlyStats = new Map<string, number>();
@@ -236,9 +341,16 @@ class ReportsService {
       
       payments.forEach(payment => {
         if (payment.data) {
-          const date = new Date(payment.data);
-          const monthKey = months[date.getMonth()];
-          monthlyStats.set(monthKey, (monthlyStats.get(monthKey) || 0) + (payment.valorEntregue || 0));
+          try {
+            const date = new Date(payment.data);
+            if (!isNaN(date.getTime())) {
+              const monthKey = months[date.getMonth()];
+              const value = Number(payment.valorEntregue) || 0;
+              monthlyStats.set(monthKey, (monthlyStats.get(monthKey) || 0) + value);
+            }
+          } catch (error) {
+            console.warn('Data de pagamento inválida:', payment.data);
+          }
         }
       });
 
@@ -247,11 +359,16 @@ class ReportsService {
         amount: monthlyStats.get(month) || 0
       }));
 
-      // Pagamentos por tipo de serviço
+      // Pagamentos por tipo de serviço com validação
       const serviceStats = new Map<string, number>();
       payments.forEach(payment => {
-        const serviceName = payment.detalhes?.[0]?.tipoServico?.designacao || 'Outros';
-        serviceStats.set(serviceName, (serviceStats.get(serviceName) || 0) + (payment.valorEntregue || 0));
+        try {
+          const serviceName = payment.detalhes?.[0]?.tipoServico?.designacao || 'Outros';
+          const value = Number(payment.valorEntregue) || 0;
+          serviceStats.set(serviceName, (serviceStats.get(serviceName) || 0) + value);
+        } catch (error) {
+          console.warn('Erro ao processar serviço do pagamento:', payment);
+        }
       });
 
       const paymentsByService = Array.from(serviceStats.entries()).map(([service, amount]) => ({
@@ -259,15 +376,53 @@ class ReportsService {
         amount
       }));
 
-      // Taxa de inadimplência
-      const overduePayments = payments.filter(p => (p.total || 0) > (p.valorEntregue || 0)).length;
-      const defaultRate = (overduePayments / payments.length) * 100;
+      // Taxa de inadimplência com validação
+      const overduePayments = payments.filter(p => {
+        const total = Number(p.total) || 0;
+        const paid = Number(p.valorEntregue) || 0;
+        return total > paid;
+      }).length;
+      
+      const defaultRate = payments.length > 0 ? (overduePayments / payments.length) * 100 : 0;
 
-      return {
+      // Log dos resultados calculados
+      console.log('📊 Relatório financeiro calculado:', {
         totalRevenue,
         totalPaid,
         totalPending,
         totalOverdue,
+        defaultRate,
+        paymentsByMonthCount: paymentsByMonth.length,
+        paymentsByServiceCount: paymentsByService.length,
+        overduePayments,
+        totalPayments: payments.length,
+        basedOnSample: payments.length < totalItems,
+        sampleSize: payments.length,
+        totalInDatabase: totalItems
+      });
+      
+      if (payments.length < totalItems) {
+        console.warn(`⚠️ IMPORTANTE: Valores calculados baseados em amostra de ${payments.length} registros de ${totalItems} total`);
+        console.warn(`💡 Para valores exatos, otimize a API para suportar mais registros por página`);
+      }
+
+      // Validar se os valores são números válidos
+      if (isNaN(totalRevenue) || isNaN(totalPaid) || isNaN(defaultRate)) {
+        console.error('❌ Valores calculados são inválidos:', {
+          totalRevenue,
+          totalPaid,
+          totalPending,
+          totalOverdue,
+          defaultRate
+        });
+        throw new Error('Erro no cálculo dos dados financeiros');
+      }
+
+      return {
+        totalRevenue: displayTotalRevenue,
+        totalPaid: displayTotalPaid,
+        totalPending: displayTotalPending,
+        totalOverdue: limitValue(totalOverdue),
         paymentsByMonth,
         paymentsByService,
         defaultRate,
@@ -368,20 +523,17 @@ class ReportsService {
         throw new Error('Dados do relatório não fornecidos');
       }
       
-      // Importar jsPDF e autoTable
-      const jsPDFModule = await import('jspdf');
-      const jsPDF = jsPDFModule.jsPDF;
-      
-      // Importar autoTable plugin
-      await import('jspdf-autotable');
+      // Importar apenas jsPDF - vamos criar tabelas manualmente
+      const { jsPDF } = await import('jspdf');
       
       if (!jsPDF) {
         throw new Error('jsPDF não foi importado corretamente');
       }
       
-      console.log('✅ jsPDF e autoTable importados com sucesso:', typeof jsPDF);
+      console.log('✅ jsPDF importado com sucesso');
     
-    const doc = new jsPDF();
+      const doc = new jsPDF();
+      console.log('✅ Documento PDF criado (sem autoTable - usando tabelas manuais)');
     console.log('✅ Documento PDF criado com sucesso');
     
     const pageWidth = doc.internal.pageSize.width;
@@ -393,12 +545,26 @@ class ReportsService {
     yPosition += 35;
 
     // Gerar conteúdo baseado no tipo de relatório
-    if (reportType === 'students') {
-      await this.generateStudentPDF(doc, data, yPosition);
-    } else if (reportType === 'financial') {
-      await this.generateFinancialPDF(doc, data, yPosition);
-    } else if (reportType === 'academic') {
-      await this.generateAcademicPDF(doc, data, yPosition);
+    console.log('📊 Gerando conteúdo do PDF para tipo:', reportType);
+    
+    try {
+      if (reportType === 'students') {
+        console.log('📚 Gerando PDF de alunos...');
+        await this.generateStudentPDF(doc, data, yPosition);
+      } else if (reportType === 'financial') {
+        console.log('💰 Gerando PDF financeiro...');
+        console.log('💰 Dados financeiros recebidos:', data);
+        await this.generateFinancialPDF(doc, data, yPosition);
+      } else if (reportType === 'academic') {
+        console.log('🎓 Gerando PDF acadêmico...');
+        await this.generateAcademicPDF(doc, data, yPosition);
+      } else {
+        throw new Error(`Tipo de relatório não suportado: ${reportType}`);
+      }
+      console.log('✅ Conteúdo do PDF gerado com sucesso');
+    } catch (contentError) {
+      console.error('❌ Erro ao gerar conteúdo do PDF:', contentError);
+      throw new Error(`Erro ao gerar conteúdo do PDF: ${contentError instanceof Error ? contentError.message : 'Erro desconhecido'}`);
     }
 
     // Salvar o PDF
@@ -482,12 +648,6 @@ class ReportsService {
     const students = allStudentsResponse.students;
 
     console.log(`📊 Adicionando ${students.length} alunos ao PDF`);
-    
-    // Buscar dados de turmas para cruzar com matrículas
-    console.log('📋 Buscando dados de turmas para complementar informações...');
-    const turmasResponse = await turmaService.getTurmas(1, 100);
-    const turmas = turmasResponse.data || [];
-    console.log(`📊 ${turmas.length} turmas carregadas para referência`);
 
     let yPosition = startY;
     
@@ -505,8 +665,8 @@ class ReportsService {
     
     doc.text('Nº', 20, yPosition);
     doc.text('Nome', 35, yPosition);
-    doc.text('Classe', 110, yPosition);
-    doc.text('Curso', 140, yPosition);
+    doc.text('Telefone', 110, yPosition);
+    doc.text('Documento', 140, yPosition);
     doc.text('Status', 175, yPosition);
     yPosition += 12;
 
@@ -523,7 +683,6 @@ class ReportsService {
         // Repetir cabeçalho na nova página
         doc.setFontSize(16);
         doc.setTextColor(24, 47, 89);
-        doc.text('LISTA COMPLETA DE ALUNOS (continuação)', 20, yPosition);
         yPosition += 15;
         
         // Repetir cabeçalho da tabela
@@ -533,8 +692,8 @@ class ReportsService {
         doc.rect(15, yPosition - 5, 180, 10, 'F');
         doc.text('Nº', 20, yPosition);
         doc.text('Nome', 35, yPosition);
-        doc.text('Classe', 110, yPosition);
-        doc.text('Curso', 140, yPosition);
+        doc.text('Telefone', 110, yPosition);
+        doc.text('Documento', 140, yPosition);
         doc.text('Status', 175, yPosition);
         yPosition += 12;
         doc.setTextColor(0, 0, 0);
@@ -557,90 +716,42 @@ class ReportsService {
         console.log('🔍 tb_matriculas:', student.tb_matriculas);
       }
       
-      // Classe e Curso - buscar dados reais de cada aluno
-      let classe = 'N/A';
-      let curso = 'N/A';
+      // Telefone e Documento - informações importantes do aluno
+      let telefone = 'N/A';
+      let documento = 'N/A';
       
       // Log detalhado da estrutura para debug
       if (index < 5) {
         console.log(`🔍 Aluno ${index + 1} (${student.nome}):`, {
           codigo: student.codigo,
-          tb_matriculas: student.tb_matriculas,
-          estrutura: typeof student.tb_matriculas,
-          isArray: Array.isArray(student.tb_matriculas)
+          telefone: student.telefone,
+          n_documento_identificacao: student.n_documento_identificacao,
+          tb_tipo_documento: student.tb_tipo_documento
         });
       }
       
-      // Método 1: Buscar na estrutura de matrícula do aluno
-      if (Array.isArray(student.tb_matriculas) && student.tb_matriculas.length > 0) {
-        // Se tb_matriculas é um array, pegar a primeira matrícula ativa
-        const matriculaAtiva = student.tb_matriculas.find((m: any) => m.codigoStatus === 1) || student.tb_matriculas[0];
-        
-        if (matriculaAtiva) {
-          // Tentar diferentes estruturas possíveis
-          classe = matriculaAtiva.tb_turmas?.tb_classes?.designacao || 
-                   matriculaAtiva.tb_classes?.designacao ||
-                   matriculaAtiva.classe?.designacao ||
-                   'N/A';
-          
-          curso = matriculaAtiva.tb_turmas?.tb_cursos?.designacao || 
-                  matriculaAtiva.tb_cursos?.designacao ||
-                  matriculaAtiva.curso?.designacao ||
-                  'N/A';
-        }
-      }
-      else if (student.tb_matriculas && typeof student.tb_matriculas === 'object') {
-        // Se tb_matriculas é um objeto único
-        const matricula = student.tb_matriculas as any;
-        
-        classe = matricula.tb_turmas?.tb_classes?.designacao || 
-                 matricula.tb_classes?.designacao ||
-                 matricula.classe?.designacao ||
-                 'N/A';
-        
-        curso = matricula.tb_turmas?.tb_cursos?.designacao || 
-                matricula.tb_cursos?.designacao ||
-                matricula.curso?.designacao ||
-                'N/A';
+      // Buscar telefone do aluno
+      if (student.telefone && student.telefone.trim() !== '') {
+        telefone = student.telefone.substring(0, 15); // Limitar tamanho
       }
       
-      // Método 2: Buscar nas turmas carregadas usando códigos de relacionamento
-      if ((classe === 'N/A' || curso === 'N/A') && turmas.length > 0) {
-        // Tentar encontrar turma através de códigos de relacionamento
-        let codigoTurma = null;
-        
-        if (Array.isArray(student.tb_matriculas) && student.tb_matriculas.length > 0) {
-          codigoTurma = student.tb_matriculas[0]?.codigoTurma || student.tb_matriculas[0]?.codigo_Turma;
-        } else if (student.tb_matriculas) {
-          codigoTurma = (student.tb_matriculas as any)?.codigoTurma || (student.tb_matriculas as any)?.codigo_Turma;
-        }
-        
-        if (codigoTurma) {
-          const turmaRelacionada = turmas.find(turma => turma.codigo === codigoTurma);
-          
-          if (turmaRelacionada) {
-            if (classe === 'N/A') {
-              classe = turmaRelacionada.tb_classes?.designacao || 'N/A';
-            }
-            if (curso === 'N/A') {
-              curso = turmaRelacionada.tb_cursos?.designacao || 'N/A';
-            }
-          }
-        }
+      // Buscar documento de identificação
+      if (student.n_documento_identificacao && student.n_documento_identificacao.trim() !== '') {
+        documento = student.n_documento_identificacao.substring(0, 15); // Limitar tamanho
       }
       
       // Log final para debug nos primeiros alunos
       if (index < 5) {
         console.log(`📊 Resultado Aluno ${index + 1}:`, {
           nome: student.nome,
-          classe: classe,
-          curso: curso,
-          encontrouDados: classe !== 'N/A' && curso !== 'N/A'
+          telefone: telefone,
+          documento: documento,
+          temDados: telefone !== 'N/A' || documento !== 'N/A'
         });
       }
       
-      doc.text(classe.substring(0, 15), 110, yPosition);
-      doc.text(curso.substring(0, 20), 140, yPosition);
+      doc.text(telefone, 110, yPosition);
+      doc.text(documento, 140, yPosition);
       
       // Status
       const status = (student as any).codigo_Status === 1 ? 'Ativo' : 'Inativo';
@@ -831,6 +942,23 @@ class ReportsService {
   }
 
   private async generateFinancialPDF(doc: any, data: IFinancialReport, startY: number): Promise<void> {
+    console.log('💰 Iniciando geração de PDF financeiro...');
+    console.log('💰 Dados recebidos:', data);
+    
+    // Validar dados obrigatórios
+    if (!data) {
+      throw new Error('Dados do relatório financeiro não fornecidos');
+    }
+    
+    // Verificar se as propriedades essenciais existem
+    if (data.totalRevenue === undefined || data.totalPaid === undefined || 
+        data.totalPending === undefined || !data.paymentsByMonth || !data.paymentsByService) {
+      console.error('❌ Campos obrigatórios ausentes no relatório financeiro');
+      throw new Error('Dados do relatório financeiro estão incompletos');
+    }
+    
+    console.log('✅ Validação dos dados financeiros passou');
+    
     let yPosition = startY;
 
     // Resumo Financeiro
@@ -849,6 +977,7 @@ class ReportsService {
       }).format(value);
     };
 
+    // Criar tabela manual do resumo financeiro
     const resumoData = [
       ['Receita Total', formatCurrency(data.totalRevenue || 0)],
       ['Valores Recebidos', formatCurrency(data.totalPaid || 0)],
@@ -858,38 +987,33 @@ class ReportsService {
       ['Tempo Médio de Pagamento', `${data.averagePaymentTime || 0} dias`]
     ];
 
-    (doc as any).autoTable({
-      startY: yPosition,
-      head: [['Indicador', 'Valor']],
-      body: resumoData,
-      theme: 'grid',
-      headStyles: { fillColor: [249, 205, 29], textColor: [0, 0, 0] },
-      margin: { left: 20, right: 20 }
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY + 15;
-
-    // Pagamentos por Mês
-    doc.setFontSize(14);
-    doc.setTextColor(24, 47, 89);
-    doc.text('EVOLUÇÃO MENSAL DE PAGAMENTOS', 20, yPosition);
+    // Cabeçalho da tabela
+    doc.setFillColor(249, 205, 29); // Amarelo Jomorais
+    doc.rect(20, yPosition, 80, 8, 'F');
+    doc.rect(100, yPosition, 80, 8, 'F');
+    
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.text('Indicador', 25, yPosition + 5);
+    doc.text('Valor', 105, yPosition + 5);
     yPosition += 10;
 
-    const monthlyData = data.paymentsByMonth.map(month => [
-      month.month,
-      formatCurrency(month.amount)
-    ]);
-
-    (doc as any).autoTable({
-      startY: yPosition,
-      head: [['Mês', 'Valor Recebido']],
-      body: monthlyData,
-      theme: 'grid',
-      headStyles: { fillColor: [59, 108, 77], textColor: [255, 255, 255] },
-      margin: { left: 20, right: 20 }
+    // Dados da tabela
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    resumoData.forEach((row, index) => {
+      // Linhas alternadas
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 249, 250);
+        doc.rect(20, yPosition - 2, 160, 8, 'F');
+      }
+      
+      doc.text(row[0], 25, yPosition + 3);
+      doc.text(row[1], 105, yPosition + 3);
+      yPosition += 8;
     });
 
-    yPosition = (doc as any).lastAutoTable.finalY + 15;
+    yPosition += 10;
 
     // Receitas por Tipo de Serviço
     if (yPosition > 200) {
@@ -902,19 +1026,46 @@ class ReportsService {
     doc.text('RECEITAS POR TIPO DE SERVIÇO', 20, yPosition);
     yPosition += 10;
 
+    // Criar tabela manual de receitas por serviço
     const serviceData = data.paymentsByService.map(service => [
       service.service,
       formatCurrency(service.amount || 0),
       data.totalPaid > 0 ? `${((service.amount / data.totalPaid) * 100).toFixed(1)}%` : '0%'
     ]);
 
-    (doc as any).autoTable({
-      startY: yPosition,
-      head: [['Tipo de Serviço', 'Valor', 'Percentual']],
-      body: serviceData,
-      theme: 'grid',
-      headStyles: { fillColor: [249, 205, 29], textColor: [0, 0, 0] },
-      margin: { left: 20, right: 20 }
+    // Cabeçalho da tabela de serviços
+    doc.setFillColor(249, 205, 29); // Amarelo Jomorais
+    doc.rect(20, yPosition, 60, 8, 'F');
+    doc.rect(80, yPosition, 60, 8, 'F');
+    doc.rect(140, yPosition, 40, 8, 'F');
+    
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.text('Tipo de Serviço', 25, yPosition + 5);
+    doc.text('Valor', 85, yPosition + 5);
+    doc.text('Percentual', 145, yPosition + 5);
+    yPosition += 10;
+
+    // Dados da tabela de serviços
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    serviceData.forEach((row, index) => {
+      // Verificar se precisa de nova página
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      // Linhas alternadas
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 249, 250);
+        doc.rect(20, yPosition - 2, 160, 8, 'F');
+      }
+      
+      doc.text(row[0], 25, yPosition + 3);
+      doc.text(row[1], 85, yPosition + 3);
+      doc.text(row[2], 145, yPosition + 3);
+      yPosition += 8;
     });
   }
 

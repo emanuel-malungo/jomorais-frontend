@@ -87,38 +87,56 @@ export const useFinancialReports = () => {
   const [error, setError] = useState<string | null>(null);
 
   const generateReport = useCallback(async (filters: IReportFilters = {}) => {
+    console.log('🔄 Hook useFinancialReports: Iniciando geração de relatório...', filters);
     setIsLoading(true);
     setError(null);
     
     try {
       const reportData = await reportsService.generateFinancialReport(filters);
+      console.log('✅ Hook useFinancialReports: Relatório gerado com sucesso:', reportData);
       setReport(reportData);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao gerar relatório financeiro');
+      console.error('❌ Hook useFinancialReports: Erro ao gerar relatório:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao gerar relatório financeiro';
+      console.error('❌ Mensagem de erro:', errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const exportToPDF = useCallback(async () => {
-    if (!report) return;
+    console.log('🔴 BOTÃO PDF FINANCEIRO CLICADO - Iniciando exportação PDF');
+    if (!report) {
+      console.warn('⚠️ Nenhum relatório financeiro disponível para PDF');
+      return;
+    }
     
     try {
+      console.log('📄 Chamando exportReportToPDF para relatório financeiro...');
+      console.log('📊 Dados do relatório financeiro:', report);
       await reportsService.exportReportToPDF('financial', report);
+      console.log('✅ PDF financeiro exportado com sucesso!');
     } catch (err) {
-      console.error('Erro ao exportar relatório em PDF:', err);
-      alert('Erro ao gerar PDF. Tente novamente.');
+      console.error('❌ Erro ao exportar relatório financeiro em PDF:', err);
+      alert(`Erro ao gerar PDF financeiro: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   }, [report]);
 
   const exportToExcel = useCallback(async () => {
-    if (!report) return;
+    console.log('🟢 BOTÃO EXCEL FINANCEIRO CLICADO - Iniciando exportação Excel');
+    if (!report) {
+      console.warn('⚠️ Nenhum relatório financeiro disponível para Excel');
+      return;
+    }
     
     try {
+      console.log('📊 Chamando exportReportToExcel para relatório financeiro...');
       await reportsService.exportReportToExcel('financial', report);
+      console.log('✅ Excel financeiro exportado com sucesso!');
     } catch (err) {
-      console.error('Erro ao exportar relatório em Excel:', err);
-      alert('Erro ao gerar Excel. Tente novamente.');
+      console.error('❌ Erro ao exportar relatório financeiro em Excel:', err);
+      alert(`Erro ao gerar Excel financeiro: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   }, [report]);
 
