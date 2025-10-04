@@ -10,7 +10,8 @@ import {
   User,
   CreditCard,
   Download,
-  Printer
+  Printer,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,9 +42,7 @@ import {
   ANOS_OPTIONS
 } from '@/hooks/usePaymentData';
 import { useDebounce } from '@/hooks';
-import { ThermalInvoiceService } from '@/services/thermalInvoiceService';
-import { ThermalInvoiceData } from '@/components/ThermalInvoice';
-import ThermalInvoiceModal from '@/components/ThermalInvoiceModal';
+import FaturaTermica from '@/components/FaturaTermica';
 
 interface NovoPaymentModalProps {
   open: boolean;
@@ -203,32 +202,200 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const handleDownloadInvoice = () => {
     try {
       if (createdPayment) {
-        const thermalData: ThermalInvoiceData = {
-          pagamento: {
-            codigo: createdPayment.codigo,
-            fatura: createdPayment.fatura,
-            data: createdPayment.data || new Date().toISOString(),
-            mes: createdPayment.mes,
-            ano: createdPayment.ano,
-            preco: createdPayment.preco,
-            observacao: createdPayment.observacao || '',
-            aluno: {
-              codigo: createdPayment.aluno?.codigo || 0,
-              nome: createdPayment.aluno?.nome || '',
-              n_documento_identificacao: createdPayment.aluno?.n_documento_identificacao || '',
-              email: createdPayment.aluno?.email || '',
-              telefone: createdPayment.aluno?.telefone || ''
-            },
-            tipoServico: {
-              designacao: createdPayment.tipoServico?.designacao || 'Serviço'
-            },
-            formaPagamento: {
-              designacao: createdPayment.formaPagamento?.designacao || 'Dinheiro'
-            }
+        // Preparar dados para a fatura térmica
+        const dadosFatura = {
+          numeroFatura: createdPayment.fatura || `FAT_${Date.now()}`,
+          dataEmissao: new Date(createdPayment.data || new Date()).toLocaleString('pt-BR'),
+          aluno: {
+            nome: createdPayment.aluno?.nome || 'Aluno não identificado',
+            curso: 'Curso não especificado', // Pode ser obtido de outra API
+            classe: 'Classe não especificada', // Pode ser obtido de outra API
+            turma: 'Turma não especificada' // Pode ser obtido de outra API
           },
+          servicos: [
+            {
+              descricao: createdPayment.tipoServico?.designacao || 'Serviço',
+              quantidade: 1,
+              precoUnitario: createdPayment.preco || 0,
+              total: createdPayment.preco || 0
+            }
+          ],
+          formaPagamento: createdPayment.formaPagamento?.designacao || 'DINHEIRO',
+          subtotal: createdPayment.preco || 0,
+          iva: 0.00,
+          desconto: 0.00,
+          totalPagar: createdPayment.preco || 0,
+          totalPago: createdPayment.preco || 0,
+          pagoEmSaldo: 0.00,
+          saldoAtual: 0.00,
           operador: 'Sistema'
         };
-        ThermalInvoiceService.generateThermalPDF(thermalData);
+        
+        // Criar uma nova janela para impressão
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Fatura - ${dadosFatura.numeroFatura}</title>
+              <style>
+                @page {
+                  size: 80mm auto;
+                  margin: 0;
+                }
+                body {
+                  font-family: 'Courier New', monospace;
+                  font-size: 12px;
+                  line-height: 1.2;
+                  margin: 0;
+                  padding: 8px;
+                  width: 80mm;
+                  background: white;
+                  color: black;
+                }
+                .header {
+                  text-align: center;
+                  border-bottom: 1px solid #000;
+                  padding-bottom: 8px;
+                  margin-bottom: 8px;
+                }
+                .header h2 {
+                  font-size: 14px;
+                  font-weight: bold;
+                  margin: 0 0 4px 0;
+                }
+                .header p {
+                  margin: 2px 0;
+                  font-size: 11px;
+                }
+                .aluno {
+                  margin-bottom: 8px;
+                  font-size: 11px;
+                }
+                .aluno p {
+                  margin: 2px 0;
+                }
+                .servicos-table {
+                  width: 100%;
+                  border-top: 1px solid #000;
+                  border-bottom: 1px solid #000;
+                  margin: 8px 0;
+                  border-collapse: collapse;
+                }
+                .servicos-table th,
+                .servicos-table td {
+                  padding: 2px 4px;
+                  font-size: 10px;
+                  text-align: left;
+                }
+                .servicos-table th {
+                  border-bottom: 1px solid #000;
+                }
+                .text-right {
+                  text-align: right;
+                }
+                .totais {
+                  font-size: 11px;
+                  margin: 8px 0;
+                }
+                .totais p {
+                  margin: 2px 0;
+                }
+                .rodape {
+                  text-align: center;
+                  border-top: 1px solid #000;
+                  padding-top: 8px;
+                  margin-top: 12px;
+                  font-size: 10px;
+                }
+                .rodape p {
+                  margin: 2px 0;
+                }
+                .selo-pago {
+                  text-align: center;
+                  margin-top: 16px;
+                }
+                .selo-pago span {
+                  font-weight: bold;
+                  font-size: 16px;
+                  color: #2563eb;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h2>COMPLEXO ESCOLAR PRIVADO JOMORAIS</h2>
+                <p>NIF: 5101165107</p>
+                <p>Bairro 1º de Maio, Zongoio - Cabinda</p>
+                <p>Tlf: 915312187</p>
+                <p>Data: ${dadosFatura.dataEmissao}</p>
+                <p>Fatura: ${dadosFatura.numeroFatura}</p>
+              </div>
+
+              <div class="aluno">
+                <p><strong>Aluno(a):</strong> ${dadosFatura.aluno.nome}</p>
+                <p>Consumidor Final</p>
+                <p>${dadosFatura.aluno.curso}</p>
+                <p>${dadosFatura.aluno.classe} - ${dadosFatura.aluno.turma}</p>
+              </div>
+
+              <table class="servicos-table">
+                <thead>
+                  <tr>
+                    <th style="width: 50%">Serviços</th>
+                    <th class="text-right" style="width: 15%">Qtd</th>
+                    <th class="text-right" style="width: 17.5%">P.Unit</th>
+                    <th class="text-right" style="width: 17.5%">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${dadosFatura.servicos.map(servico => `
+                    <tr>
+                      <td>${servico.descricao}</td>
+                      <td class="text-right">${servico.quantidade}</td>
+                      <td class="text-right">${servico.precoUnitario.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</td>
+                      <td class="text-right">${servico.total.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+
+              <div class="totais">
+                <p>Forma de Pagamento: ${dadosFatura.formaPagamento}</p>
+                <p>Total: ${dadosFatura.subtotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p>Total IVA: ${dadosFatura.iva.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p>N.º de Itens: ${dadosFatura.servicos.length}</p>
+                <p>Desconto: ${dadosFatura.desconto.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p>A Pagar: ${dadosFatura.totalPagar.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p>Total Pago: ${dadosFatura.totalPago.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p>Pago em Saldo: ${dadosFatura.pagoEmSaldo.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p>Saldo Actual: ${dadosFatura.saldoAtual.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+              </div>
+
+              <div class="rodape">
+                <p>Operador: ${dadosFatura.operador}</p>
+                <p>Emitido em: ${dadosFatura.dataEmissao.split(' ')[0]}</p>
+                <p>REGIME SIMPLIFICADO</p>
+                <p>Processado pelo computador</p>
+              </div>
+
+              <div class="selo-pago">
+                <span>[ PAGO ]</span>
+              </div>
+            </body>
+            </html>
+          `);
+          
+          printWindow.document.close();
+          printWindow.focus();
+          
+          // Aguardar o carregamento e imprimir
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 250);
+        }
       }
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
@@ -237,30 +404,8 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   };
 
   const handlePrintInvoice = () => {
-    try {
-      if (createdPayment) {
-        // Por enquanto usar dados mockados até a API de fatura estar pronta
-        const invoiceData = InvoiceService.getMockInvoiceData(createdPayment.codigo);
-        // Atualizar com dados reais do pagamento
-        invoiceData.pagamento = {
-          ...invoiceData.pagamento,
-          codigo: createdPayment.codigo,
-          fatura: createdPayment.fatura,
-          data: createdPayment.data,
-          mes: createdPayment.mes,
-          ano: createdPayment.ano,
-          preco: createdPayment.preco,
-          observacao: createdPayment.observacao,
-          aluno: createdPayment.aluno,
-          tipoServico: createdPayment.tipoServico,
-          formaPagamento: createdPayment.formaPagamento || { designacao: 'Dinheiro' }
-        };
-        InvoiceService.printInvoice(invoiceData);
-      }
-    } catch (error) {
-      console.error('Erro ao imprimir:', error);
-      alert('Erro ao imprimir fatura');
-    }
+    // Usar a mesma função de download para imprimir
+    handleDownloadInvoice();
   };
 
   return (
@@ -553,15 +698,104 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 variant="outline"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Exportar PDF
+                Imprimir Fatura
               </Button>
               <Button
-                onClick={handlePrintInvoice}
+                onClick={() => {
+                  // Mostrar preview da fatura antes de imprimir
+                  if (createdPayment) {
+                    const dadosFatura = {
+                      numeroFatura: createdPayment.fatura || `FAT_${Date.now()}`,
+                      dataEmissao: new Date(createdPayment.data || new Date()).toLocaleString('pt-BR'),
+                      aluno: {
+                        nome: createdPayment.aluno?.nome || 'Aluno não identificado',
+                        curso: 'Curso não especificado',
+                        classe: 'Classe não especificada',
+                        turma: 'Turma não especificada'
+                      },
+                      servicos: [
+                        {
+                          descricao: createdPayment.tipoServico?.designacao || 'Serviço',
+                          quantidade: 1,
+                          precoUnitario: createdPayment.preco || 0,
+                          total: createdPayment.preco || 0
+                        }
+                      ],
+                      formaPagamento: createdPayment.formaPagamento?.designacao || 'DINHEIRO',
+                      subtotal: createdPayment.preco || 0,
+                      iva: 0.00,
+                      desconto: 0.00,
+                      totalPagar: createdPayment.preco || 0,
+                      totalPago: createdPayment.preco || 0,
+                      pagoEmSaldo: 0.00,
+                      saldoAtual: 0.00,
+                      operador: 'Sistema'
+                    };
+                    
+                    // Abrir nova janela com preview da fatura
+                    const previewWindow = window.open('', '_blank', 'width=400,height=600');
+                    if (previewWindow) {
+                      previewWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                          <title>Preview Fatura - ${dadosFatura.numeroFatura}</title>
+                          <style>
+                            body {
+                              font-family: Arial, sans-serif;
+                              padding: 20px;
+                              background: #f5f5f5;
+                            }
+                            .container {
+                              max-width: 400px;
+                              margin: 0 auto;
+                              background: white;
+                              padding: 20px;
+                              border-radius: 8px;
+                              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                            }
+                            .preview-header {
+                              text-align: center;
+                              margin-bottom: 20px;
+                              padding-bottom: 10px;
+                              border-bottom: 2px solid #eee;
+                            }
+                            .preview-header h2 {
+                              color: #333;
+                              margin: 0;
+                            }
+                            .preview-header p {
+                              color: #666;
+                              margin: 5px 0;
+                            }
+                          </style>
+                        </head>
+                        <body>
+                          <div class="container">
+                            <div class="preview-header">
+                              <h2>Preview da Fatura</h2>
+                              <p>Fatura: ${dadosFatura.numeroFatura}</p>
+                              <p>Aluno: ${dadosFatura.aluno.nome}</p>
+                              <p>Valor: ${(dadosFatura.totalPago || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz</p>
+                            </div>
+                            <div id="fatura-container"></div>
+                          </div>
+                          <script>
+                            // Aqui você pode adicionar o componente React da fatura
+                            console.log('Preview da fatura carregado');
+                          </script>
+                        </body>
+                        </html>
+                      `);
+                      previewWindow.document.close();
+                    }
+                  }
+                }}
                 className="flex-1"
                 variant="outline"
               >
-                <Printer className="w-4 h-4 mr-2" />
-                Imprimir
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
               </Button>
             </div>
 
