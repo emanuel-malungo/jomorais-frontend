@@ -28,6 +28,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -45,6 +53,8 @@ import {
   Download,
   Upload,
   Users,
+  FileText,
+  Printer,
   BookOpen,
   GraduationCap,
   ChevronLeft,
@@ -55,6 +65,8 @@ import {
   Activity,
 } from 'lucide-react';
 import { useTurmaManager } from '@/hooks';
+import { TurmaReportService } from '@/services/turmaReport.service';
+import api from '@/utils/api.utils';
 
 // Dados vêm da API real através do hook useTurmaManager
 
@@ -98,6 +110,15 @@ export default function TurmasPage() {
   const [periodoFilter, setPeriodoFilter] = useState("all");
   const [cursoFilter, setCursoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // Estados para o modal de relatórios
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedTurma, setSelectedTurma] = useState<any>(null);
+  const [reportType, setReportType] = useState<'single' | 'all'>('single');
+  const [selectedAnoLectivo, setSelectedAnoLectivo] = useState<any>(null);
+  const [anosLectivos, setAnosLectivos] = useState<any[]>([]);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [loadingAnosLectivos, setLoadingAnosLectivos] = useState(false);
 
   // Os dados são carregados automaticamente pelo hook useTurmaManager
 
@@ -139,6 +160,72 @@ export default function TurmasPage() {
 
     return filtered;
   }, [turmas, periodoFilter, cursoFilter, statusFilter]);
+
+  // Função para carregar anos letivos
+  const loadAnosLectivos = async () => {
+    setLoadingAnosLectivos(true);
+    try {
+      const response = await api.get('/api/academic-management/anos-lectivos');
+      if (response.data.success) {
+        setAnosLectivos(response.data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar anos letivos:', error);
+    } finally {
+      setLoadingAnosLectivos(false);
+    }
+  };
+
+  // Carregar anos letivos quando o modal abrir
+  const handleOpenModal = () => {
+    setShowReportModal(true);
+    loadAnosLectivos();
+  };
+
+  // Funções para geração de PDF
+  const generateStudentListPDF = async (turma: any) => {
+    setIsGeneratingPDF(true);
+    try {
+      console.log('Gerando PDF para turma:', turma);
+      await TurmaReportService.generateSingleTurmaPDF(turma);
+      alert(`PDF da turma ${turma.designacao} gerado com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+    } finally {
+      setIsGeneratingPDF(false);
+      setShowReportModal(false);
+    }
+  };
+
+  const generateAllTurmasPDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      console.log('Gerando PDF para todas as turmas do ano letivo:', selectedAnoLectivo);
+      
+      if (!selectedAnoLectivo) {
+        throw new Error('Ano letivo é obrigatório');
+      }
+      
+      await TurmaReportService.generateAllTurmasPDF(selectedAnoLectivo.codigo);
+      alert(`PDF de todas as turmas do ano letivo ${selectedAnoLectivo.designacao} gerado com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      alert(`Erro ao gerar PDF: ${errorMessage}`);
+    } finally {
+      setIsGeneratingPDF(false);
+      setShowReportModal(false);
+    }
+  };
+
+  const handleGeneratePDF = () => {
+    if (reportType === 'single' && selectedTurma) {
+      generateStudentListPDF(selectedTurma);
+    } else if (reportType === 'all') {
+      generateAllTurmasPDF();
+    }
+  };
 
   // Usar dados diretamente da API (já paginados)
   const currentTurmas = turmas;
@@ -240,6 +327,15 @@ export default function TurmasPage() {
               >
                 <Upload className="w-5 h-5 mr-2" />
                 Importar Turmas
+              </Button>
+
+              <Button
+                onClick={handleOpenModal}
+                variant="outline"
+                className="px-6 py-3 rounded-xl font-semibold border-2 border-blue-500 text-blue-500 hover:bg-blue-50 transition-all duration-200"
+              >
+                <Users className="w-5 h-5 mr-2" />
+                Listar Alunos
               </Button>
 
               <Button
@@ -606,6 +702,160 @@ Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, pag
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Relatórios de Alunos */}
+      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-500" />
+              Relatório de Alunos por Turma
+            </DialogTitle>
+            <DialogDescription>
+              Selecione o tipo de relatório que deseja gerar
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Filtro por Ano Letivo */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Ano Letivo *
+              </label>
+              <Select
+                value={selectedAnoLectivo?.codigo?.toString() || ""}
+                onValueChange={(value) => {
+                  const ano = anosLectivos.find(a => a.codigo.toString() === value);
+                  setSelectedAnoLectivo(ano);
+                }}
+                disabled={loadingAnosLectivos}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingAnosLectivos ? "Carregando..." : "Selecione o ano letivo"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {anosLectivos.map((ano) => (
+                    <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
+                      {ano.designacao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tipo de Relatório */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-700">
+                Tipo de Relatório
+              </label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="single"
+                    name="reportType"
+                    value="single"
+                    checked={reportType === 'single'}
+                    onChange={(e) => setReportType(e.target.value as 'single' | 'all')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <label htmlFor="single" className="text-sm text-gray-700">
+                    Turma Específica
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="all"
+                    name="reportType"
+                    value="all"
+                    checked={reportType === 'all'}
+                    onChange={(e) => setReportType(e.target.value as 'single' | 'all')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <label htmlFor="all" className="text-sm text-gray-700">
+                    Todas as Turmas
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Seleção de Turma (se tipo for 'single') */}
+            {reportType === 'single' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Selecionar Turma
+                </label>
+                <Select
+                  value={selectedTurma?.codigo?.toString() || ""}
+                  onValueChange={(value) => {
+                    const turma = turmas.find(t => t.codigo.toString() === value);
+                    setSelectedTurma(turma);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolha uma turma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {turmas
+                      .filter(turma => !selectedAnoLectivo || turma.codigo_AnoLectivo === selectedAnoLectivo?.codigo)
+                      .map((turma) => (
+                        <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{turma.designacao}</span>
+                            <span className="text-xs text-gray-500">
+                              {turma.tb_classes?.designacao} - {turma.tb_cursos?.designacao}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Botões de Ação */}
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={handleGeneratePDF}
+                disabled={isGeneratingPDF || !selectedAnoLectivo || (reportType === 'single' && !selectedTurma)}
+                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                {isGeneratingPDF ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Gerar PDF
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                onClick={handleGeneratePDF}
+                disabled={isGeneratingPDF || !selectedAnoLectivo || (reportType === 'single' && !selectedTurma)}
+                variant="outline"
+                className="flex-1"
+              >
+                {isGeneratingPDF ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                    Imprimindo...
+                  </>
+                ) : (
+                  <>
+                    <Printer className="w-4 h-4 mr-2" />
+                    Imprimir
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }
