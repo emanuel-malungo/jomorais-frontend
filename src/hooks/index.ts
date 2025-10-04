@@ -22,3 +22,6 @@ export * from './useStatusControl';
 export * from './useTeacher';
 export * from './useTurma';
 export * from './useUsers';
+export * from './usePayments';
+export * from './usePaymentData';
+export * from './useDebounce';

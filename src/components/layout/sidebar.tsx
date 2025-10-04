@@ -82,7 +82,7 @@ const menuItems: MenuItem[] = [
     title: "Financeiro",
     icon: DollarSign,
     children: [
-      { title: "Pagamentos", icon: Wallet, href: "/admin/finance-management/payments" },
+      { title: "Pagamentos", icon: Wallet, href: "/admin/financeiro/pagamentos" },
       { title: "Serviços", icon: FileText, href: "/admin/finance-management/services" },
       { title: "Notas de Crédito", icon: FileText, href: "/admin/finance-management/credit-notes" }
     ]
