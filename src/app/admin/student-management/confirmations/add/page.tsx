@@ -83,33 +83,6 @@ export default function AddConfirmationPage() {
     const loadData = async () => {
       console.log('Iniciando carregamento de dados...');
       
-      // Testar conectividade com o backend
-      try {
-        console.log('Testando conectividade com backend...');
-        console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
-        const testResponse = await api.get('/api/student-management/test-data');
-        console.log('Backend está respondendo:', testResponse.data);
-        
-        // Testar uma requisição POST simples
-        console.log('Testando POST simples...');
-        try {
-          const testPost = await api.post('/api/student-management/confirmacoes', {
-            codigo_Matricula: 2,
-            codigo_Turma: 185,
-            data_Confirmacao: "2025-10-01T00:00:00.000Z",
-            codigo_Ano_lectivo: 4,
-            codigo_Utilizador: 1,
-            codigo_Status: 1,
-            classificacao: "Teste"
-          });
-          console.log('POST teste funcionou:', testPost.data);
-        } catch (postError: any) {
-          console.log('POST teste falhou:', postError.response?.data);
-        }
-      } catch (error) {
-        console.error('Erro ao conectar com backend:', error);
-      }
-      
       await loadAcademicYears();
       console.log('Dados carregados!');
     };
@@ -184,7 +157,7 @@ export default function AddConfirmationPage() {
       console.log('Buscando turmas:', searchTerm);
       
       // Tentar primeiro com parâmetro de busca
-      let response;
+      let response: any;
       try {
         response = await api.get('/api/academic-management/turmas', {
           params: { search: searchTerm }
@@ -527,34 +500,6 @@ export default function AddConfirmationPage() {
                   </>
                 )}
               </Button>
-              
-              <Button
-                onClick={async () => {
-                  console.log('=== TESTE DIRETO ===');
-                  try {
-                    const testData = {
-                      codigo_Matricula: 2,
-                      codigo_Turma: 185,
-                      data_Confirmacao: "2025-10-01T00:00:00.000Z",
-                      codigo_Ano_lectivo: 4,
-                      codigo_Utilizador: 1,
-                      codigo_Status: 1,
-                      classificacao: "Teste Direto"
-                    };
-                    console.log('Testando com dados fixos:', testData);
-                    const result = await createConfirmation(testData);
-                    console.log('Teste direto funcionou:', result);
-                    alert('Teste direto funcionou!');
-                  } catch (error) {
-                    console.error('Teste direto falhou:', error);
-                    alert(`Teste direto falhou: ${error}`);
-                  }
-                }}
-                variant="outline"
-                className="px-6 py-3 rounded-xl font-semibold"
-              >
-                Teste Direto
-              </Button>
             </div>
           </div>
         </div>
@@ -815,8 +760,8 @@ export default function AddConfirmationPage() {
                     Status da Confirmação
                   </label>
                   <Select 
-                    value={formData.codigo_Status} 
-                    onValueChange={(value) => handleInputChange('codigo_Status', value)}
+                    value={formData.codigo_Status.toString()} 
+                    onValueChange={(value) => handleInputChange('codigo_Status', parseInt(value))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o status" />

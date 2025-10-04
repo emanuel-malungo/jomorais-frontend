@@ -60,15 +60,72 @@ export default class StudentService {
             // Criar cópia dos dados para não modificar o original
             const cleanData = { ...studentData };
             
-            // Remover campos que não existem no backend
-            // @ts-ignore - removendo campos auxiliares do frontend
-            delete cleanData.provincia;
-            // @ts-ignore
-            delete cleanData.municipio;
-            // @ts-ignore
-            delete cleanData.codigo_Utilizador;
+            console.log('=== DADOS RECEBIDOS NO SERVICE ===');
+            console.log('studentData original:', JSON.stringify(cleanData, null, 2));
             
-            const response = await api.post("/api/student-management/alunos", cleanData);
+            // Estruturar dados conforme esperado pelo backend
+            // Se há dados do encarregado no formulário, estruturar como objeto aninhado
+            // Converter data para string ISO se for objeto Date
+            const formatDate = (date: any) => {
+                if (!date) return undefined;
+                if (date instanceof Date) {
+                    return date.toISOString();
+                }
+                if (typeof date === 'string') {
+                    return new Date(date).toISOString();
+                }
+                return date;
+            };
+
+            const payload: any = {
+                // Dados do aluno - TODOS OS CAMPOS OBRIGATÓRIOS
+                nome: cleanData.nome,
+                pai: cleanData.pai || '',
+                mae: cleanData.mae || '',
+                sexo: cleanData.sexo || 'M',
+                dataNascimento: formatDate(cleanData.dataNascimento),
+                telefone: cleanData.telefone || '',
+                email: cleanData.email || '',
+                morada: cleanData.morada || '',
+                
+                // Campos numéricos obrigatórios
+                codigo_Nacionalidade: Number(cleanData.codigo_Nacionalidade) || 2,
+                codigo_Estado_Civil: 1, // SEMPRE 1 (SOLTEIRO) como padrão
+                codigo_Comuna: Number(cleanData.codigo_Comuna) || 1,
+                codigoTipoDocumento: Number(cleanData.codigoTipoDocumento) || 1,
+                codigo_Status: 1, // SEMPRE 1 (NORMAL) como padrão
+                escolaProveniencia: 1, // SEMPRE 1 como padrão
+                codigo_Utilizador: "1", // Usuário padrão como string para conversão BigInt
+                
+                // Campos de documento obrigatórios
+                n_documento_identificacao: cleanData.n_documento_identificacao || `AUTO${Date.now()}`,
+                dataEmissao: new Date().toISOString(), // DATA ATUAL como padrão
+                provinciaEmissao: 'Luanda', // LUANDA como padrão
+                
+                // Dados do encarregado como objeto aninhado (já vem estruturado do formulário)
+                encarregado: {
+                    nome: (cleanData as any).encarregado?.nome,
+                    telefone: (cleanData as any).encarregado?.telefone,
+                    email: (cleanData as any).encarregado?.email || '',
+                    codigo_Profissao: (() => {
+                        const profissaoId = Number((cleanData as any).encarregado?.codigo_Profissao);
+                        // Se for 153 (que não existe), usar 1 (Professor)
+                        // Se for qualquer outro ID inválido, usar 1 como padrão
+                        if (profissaoId === 153 || !profissaoId || profissaoId < 1) {
+                            return 1; // Professor como padrão
+                        }
+                        return profissaoId;
+                    })(),
+                    local_Trabalho: (cleanData as any).encarregado?.local_Trabalho || 'Não informado',
+                    codigo_Utilizador: "1", // String para conversão BigInt
+                    status: Number((cleanData as any).encarregado?.status) || 1
+                }
+            };
+            
+            console.log('=== PAYLOAD FINAL ===');
+            console.log('Payload completo:', JSON.stringify(payload, null, 2));
+            
+            const response = await api.post("/api/student-management/alunos", payload);
             
             const apiResponse = response.data;
             
@@ -80,9 +137,24 @@ export default class StudentService {
                 throw new Error(apiResponse.message || 'Erro ao criar aluno');
             }
         } catch (error: any) {
-            const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao criar aluno';
+            let errorMessage = 'Erro ao criar aluno';
+            
+            if (error?.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error?.message) {
+                errorMessage = error.message;
+            }
+            
+            // Mensagens específicas para erros comuns
+            if (errorMessage.includes('documento de identificação')) {
+                errorMessage = 'Já existe um aluno com este documento de identificação. Use um documento diferente.';
+            } else if (errorMessage.includes('email')) {
+                errorMessage = 'Já existe um aluno com este email. Use um email diferente.';
+            }
+            
             toast.error(errorMessage);
             console.error("Erro ao criar aluno:", error);
+            console.error("Mensagem de erro:", errorMessage);
             throw error;
         }
     }

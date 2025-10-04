@@ -87,16 +87,17 @@ export default function AddStudentPage() {
       pai: "",
       mae: "",
       codigo_Nacionalidade: undefined, 
+      codigo_Estado_Civil: 1, // ADICIONADO: Solteiro como padrão
       dataNascimento: undefined, 
       email: "",
       telefone: "",
       codigo_Comuna: undefined, 
       codigo_Utilizador: "",
-      sexo: "",
+      sexo: undefined,
       n_documento_identificacao: "",
       saldo: 0,
-      morada: "",
-      codigoTipoDocumento: undefined,
+      morada: "...", // Valor padrão conforme backend
+      codigoTipoDocumento: 1, // Valor padrão
       provincia: "",
       municipio: "",
 
@@ -107,7 +108,7 @@ export default function AddStudentPage() {
         email: "",
         codigo_Profissao: undefined,
         local_Trabalho: "",
-        status: undefined
+        status: 1 // CORRIGIDO: Status ativo como padrão
       }
     }
   });
