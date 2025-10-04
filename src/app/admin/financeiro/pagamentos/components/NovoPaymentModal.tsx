@@ -38,6 +38,7 @@ import {
   useTiposServico, 
   useFormasPagamento, 
   useAlunosSearch,
+  useAlunoCompleto,
   MESES_OPTIONS,
   ANOS_OPTIONS
 } from '@/hooks/usePaymentData';
@@ -75,6 +76,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const [alunoSearch, setAlunoSearch] = useState('');
   const [selectedAluno, setSelectedAluno] = useState<any>(null);
   const [showAlunoResults, setShowAlunoResults] = useState(false);
+  const [alunoCompleto, setAlunoCompleto] = useState<any>(null);
 
   // Estados para modal de fatura
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -88,6 +90,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const { tiposServico, loading: tiposLoading } = useTiposServico();
   const { formasPagamento, loading: formasLoading } = useFormasPagamento();
   const { alunos, loading: alunosLoading, searchAlunos, clearAlunos } = useAlunosSearch();
+  const { fetchAlunoCompleto } = useAlunoCompleto();
 
   // Buscar alunos quando o termo de busca muda
   useEffect(() => {
@@ -127,19 +130,37 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     }));
   };
 
-  const handleSelectAluno = (aluno: any) => {
+  const handleSelectAluno = async (aluno: any) => {
     setSelectedAluno(aluno);
     setFormData(prev => ({ ...prev, codigo_Aluno: aluno.codigo }));
     setAlunoSearch(aluno.nome);
     setShowAlunoResults(false);
+    
+    // Buscar dados completos do aluno
+    try {
+      const alunoCompletoData = await fetchAlunoCompleto(aluno.codigo);
+      setAlunoCompleto(alunoCompletoData);
+    } catch (error) {
+      console.error('Erro ao buscar dados completos do aluno:', error);
+    }
   };
 
   const handleClearAluno = () => {
     setSelectedAluno(null);
+    setAlunoCompleto(null);
     setFormData(prev => ({ ...prev, codigo_Aluno: null }));
     setAlunoSearch('');
     setShowAlunoResults(false);
     clearAlunos();
+  };
+
+  const handleTipoServicoChange = (tipoServicoId: string) => {
+    const tipoServico = tiposServico.find(tipo => tipo.codigo === parseInt(tipoServicoId));
+    setFormData(prev => ({
+      ...prev,
+      codigo_Tipo_Servico: parseInt(tipoServicoId),
+      preco: tipoServico?.preco ? tipoServico.preco.toString() : prev.preco
+    }));
   };
 
   const validateForm = (): string | null => {
@@ -208,9 +229,9 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           dataEmissao: new Date(createdPayment.data || new Date()).toLocaleString('pt-BR'),
           aluno: {
             nome: createdPayment.aluno?.nome || 'Aluno não identificado',
-            curso: 'Curso não especificado', // Pode ser obtido de outra API
-            classe: 'Classe não especificada', // Pode ser obtido de outra API
-            turma: 'Turma não especificada' // Pode ser obtido de outra API
+            curso: alunoCompleto?.dadosAcademicos?.curso || 'Curso não especificado',
+            classe: alunoCompleto?.dadosAcademicos?.classe || 'Classe não especificada',
+            turma: alunoCompleto?.dadosAcademicos?.turma || 'Turma não especificada'
           },
           servicos: [
             {
@@ -500,13 +521,12 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 </Card>
               )}
             </div>
-
             {/* Tipo de Serviço */}
             <div className="space-y-2">
               <Label htmlFor="tipo-servico">Tipo de Serviço *</Label>
               <Select
                 value={formData.codigo_Tipo_Servico?.toString() || ""}
-                onValueChange={(value) => handleInputChange('codigo_Tipo_Servico', parseInt(value))}
+                onValueChange={handleTipoServicoChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o tipo de serviço" />
@@ -517,7 +537,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                   ) : (
                     tiposServico.map((tipo) => (
                       <SelectItem key={tipo.codigo} value={tipo.codigo.toString()}>
-                        {tipo.designacao}
+                        {tipo.designacao} - {tipo.preco?.toLocaleString('pt-AO')} Kz
                       </SelectItem>
                     ))
                   )}
@@ -709,9 +729,9 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                       dataEmissao: new Date(createdPayment.data || new Date()).toLocaleString('pt-BR'),
                       aluno: {
                         nome: createdPayment.aluno?.nome || 'Aluno não identificado',
-                        curso: 'Curso não especificado',
-                        classe: 'Classe não especificada',
-                        turma: 'Turma não especificada'
+                        curso: alunoCompleto?.dadosAcademicos?.curso || 'Curso não especificado',
+                        classe: alunoCompleto?.dadosAcademicos?.classe || 'Classe não especificada',
+                        turma: alunoCompleto?.dadosAcademicos?.turma || 'Turma não especificada'
                       },
                       servicos: [
                         {

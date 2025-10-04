@@ -235,15 +235,26 @@ export const useGenerateInvoicePDF = () => {
       if (response.data.success) {
         const payment = response.data.data;
         
+        // Buscar dados completos do aluno
+        let alunoCompleto = null;
+        try {
+          const alunoResponse = await api.get(`/api/payment-management/aluno/${payment.codigo_Aluno}/completo`);
+          if (alunoResponse.data.success) {
+            alunoCompleto = alunoResponse.data.data;
+          }
+        } catch (error) {
+          console.error('Erro ao buscar dados completos do aluno:', error);
+        }
+        
         // Preparar dados para a fatura térmica
         const dadosFatura = {
           numeroFatura: payment.fatura || `FAT_${Date.now()}`,
           dataEmissao: new Date(payment.data || new Date()).toLocaleString('pt-BR'),
           aluno: {
             nome: payment.aluno?.nome || 'Aluno não identificado',
-            curso: 'Curso não especificado', // Pode ser obtido de outra API
-            classe: 'Classe não especificada', // Pode ser obtido de outra API
-            turma: 'Turma não especificada' // Pode ser obtido de outra API
+            curso: alunoCompleto?.dadosAcademicos?.curso || 'Curso não especificado',
+            classe: alunoCompleto?.dadosAcademicos?.classe || 'Classe não especificada',
+            turma: alunoCompleto?.dadosAcademicos?.turma || 'Turma não especificada'
           },
           servicos: [
             {

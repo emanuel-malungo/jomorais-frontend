@@ -4,6 +4,7 @@ import api from '@/utils/api.utils';
 export interface ITipoServico {
   codigo: number;
   designacao: string;
+  preco: number;
 }
 
 export interface IFormaPagamento {
@@ -17,6 +18,11 @@ export interface IAluno {
   n_documento_identificacao: string;
   email: string;
   telefone: string;
+  dadosAcademicos?: {
+    curso: string;
+    classe: string;
+    turma: string;
+  };
 }
 
 // Hook para tipos de serviço
@@ -41,11 +47,11 @@ export const useTiposServico = () => {
       setError(errorMessage);
       // Dados mockados como fallback
       setTiposServico([
-        { codigo: 1, designacao: 'Propina' },
-        { codigo: 2, designacao: 'Confirmação de Matrícula' },
-        { codigo: 3, designacao: 'Cartão de Estudante' },
-        { codigo: 4, designacao: 'Certificado' },
-        { codigo: 5, designacao: 'Outros Serviços' }
+        { codigo: 1, designacao: 'Propina', preco: 15000 },
+        { codigo: 2, designacao: 'Confirmação de Matrícula', preco: 5000 },
+        { codigo: 3, designacao: 'Cartão de Estudante', preco: 2000 },
+        { codigo: 4, designacao: 'Certificado', preco: 3000 },
+        { codigo: 5, designacao: 'Outros Serviços', preco: 1000 }
       ]);
     } finally {
       setLoading(false);
@@ -164,3 +170,44 @@ export const ANOS_OPTIONS = Array.from({ length: 10 }, (_, i) => {
   const year = new Date().getFullYear() + i - 5;
   return { value: year, label: year.toString() };
 });
+
+// Hook para buscar dados completos do aluno
+export const useAlunoCompleto = () => {
+  const [aluno, setAluno] = useState<IAluno | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAlunoCompleto = async (alunoId: number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get(`/api/payment-management/aluno/${alunoId}/completo`);
+      if (response.data.success) {
+        setAluno(response.data.data);
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Erro ao buscar dados do aluno');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar dados do aluno';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearAluno = () => {
+    setAluno(null);
+    setError(null);
+  };
+
+  return {
+    aluno,
+    loading,
+    error,
+    fetchAlunoCompleto,
+    clearAluno
+  };
+};
