@@ -46,16 +46,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, onLogout }) => {
       {/* Right Section - Actions and User */}
       <div className="flex items-center space-x-3">
         {/* Quick Actions */}
-        <div className="hidden md:flex items-center space-x-2">
-          {/* settings */}
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="h-10 w-10 p-0 text-gray-600 hover:text-[#182F59] hover:bg-[#182F59]/5 rounded-xl transition-all duration-200"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
+          
     
         {/* Divider */}
         <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
