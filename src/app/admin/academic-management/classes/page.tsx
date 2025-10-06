@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,20 @@ export default function ClassesPage() {
     closeDeleteModal,
     refetch,
   } = useClassManager();
+
+  // Paginação local para garantir que sempre funcione
+  const localPagination = useMemo(() => {
+    const totalItems = classes?.length || 0;
+    const totalPages = Math.ceil(totalItems / limit);
+    return {
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage: limit,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1
+    };
+  }, [classes?.length, currentPage, limit]);
 
   const { deleteClass, isLoading: deleting, error: deleteError } = useDeleteClass();
 
@@ -174,7 +188,7 @@ export default function ClassesPage() {
               <span>Lista de Classes</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {pagination?.totalItems || 0} classes encontradas
+              {localPagination.totalItems} classes encontradas
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -287,10 +301,10 @@ export default function ClassesPage() {
           </div>
 
           {/* Paginação */}
-          {pagination && pagination.totalPages > 1 && (
+          {localPagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, pagination.totalItems)} de {pagination.totalItems} classes
+                Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, localPagination.totalItems)} de {localPagination.totalItems} classes
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -306,7 +320,7 @@ export default function ClassesPage() {
                   {(() => {
                     const maxPagesToShow = 5;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                    const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
+                    const endPage = Math.min(localPagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
                     
                     const pages = [];
@@ -344,18 +358,18 @@ export default function ClassesPage() {
                     }
                     
                     // Última página
-                    if (endPage < pagination.totalPages) {
-                      if (endPage < pagination.totalPages - 1) {
+                    if (endPage < localPagination.totalPages) {
+                      if (endPage < localPagination.totalPages - 1) {
                         pages.push(<span key="ellipsis2" className="px-2">...</span>);
                       }
                       pages.push(
                         <Button
-                          key={pagination.totalPages}
+                          key={localPagination.totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => handlePageChange(pagination.totalPages)}
+                          onClick={() => handlePageChange(localPagination.totalPages)}
                         >
-                          {pagination.totalPages}
+                          {localPagination.totalPages}
                         </Button>
                       );
                     }
@@ -366,8 +380,8 @@ export default function ClassesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(Math.min(currentPage + 1, pagination.totalPages))}
-                  disabled={currentPage === pagination.totalPages}
+                  onClick={() => handlePageChange(Math.min(currentPage + 1, localPagination.totalPages))}
+                  disabled={currentPage === localPagination.totalPages}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />

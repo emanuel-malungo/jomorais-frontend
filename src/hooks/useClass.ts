@@ -212,7 +212,7 @@ export const useClassManager = () => {
 
   // Estatísticas básicas
   const stats = {
-    total: pagination?.total || 0,
+    total: classes?.length || 0,
     active: classes?.filter((c: IClass) => c.status === 1).length || 0,
     inactive: classes?.filter((c: IClass) => c.status === 0).length || 0,
   }
