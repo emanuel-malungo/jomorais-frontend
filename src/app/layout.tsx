@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jomorais | Sistema de gestao escolar",
+  title: "JOMORAIS | Sistema de gestao escolar",
   description: "Sistema de gestao escolar",
   icons: {
     icon: icon.src,

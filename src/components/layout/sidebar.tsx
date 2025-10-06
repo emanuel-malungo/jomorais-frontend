@@ -177,7 +177,7 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
               <div className="h-12 w-12 border-1 rounded-2xl flex items-center justify-center">
                 <Image
                   src={icon}
-                  alt="JoMorais Logo"
+                  alt="JOMORAIS Logo"
                   width={28}
                   height={28}
                   className="object-contain"
@@ -185,7 +185,7 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
               </div>
             </div>
             <div>
-              <span className="text-2xl font-bold text-gray-800">JoMorais</span>
+              <span className="text-2xl font-bold text-gray-800">JOMORAIS</span>
               <div className="flex items-center space-x-2">
                 <p className="text-xs text-[#FFC506] font-semibold">Sistema Escolar</p>
               </div>
@@ -339,7 +339,7 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
               <span className="text-sm font-bold text-[#FFC506]">v2.1.0 Pro</span>
             </div>
             <div className="text-xs text-gray-500">
-              © 2025 JoMorais - Gestão Escolar
+              © 2025 JOMORAIS - Gestão Escolar
             </div>
           </div>
 

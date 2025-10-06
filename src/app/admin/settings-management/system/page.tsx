@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 export default function SystemsettingsPage() {
-  const [systemName, setSystemName] = useState("Sistema Jomorais");
+  const [systemName, setSystemName] = useState("Sistema JOMORAIS");
   const [version, setVersion] = useState("2.1.0");
   const [maintenance, setMaintenance] = useState(false);
 

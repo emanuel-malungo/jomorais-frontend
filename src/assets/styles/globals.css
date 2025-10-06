@@ -49,10 +49,10 @@
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  /* Custom primary colors - Jomorais green */
+  /* Custom primary colors - JOMORAIS green */
   --primary: oklch(0.423 0.098 152.044); /* #3B6C4D */
   --primary-foreground: oklch(1 0 0);
-  /* Custom accent colors - Jomorais yellow */
+  /* Custom accent colors - JOMORAIS yellow */
   --accent-yellow: oklch(0.876 0.148 92.189); /* #FDD401 */
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);

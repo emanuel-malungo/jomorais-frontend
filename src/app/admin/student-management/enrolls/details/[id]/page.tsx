@@ -82,7 +82,7 @@ const mockEnrollmentDetails = {
     codigo: 1,
     nome: "Admin Sistema",
     user: "admin",
-    email: "admin@jomorais.ao"
+    email: "admin@JOMORAIS.ao"
   },
   tb_confirmacoes: [
     {

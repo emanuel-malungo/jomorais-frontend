@@ -44,7 +44,7 @@ const mockHorarioDetails = {
   },
   professor: {
     nome: "Prof. João Silva Santos",
-    email: "joao.silva@jomorais.ao",
+    email: "joao.silva@JOMORAIS.ao",
     telefone: "+244 923 456 789",
     especialidade: "Matemática",
     experiencia: 8

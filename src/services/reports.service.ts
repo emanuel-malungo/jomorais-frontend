@@ -594,14 +594,14 @@ class ReportsService {
     
     // Título do instituto centralizado (sem logo)
     doc.setFontSize(18);
-    doc.setTextColor(249, 205, 29); // Amarelo Jomorais
+    doc.setTextColor(249, 205, 29); // Amarelo JOMORAIS
     doc.text('INSTITUTO MÉDIO POLITÉCNICO JOMORAIS', pageWidth / 2, yPosition, { align: 'center' });
     
     yPosition += 12;
     
     // Título do relatório
     doc.setFontSize(14);
-    doc.setTextColor(59, 108, 77); // Verde Jomorais
+    doc.setTextColor(59, 108, 77); // Verde JOMORAIS
     const reportTitle = this.getReportTitle(reportType);
     doc.text(reportTitle, pageWidth / 2, yPosition, { align: 'center' });
     
@@ -653,14 +653,14 @@ class ReportsService {
     
     // Título da seção
     doc.setFontSize(16);
-    doc.setTextColor(24, 47, 89); // Azul Jomorais
+    doc.setTextColor(24, 47, 89); // Azul JOMORAIS
     doc.text('LISTA COMPLETA DE ALUNOS', 20, yPosition);
     yPosition += 15;
 
     // Cabeçalho da tabela
     doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.setFillColor(249, 205, 29); // Amarelo Jomorais
+    doc.setFillColor(249, 205, 29); // Amarelo JOMORAIS
     doc.rect(15, yPosition - 5, 180, 10, 'F');
     
     doc.text('Nº', 20, yPosition);
@@ -929,7 +929,7 @@ class ReportsService {
       const percent = data.totalStudents > 0 ? (course.count / data.totalStudents) * 100 : 0;
       
       // Barra colorida
-      doc.setFillColor(59, 108, 77); // Verde Jomorais
+      doc.setFillColor(59, 108, 77); // Verde JOMORAIS
       doc.rect(20, yPosition, (percent * 1.5), 6, 'F');
       
       doc.setTextColor(0, 0, 0);
@@ -988,7 +988,7 @@ class ReportsService {
     ];
 
     // Cabeçalho da tabela
-    doc.setFillColor(249, 205, 29); // Amarelo Jomorais
+    doc.setFillColor(249, 205, 29); // Amarelo JOMORAIS
     doc.rect(20, yPosition, 80, 8, 'F');
     doc.rect(100, yPosition, 80, 8, 'F');
     
@@ -1034,7 +1034,7 @@ class ReportsService {
     ]);
 
     // Cabeçalho da tabela de serviços
-    doc.setFillColor(249, 205, 29); // Amarelo Jomorais
+    doc.setFillColor(249, 205, 29); // Amarelo JOMORAIS
     doc.rect(20, yPosition, 60, 8, 'F');
     doc.rect(80, yPosition, 60, 8, 'F');
     doc.rect(140, yPosition, 40, 8, 'F');

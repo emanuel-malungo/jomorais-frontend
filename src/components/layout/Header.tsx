@@ -13,7 +13,7 @@ import {
 // Mock user data - replace with actual user data
 const currentUser = {
   name: "João Morais",
-  email: "joao.morais@jomorais.edu.ao",
+  email: "joao.morais@JOMORAIS.edu.ao",
   avatar: "/api/placeholder/40/40",
   role: "Administrador",
   initials: "JM"

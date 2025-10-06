@@ -227,7 +227,7 @@ export default function Dashboard() {
       <WelcomeHeader 
         iconMain={<Users className="w-8 h-8 text-white" />}
         title={`Bem-vindo, ${user?.nome || 'Usuário'}!`}
-        description={`Painel Administrativo - ${user?.tipoDesignacao || 'Sistema Jomorais'}`}
+        description={`Painel Administrativo - ${user?.tipoDesignacao || 'Sistema JOMORAIS'}`}
       />
 
       {/* KPI Cards principais */}

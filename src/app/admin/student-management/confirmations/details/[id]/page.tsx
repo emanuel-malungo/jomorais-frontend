@@ -102,7 +102,7 @@ const mockConfirmationDetails = {
     codigo: 1,
     nome: "Admin Sistema",
     user: "admin",
-    email: "admin@jomorais.ao"
+    email: "admin@JOMORAIS.ao"
   }
 };
 

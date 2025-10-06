@@ -34,12 +34,12 @@ import {
 
 // Dados mockados para selects
 const mockProfessores = [
-  { id: "1", nome: "Prof. João Silva Santos", especialidade: "Matemática", email: "joao.silva@jomorais.com" },
-  { id: "2", nome: "Prof. Maria Santos Costa", especialidade: "Física", email: "maria.santos@jomorais.com" },
-  { id: "3", nome: "Prof. Carlos Mendes Lima", especialidade: "Química", email: "carlos.mendes@jomorais.com" },
-  { id: "4", nome: "Prof. Ana Paula Francisco", especialidade: "Biologia", email: "ana.francisco@jomorais.com" },
-  { id: "5", nome: "Prof. Pedro Silva Neto", especialidade: "Língua Portuguesa", email: "pedro.silva@jomorais.com" },
-  { id: "6", nome: "Prof. Carla Lima Santos", especialidade: "História", email: "carla.lima@jomorais.com" },
+  { id: "1", nome: "Prof. João Silva Santos", especialidade: "Matemática", email: "joao.silva@JOMORAIS.com" },
+  { id: "2", nome: "Prof. Maria Santos Costa", especialidade: "Física", email: "maria.santos@JOMORAIS.com" },
+  { id: "3", nome: "Prof. Carlos Mendes Lima", especialidade: "Química", email: "carlos.mendes@JOMORAIS.com" },
+  { id: "4", nome: "Prof. Ana Paula Francisco", especialidade: "Biologia", email: "ana.francisco@JOMORAIS.com" },
+  { id: "5", nome: "Prof. Pedro Silva Neto", especialidade: "Língua Portuguesa", email: "pedro.silva@JOMORAIS.com" },
+  { id: "6", nome: "Prof. Carla Lima Santos", especialidade: "História", email: "carla.lima@JOMORAIS.com" },
 ];
 
 const mockTurmas = [

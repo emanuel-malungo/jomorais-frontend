@@ -247,7 +247,7 @@ export class InvoiceService {
         nome: 'INSTITUTO MÉDIO POLITÉCNICO JO MORAIS',
         endereco: 'Luanda, Angola',
         telefone: '+244 XXX XXX XXX',
-        email: 'info@jomorais.ao'
+        email: 'info@JOMORAIS.ao'
       }
     };
   }

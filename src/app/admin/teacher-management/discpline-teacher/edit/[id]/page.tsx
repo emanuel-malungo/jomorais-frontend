@@ -69,11 +69,11 @@ export default function EditDisciplineTeacher() {
 
   // Dados mockados para selects
   const professoresData = [
-    { id: "1", nome: "Prof. Maria Silva Santos", especialidade: "Matemática", email: "maria.santos@jomorais.edu.ao" },
-    { id: "2", nome: "Prof. João Manuel Costa", especialidade: "Português", email: "joao.costa@jomorais.edu.ao" },
-    { id: "3", nome: "Prof. Ana Paula Francisco", especialidade: "Inglês", email: "ana.francisco@jomorais.edu.ao" },
-    { id: "4", nome: "Prof. Carlos Alberto Neto", especialidade: "Física", email: "carlos.neto@jomorais.edu.ao" },
-    { id: "5", nome: "Prof. Beatriz Santos Silva", especialidade: "Química", email: "beatriz.silva@jomorais.edu.ao" }
+    { id: "1", nome: "Prof. Maria Silva Santos", especialidade: "Matemática", email: "maria.santos@JOMORAIS.edu.ao" },
+    { id: "2", nome: "Prof. João Manuel Costa", especialidade: "Português", email: "joao.costa@JOMORAIS.edu.ao" },
+    { id: "3", nome: "Prof. Ana Paula Francisco", especialidade: "Inglês", email: "ana.francisco@JOMORAIS.edu.ao" },
+    { id: "4", nome: "Prof. Carlos Alberto Neto", especialidade: "Física", email: "carlos.neto@JOMORAIS.edu.ao" },
+    { id: "5", nome: "Prof. Beatriz Santos Silva", especialidade: "Química", email: "beatriz.silva@JOMORAIS.edu.ao" }
   ];
 
   const disciplinasData = [

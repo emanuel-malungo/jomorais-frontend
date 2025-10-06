@@ -57,7 +57,7 @@ const WelcomeHeader: React.FC<WelcomeHeaderProps> = ({
               <div>
                 <h1 className="text-4xl font-bold text-gray-900">{title}</h1>
                 <p className="text-[#F9CD1D] font-semibold text-lg">
-                  Sistema de Gestão Escolar JoMorais
+                  Sistema de Gestão Escolar JOMORAIS
                 </p>
               </div>
             </div>

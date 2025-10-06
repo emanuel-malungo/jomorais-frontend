@@ -72,7 +72,7 @@ export default function LoginPage() {
 			<div className="mb-6 bg-gradient-to-br from-[#FFD700]/20 via-[#FFC107]/15 to-[#FFD700]/10 rounded-2xl p-4 w-24 h-24 mx-auto border-2 border-[#FFD700]/30 items-center flex justify-center shadow-lg ring-1 ring-[#FFD700]/20">
 			  <Image
 				src={icon}
-				alt="Jomorais Logo"
+				alt="JOMORAIS Logo"
 				width={60}
 				height={55}
 				className="mx-auto"

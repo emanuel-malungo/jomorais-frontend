@@ -68,10 +68,10 @@ export default function EditDirectorTurma() {
 
   // Dados mockados para selects
   const professoresData = [
-    { id: "1", nome: "Prof. Maria Silva Santos", email: "maria.santos@jomorais.edu.ao", formacao: "Licenciatura em Informática", especialidade: "Gestão de Sistemas" },
-    { id: "2", nome: "Prof. João Manuel Costa", email: "joao.costa@jomorais.edu.ao", formacao: "Licenciatura em Contabilidade", especialidade: "Gestão Financeira" },
-    { id: "3", nome: "Prof. Ana Paula Francisco", email: "ana.francisco@jomorais.edu.ao", formacao: "Licenciatura em Administração", especialidade: "Gestão Empresarial" },
-    { id: "4", nome: "Prof. Carlos Alberto Neto", email: "carlos.neto@jomorais.edu.ao", formacao: "Licenciatura em Economia", especialidade: "Análise Econômica" }
+    { id: "1", nome: "Prof. Maria Silva Santos", email: "maria.santos@JOMORAIS.edu.ao", formacao: "Licenciatura em Informática", especialidade: "Gestão de Sistemas" },
+    { id: "2", nome: "Prof. João Manuel Costa", email: "joao.costa@JOMORAIS.edu.ao", formacao: "Licenciatura em Contabilidade", especialidade: "Gestão Financeira" },
+    { id: "3", nome: "Prof. Ana Paula Francisco", email: "ana.francisco@JOMORAIS.edu.ao", formacao: "Licenciatura em Administração", especialidade: "Gestão Empresarial" },
+    { id: "4", nome: "Prof. Carlos Alberto Neto", email: "carlos.neto@JOMORAIS.edu.ao", formacao: "Licenciatura em Economia", especialidade: "Análise Econômica" }
   ];
 
   const classesData = ["10ª Classe", "11ª Classe", "12ª Classe", "13ª Classe"];
@@ -85,7 +85,7 @@ export default function EditDirectorTurma() {
     {
       id: 1,
       professor: "Prof. Maria Silva Santos",
-      email: "maria.santos@jomorais.edu.ao",
+      email: "maria.santos@JOMORAIS.edu.ao",
       telefone: "+244 923 456 789",
       classe: "10ª Classe",
       turma: "IG-10A-2024",
@@ -101,7 +101,7 @@ export default function EditDirectorTurma() {
     {
       id: 2,
       professor: "Prof. João Manuel Costa",
-      email: "joao.costa@jomorais.edu.ao",
+      email: "joao.costa@JOMORAIS.edu.ao",
       telefone: "+244 924 567 890",
       classe: "11ª Classe",
       turma: "CG-11B-2024",
@@ -298,7 +298,7 @@ export default function EditDirectorTurma() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="email@jomorais.edu.ao"
+                  placeholder="email@JOMORAIS.edu.ao"
                   readOnly
                   className="bg-gray-50"
                 />

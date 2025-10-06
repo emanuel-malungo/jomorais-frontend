@@ -63,7 +63,7 @@ const mockTeachers = [
   {
     id: 1,
     nome: "João Silva Santos",
-    email: "joao.silva@jomorais.com",
+    email: "joao.silva@JOMORAIS.com",
     telefone: "923456789",
     especialidade: "Matemática",
     grauAcademico: "Licenciatura",
@@ -77,7 +77,7 @@ const mockTeachers = [
   {
     id: 2,
     nome: "Maria Santos Costa",
-    email: "maria.santos@jomorais.com",
+    email: "maria.santos@JOMORAIS.com",
     telefone: "934567890",
     especialidade: "Português",
     grauAcademico: "Mestrado",
@@ -91,7 +91,7 @@ const mockTeachers = [
   {
     id: 3,
     nome: "Carlos Mendes Lima",
-    email: "carlos.mendes@jomorais.com",
+    email: "carlos.mendes@JOMORAIS.com",
     telefone: "945678901",
     especialidade: "Informática",
     grauAcademico: "Licenciatura",
@@ -105,7 +105,7 @@ const mockTeachers = [
   {
     id: 4,
     nome: "Ana Costa Ferreira",
-    email: "ana.costa@jomorais.com",
+    email: "ana.costa@JOMORAIS.com",
     telefone: "956789012",
     especialidade: "História",
     grauAcademico: "Licenciatura",
@@ -119,7 +119,7 @@ const mockTeachers = [
   {
     id: 5,
     nome: "Pedro Lima Nunes",
-    email: "pedro.lima@jomorais.com",
+    email: "pedro.lima@JOMORAIS.com",
     telefone: "967890123",
     especialidade: "Física",
     grauAcademico: "Mestrado",
@@ -133,7 +133,7 @@ const mockTeachers = [
   {
     id: 6,
     nome: "Isabel Ferreira Silva",
-    email: "isabel.ferreira@jomorais.com",
+    email: "isabel.ferreira@JOMORAIS.com",
     telefone: "978901234",
     especialidade: "Química",
     grauAcademico: "Licenciatura",
@@ -147,7 +147,7 @@ const mockTeachers = [
   {
     id: 7,
     nome: "Fernando Costa Pereira",
-    email: "fernando.costa@jomorais.com",
+    email: "fernando.costa@JOMORAIS.com",
     telefone: "989012345",
     especialidade: "Biologia",
     grauAcademico: "Licenciatura",

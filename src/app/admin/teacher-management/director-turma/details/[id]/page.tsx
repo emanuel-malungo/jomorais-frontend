@@ -96,7 +96,7 @@ export default function DirectorTurmaDetails() {
     {
       id: 1,
       professor: "Prof. Maria Silva Santos",
-      email: "maria.santos@jomorais.edu.ao",
+      email: "maria.santos@JOMORAIS.edu.ao",
       telefone: "+244 923 456 789",
       classe: "10ª Classe",
       turma: "IG-10A-2024",
@@ -114,7 +114,7 @@ export default function DirectorTurmaDetails() {
     {
       id: 2,
       professor: "Prof. João Manuel Costa",
-      email: "joao.costa@jomorais.edu.ao",
+      email: "joao.costa@JOMORAIS.edu.ao",
       telefone: "+244 924 567 890",
       classe: "11ª Classe",
       turma: "CG-11B-2024",
