@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -110,11 +110,45 @@ const menuItems: MenuItem[] = [
 interface SidebarProps {
   isCollapsed?: boolean
   onToggleCollapse?: () => void
+  onLogout?: () => void
 }
 
-export default function Sidebar({ isCollapsed = false }: SidebarProps) {
+export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps) {
   const pathname = usePathname()
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+
+  // Função isActive precisa ser definida antes do useEffect
+  const isActive = (href: string) => {
+    console.log('Checking isActive for:', href, 'current pathname:', pathname);
+    
+    if (pathname === href) return true;
+    
+    // Para evitar conflitos, verificamos se o pathname começa com href + "/"
+    // mas não é apenas uma substring de uma rota maior
+    if (href === "/admin") {
+      return pathname === "/admin";
+    }
+    
+    return pathname.startsWith(href + "/");
+  }
+
+  // Auto-expandir menu que contém a página ativa
+  useEffect(() => {
+    const newExpanded = new Set<string>()
+    
+    menuItems.forEach((item) => {
+      if (item.children) {
+        const hasActiveChild = item.children.some(child => 
+          child.href && isActive(child.href)
+        )
+        if (hasActiveChild) {
+          newExpanded.add(item.title)
+        }
+      }
+    })
+    
+    setExpandedItems(newExpanded)
+  }, [pathname])
 
   const toggleExpanded = (title: string) => {
     const newExpanded = new Set(expandedItems)
@@ -124,10 +158,6 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
       newExpanded.add(title)
     }
     setExpandedItems(newExpanded)
-  }
-
-  const isActive = (href: string) => {
-    return pathname === href || pathname.startsWith(href + "/")
   }
 
   const hasActiveChild = (children?: MenuItem[]) => {
@@ -211,6 +241,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
               // Item com submenu
               const isExpanded = expandedItems.has(item.title)
               const hasActive = hasActiveChild(item.children)
+              const shouldShowParentActive = false // Pai nunca fica ativo quando há filhos ativos
 
               return (
                 <Collapsible key={item.title} open={isExpanded} onOpenChange={() => toggleExpanded(item.title)}>
@@ -223,7 +254,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                           className={cn(
                             "w-full justify-start h-11 rounded-lg transition-all duration-200",
                             isCollapsed ? "justify-center px-2" : "px-3",
-                            hasActive 
+                            shouldShowParentActive 
                               ? "bg-gray-100 text-gray-900 border border-[#FFC506]" 
                               : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                           )}
@@ -231,7 +262,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                           <item.icon className={cn(
                             "h-5 w-5 transition-colors duration-200",
                             !isCollapsed && "mr-3",
-                            hasActive 
+                            shouldShowParentActive 
                               ? "text-[#FFC506]" 
                               : "text-gray-500"
                           )} />
@@ -316,6 +347,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
           <Button 
             variant="outline" 
             className="w-full border-gray-300 bg-white text-gray-600 hover:bg-red-200 hover:text-white hover:border-red-200 transition-all duration-200"
+            onClick={onLogout}
           >
             <LogOut className="h-4 w-4 mr-2" />
             Terminar Sessão
@@ -332,6 +364,7 @@ export default function Sidebar({ isCollapsed = false }: SidebarProps) {
                 variant="outline" 
                 size="sm"
                 className="w-full h-10 border-gray-300 bg-white text-gray-600 hover:bg-red-200 hover:text-white hover:border-red-200 p-0"
+                onClick={onLogout}
               >
                 <LogOut className="h-4 w-4" />
               </Button>

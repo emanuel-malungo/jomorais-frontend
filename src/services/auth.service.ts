@@ -42,7 +42,6 @@ export default class authService {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             
-            toast.success(response.data.message || 'Logout realizado com sucesso!');
             return response.data;
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao fazer logout';

@@ -87,9 +87,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
         setUser(userData);
         
-        
-        toast.success(response.message || "Login realizado com sucesso!");
-        
         // Redirecionar imediatamente
         router.push("/admin");
       } else {

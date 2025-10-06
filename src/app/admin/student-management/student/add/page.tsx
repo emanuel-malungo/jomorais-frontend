@@ -293,22 +293,23 @@ export default function AddStudentPage() {
       </Dialog>
 
       {/* Formulário Principal */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => router.back()}
+              className="w-fit"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <UserPlus className="h-8 w-8 text-primary" />
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
+                <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 Adicionar Novo Aluno
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Preencha os dados do aluno e do encarregado
               </p>
             </div>
@@ -319,9 +320,11 @@ export default function AddStudentPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowBIModal(true)}
+              className="w-full sm:w-auto"
             >
               <Search className="h-4 w-4 mr-2" />
-              Consultar BI Novamente
+              <span className="hidden sm:inline">Consultar BI Novamente</span>
+              <span className="sm:hidden">Consultar BI</span>
             </Button>
           )}
         </div>
@@ -329,17 +332,20 @@ export default function AddStudentPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="personal" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Dados Pessoais
+              <TabsTrigger value="personal" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Dados Pessoais</span>
+                <span className="sm:hidden">Pessoais</span>
               </TabsTrigger>
-              <TabsTrigger value="document" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Documentação
+              <TabsTrigger value="document" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Documentação</span>
+                <span className="sm:hidden">Docs</span>
               </TabsTrigger>
-              <TabsTrigger value="guardian" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Encarregado
+              <TabsTrigger value="guardian" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Encarregado</span>
+                <span className="sm:hidden">Resp.</span>
               </TabsTrigger>
             </TabsList>
 

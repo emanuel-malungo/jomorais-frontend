@@ -19,7 +19,12 @@ const currentUser = {
   initials: "JM"
 }
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleMobileSidebar?: () => void;
+  onLogout?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, onLogout }) => {
   return (
     <header className="bg-gradient-to-r from-white via-gray-50/80 to-white backdrop-blur-md border-b border-gray-200/60 h-20 px-6 flex items-center justify-between shadow-sm">
       {/* Left Section - Search and Menu */}
@@ -28,6 +33,10 @@ const Header: React.FC = () => {
         <Button 
           variant="ghost" 
           size="sm"
+          onClick={() => {
+            console.log('Mobile menu button clicked');
+            onToggleMobileSidebar?.();
+          }}
           className="h-10 w-10 p-0 text-gray-600 hover:text-[#182F59] hover:bg-[#182F59]/5 rounded-xl lg:hidden"
         >
           <Menu className="h-5 w-5" />
@@ -65,7 +74,7 @@ const Header: React.FC = () => {
             </div>
           </div>
           
-          <div className="text-left hidden sm:block">
+          <div className="text-left hidden md:block">
             <p className="text-sm font-semibold text-gray-900 leading-tight">
               {currentUser.name}
             </p>
@@ -77,6 +86,7 @@ const Header: React.FC = () => {
             variant="ghost" 
             size="sm"
             className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 ml-2"
+            onClick={onLogout}
           >
             <LogOut className="h-4 w-4" />
           </Button>

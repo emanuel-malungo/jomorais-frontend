@@ -160,28 +160,28 @@ const PagamentosPage = () => {
             </p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <Button
               onClick={() => setShowStudentsModal(true)}
               variant="outline"
-              className="px-6 py-3 rounded-xl font-semibold border-2 border-blue-500 text-blue-500 hover:bg-blue-50"
+              className="px-4 sm:px-6 py-3 rounded-xl font-semibold border-2 border-blue-500 text-blue-500 hover:bg-blue-50 text-sm sm:text-base"
             >
-              <Users className="w-5 h-5 mr-2" />
-              Ver Estado dos Alunos
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              <span className="hidden sm:inline">Ver Estado dos </span>Alunos
             </Button>
 
             <Button
               onClick={() => setShowNewPaymentModal(true)}
-              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white px-6 py-3 rounded-xl font-semibold"
+              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white px-4 sm:px-6 py-3 rounded-xl font-semibold text-sm sm:text-base"
             >
-              <Plus className="w-5 h-5 mr-2" />
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               Novo Pagamento
             </Button>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Pagamentos</CardTitle>
@@ -233,21 +233,21 @@ const PagamentosPage = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle>Pagamentos Processados</CardTitle>
               
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
                 {/* Search */}
-                <div className="relative">
+                <div className="relative flex-1 lg:flex-none">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     placeholder="Buscar por aluno..."
                     value={paymentsSearchTerm}
                     onChange={(e) => setPaymentsSearchTerm(e.target.value)}
-                    className="pl-10 w-full sm:w-64"
+                    className="pl-10 w-full lg:w-64"
                   />
                 </div>
                 
                 {/* Filter by Service Type */}
                 <Select value={selectedTipoServico} onValueChange={setSelectedTipoServico}>
-                  <SelectTrigger className="w-full sm:w-48">
+                  <SelectTrigger className="w-full lg:w-48">
                     <SelectValue placeholder="Tipo de Serviço" />
                   </SelectTrigger>
                   <SelectContent>
@@ -282,51 +282,53 @@ const PagamentosPage = () => {
               <>
                 {/* Payments Table */}
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[800px]">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium text-gray-900">Aluno</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-900">Serviço</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-900">Mês/Ano</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-900">Valor</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-900">Data</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-900">Fatura</th>
-                        <th className="text-center py-3 px-4 font-medium text-gray-900">Ações</th>
+                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm">Aluno</th>
+                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm hidden sm:table-cell">Serviço</th>
+                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm hidden md:table-cell">Mês/Ano</th>
+                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm">Valor</th>
+                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm hidden lg:table-cell">Data</th>
+                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm hidden xl:table-cell">Fatura</th>
+                        <th className="text-center py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {payments.map((payment: any) => (
                         <tr key={payment.codigo} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-2 sm:px-4">
                             <div>
-                              <p className="font-medium text-gray-900">{payment.aluno?.nome}</p>
-                              <p className="text-sm text-gray-500">{payment.aluno?.n_documento_identificacao}</p>
+                              <p className="font-medium text-gray-900 text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{payment.aluno?.nome}</p>
+                              <p className="text-xs sm:text-sm text-gray-500 sm:hidden">{payment.tipoServico?.designacao}</p>
+                              <p className="text-xs text-gray-500">{payment.aluno?.n_documento_identificacao}</p>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
-                            <p className="text-gray-900">{payment.tipoServico?.designacao}</p>
+                          <td className="py-3 px-2 sm:px-4 hidden sm:table-cell">
+                            <p className="text-gray-900 text-sm">{payment.tipoServico?.designacao}</p>
                           </td>
-                          <td className="py-3 px-4">
-                            <p className="text-gray-900">{payment.mes}/{payment.ano}</p>
+                          <td className="py-3 px-2 sm:px-4 hidden md:table-cell">
+                            <p className="text-gray-900 text-sm">{payment.mes}/{payment.ano}</p>
                           </td>
-                          <td className="py-3 px-4">
-                            <p className="font-medium text-green-600">{formatCurrency(payment.preco)}</p>
+                          <td className="py-3 px-2 sm:px-4">
+                            <p className="font-medium text-green-600 text-sm sm:text-base">{formatCurrency(payment.preco)}</p>
+                            <p className="text-xs text-gray-500 md:hidden">{payment.mes}/{payment.ano}</p>
                           </td>
-                          <td className="py-3 px-4">
-                            <p className="text-gray-900">{formatDate(payment.data)}</p>
+                          <td className="py-3 px-2 sm:px-4 hidden lg:table-cell">
+                            <p className="text-gray-900 text-sm">{formatDate(payment.data)}</p>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-2 sm:px-4 hidden xl:table-cell">
                             <p className="text-sm text-gray-600">{payment.fatura}</p>
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3 px-2 sm:px-4 text-center">
                             <Button
                               onClick={() => handleDownloadInvoice(payment.codigo)}
                               variant="outline"
                               size="sm"
-                              className="text-blue-600 hover:text-blue-700"
+                              className="text-blue-600 hover:text-blue-700 px-2 sm:px-3"
                             >
-                              <Download className="w-4 h-4 mr-1" />
-                              Fatura
+                              <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Fatura</span>
                             </Button>
                           </td>
                         </tr>
@@ -337,24 +339,26 @@ const PagamentosPage = () => {
                 
                 {/* Pagination */}
                 {paymentsPagination.totalPages > 1 && (
-                  <div className="flex justify-between items-center mt-6">
-                    <p className="text-sm text-gray-600">
+                  <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
+                    <p className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
                       Mostrando {((paymentsPagination.currentPage - 1) * paymentsPagination.itemsPerPage) + 1} a{' '}
                       {Math.min(paymentsPagination.currentPage * paymentsPagination.itemsPerPage, paymentsPagination.totalItems)} de{' '}
                       {paymentsPagination.totalItems} pagamentos
                     </p>
                     
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <Button
                         onClick={() => setPaymentsCurrentPage(paymentsPagination.currentPage - 1)}
                         disabled={paymentsPagination.currentPage === 1}
                         variant="outline"
                         size="sm"
+                        className="text-xs sm:text-sm px-2 sm:px-3"
                       >
-                        Anterior
+                        <span className="hidden sm:inline">Anterior</span>
+                        <span className="sm:hidden">Ant</span>
                       </Button>
                       
-                      <span className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded">
+                      <span className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-blue-100 text-blue-800 rounded">
                         {paymentsPagination.currentPage} de {paymentsPagination.totalPages}
                       </span>
                       
@@ -363,8 +367,10 @@ const PagamentosPage = () => {
                         disabled={paymentsPagination.currentPage === paymentsPagination.totalPages}
                         variant="outline"
                         size="sm"
+                        className="text-xs sm:text-sm px-2 sm:px-3"
                       >
-                        Próximo
+                        <span className="hidden sm:inline">Próximo</span>
+                        <span className="sm:hidden">Prox</span>
                       </Button>
                     </div>
                   </div>
@@ -383,44 +389,46 @@ const PagamentosPage = () => {
 
       {/* Modal Lista de Alunos */}
       <Dialog open={showStudentsModal} onOpenChange={setShowStudentsModal}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl lg:max-w-6xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-500" />
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
               Estado dos Alunos
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               Lista de alunos confirmados em turmas com opções de filtro
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             {/* Filtros */}
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="flex-1">
                 <Input
                   placeholder="Buscar por nome do aluno..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full"
+                  className="w-full text-sm"
                 />
               </div>
-              <Select value={selectedTurma} onValueChange={setSelectedTurma}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filtrar por turma" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as turmas</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={selectedCurso} onValueChange={setSelectedCurso}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filtrar por curso" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os cursos</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <Select value={selectedTurma} onValueChange={setSelectedTurma}>
+                  <SelectTrigger className="w-full sm:w-40 lg:w-48">
+                    <SelectValue placeholder="Filtrar por turma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as turmas</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={selectedCurso} onValueChange={setSelectedCurso}>
+                  <SelectTrigger className="w-full sm:w-40 lg:w-48">
+                    <SelectValue placeholder="Filtrar por curso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os cursos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Lista de Alunos */}
@@ -440,43 +448,44 @@ const PagamentosPage = () => {
                   <p>Nenhum aluno encontrado</p>
                 </div>
               ) : (
-                <table className="w-full">
+                <table className="w-full min-w-[600px]">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Aluno</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Documento</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Curso</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Turma</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Ações</th>
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-900">Aluno</th>
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-900 hidden sm:table-cell">Documento</th>
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-900 hidden md:table-cell">Curso</th>
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-900">Turma</th>
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-900">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {students.map((student) => (
                       <tr key={student.codigo} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
+                        <td className="px-2 sm:px-4 py-3">
                           <div>
-                            <div className="font-medium text-gray-900">{student.nome}</div>
-                            <div className="text-sm text-gray-500">{student.email}</div>
+                            <div className="font-medium text-gray-900 text-sm truncate max-w-[120px] sm:max-w-none">{student.nome}</div>
+                            <div className="text-xs text-gray-500 sm:hidden">{student.n_documento_identificacao}</div>
+                            <div className="text-xs text-gray-500 md:hidden">{student.tb_matriculas?.[0]?.tb_cursos?.designacao || 'N/A'}</div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
+                        <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-900 hidden sm:table-cell">
                           {student.n_documento_identificacao}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {student.tb_matriculas?.tb_cursos?.designacao || 'N/A'}
+                        <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-900 hidden md:table-cell">
+                          {student.tb_matriculas?.[0]?.tb_cursos?.designacao || 'N/A'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {student.tb_matriculas?.tb_confirmacoes?.[0]?.tb_turmas?.designacao || 'N/A'}
+                        <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-900">
+                          {student.tb_matriculas?.[0]?.tb_confirmacoes?.[0]?.tb_turmas?.designacao || 'N/A'}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 sm:px-4 py-3">
                           <Button
                             onClick={() => handleViewStudent(student)}
                             size="sm"
                             variant="outline"
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-blue-600 hover:text-blue-800 px-2 sm:px-3 text-xs sm:text-sm"
                           >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Visualizar
+                            <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Visualizar</span>
                           </Button>
                         </td>
                       </tr>
@@ -488,8 +497,8 @@ const PagamentosPage = () => {
 
             {/* Paginação */}
             {pagination.totalPages > 1 && (
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-600">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                <p className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
                   Mostrando {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} a{' '}
                   {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} de{' '}
                   {pagination.totalItems} alunos
@@ -500,16 +509,20 @@ const PagamentosPage = () => {
                     disabled={pagination.currentPage === 1}
                     variant="outline"
                     size="sm"
+                    className="text-xs sm:text-sm px-2 sm:px-3"
                   >
-                    Anterior
+                    <span className="hidden sm:inline">Anterior</span>
+                    <span className="sm:hidden">Ant</span>
                   </Button>
                   <Button
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
                     disabled={pagination.currentPage === pagination.totalPages}
                     variant="outline"
                     size="sm"
+                    className="text-xs sm:text-sm px-2 sm:px-3"
                   >
-                    Próximo
+                    <span className="hidden sm:inline">Próximo</span>
+                    <span className="sm:hidden">Prox</span>
                   </Button>
                 </div>
               </div>
