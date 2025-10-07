@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { useToast, ToastContainer } from '@/components/ui/toast';
 import { useCreateUser, useUpdateUser } from '@/hooks/useUsers';
+import authService from '@/services/auth.service';
 
 // Tipos para usuários
 interface IUser {
@@ -102,13 +103,9 @@ export function UserModal({
   useEffect(() => {
     const loadUserTypes = async () => {
       try {
-        const response = await fetch('/api/auth/user-types')
-        const data = await response.json()
-        if (data.success) {
-          setUserTypes(data.data)
-        } else {
-          console.error('Erro na resposta:', data)
-        }
+        const response = await authService.getUserTypes()
+        const data = response.data
+        setUserTypes(data)
       } catch (error) {
         console.error('Erro ao carregar tipos de usuário:', error)
       }
