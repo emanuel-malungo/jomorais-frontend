@@ -344,7 +344,7 @@ export default function UsuariosPage() {
                                   <Eye className="mr-2 h-4 w-4" />
                                   Visualizar
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEditUser(usuario)}>
+                                {/* <DropdownMenuItem onClick={() => handleEditUser(usuario)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Editar
                                 </DropdownMenuItem>
@@ -355,7 +355,7 @@ export default function UsuariosPage() {
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Excluir
-                                </DropdownMenuItem>
+                                </DropdownMenuItem> */}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useToast, ToastContainer } from '@/components/ui/toast';
-import { useCreateUser, useUpdateUser } from '@/hooks/useUsers';
+import { useUpdateUser } from '@/hooks/useUsers';
 import authService from '@/services/auth.service';
 
 // Tipos para usuários
@@ -72,9 +72,9 @@ export function UserModal({
   const { success, error: showError } = useToast()
   
   // Hooks para CRUD
-  const { createUser, loading: creating, error: createError } = useCreateUser()
   const { updateUser, loading: updating, error: updateError } = useUpdateUser()
-  
+  const [creating, setCreating] = useState(false)
+
   const loading = creating || updating
   const isEditing = !!user
 
@@ -104,8 +104,8 @@ export function UserModal({
     const loadUserTypes = async () => {
       try {
         const response = await authService.getUserTypes()
-        const data = response.data
-        setUserTypes(data)
+  const data = response.data
+  setUserTypes(data ?? [])
       } catch (error) {
         console.error('Erro ao carregar tipos de usuário:', error)
       }
@@ -121,9 +121,17 @@ export function UserModal({
 
     try {
       if (isEditing && user) {
-        await updateUser(user.codigo, formData)
+        await updateUser(user.codigo.toString(), formData)
       } else {
-        await createUser(formData)
+        // Criar novo usuário via authService.register
+        setCreating(true)
+        await authService.register({
+          nome: formData.nome,
+          user: formData.user,
+          passe: formData.passe,
+          codigo_Tipo_Utilizador: formData.codigo_Tipo_Utilizador,
+          estadoActual: formData.estadoActual,
+        })
       }
 
       success(
@@ -144,6 +152,8 @@ export function UserModal({
     } catch (error) {
       console.error('Erro ao salvar usuário:', error)
       showError('Erro ao salvar usuário', error instanceof Error ? error.message : 'Ocorreu um erro inesperado.')
+    } finally {
+      setCreating(false)
     }
   }
 
