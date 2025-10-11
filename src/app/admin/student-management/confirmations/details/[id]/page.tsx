@@ -135,22 +135,6 @@ export default function ConfirmationDetailsPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exportar
-              </Button>
-
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Printer className="w-5 h-5 mr-2" />
-                Imprimir
-              </Button>
-
-              <Button
                 onClick={() => router.push(`/admin/student-management/confirmations/edit/${confirmationId}`)}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >

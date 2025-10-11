@@ -272,22 +272,6 @@ export default function ConfirmationsListPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exportar Dados
-              </Button>
-
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Importar Dados
-              </Button>
-
-              <Button
                 onClick={() => window.location.href = '/admin/student-management/confirmations/add'}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
