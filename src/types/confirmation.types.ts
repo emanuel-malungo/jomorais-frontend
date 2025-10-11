@@ -9,12 +9,32 @@ export interface IConfirmationInput {
   classificacao?: string | null
 }
 
+export interface IProfession {
+  codigo: number
+  designacao: string
+}
+
+export interface IGuardian {
+  codigo: number
+  nome: string
+  telefone: string
+  email?: string | null
+  local_Trabalho: string
+  tb_profissao: IProfession
+}
+
 export interface IStudent {
   codigo: number
   nome: string
   dataNascimento: string | null
   sexo: string
   url_Foto: string | null
+  email?: string | null
+  telefone?: string | null
+  morada?: string | null
+  pai?: string | null
+  mae?: string | null
+  tb_encarregados?: IGuardian
 }
 
 export interface ICourse {

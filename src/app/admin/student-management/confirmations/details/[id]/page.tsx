@@ -34,91 +34,63 @@ import {
   MapPin,
   Phone,
   Mail,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
-
-// Dados mockados da confirmação
-const mockConfirmationDetails = {
-  codigo: 1,
-  data_Confirmacao: "2024-02-15",
-  classificacao: "Aprovado",
-  codigo_Ano_lectivo: 2024,
-  codigo_Status: 1,
-  codigo_Matricula: 1,
-  codigo_Turma: 1,
-  tb_matriculas: {
-    codigo: 1,
-    data_Matricula: "2024-02-01",
-    tb_alunos: {
-      codigo: 1,
-      nome: "Ana Silva Santos",
-      pai: "João Santos",
-      mae: "Maria Silva",
-      email: "ana.santos@email.com",
-      telefone: "923456789",
-      dataNascimento: "2005-03-15",
-      sexo: "F",
-      n_documento_identificacao: "123456789LA041",
-      morada: "Rua das Flores, 123, Luanda",
-      tb_encarregados: {
-        codigo: 1,
-        nome: "João Santos",
-        telefone: "912345678",
-        email: "joao.santos@email.com",
-        local_Trabalho: "Empresa ABC Lda",
-        tb_profissao: {
-          codigo: 1,
-          designacao: "Engenheiro Civil"
-        }
-      },
-      tb_tipo_documento: {
-        codigo: 1,
-        designacao: "Bilhete de Identidade"
-      }
-    },
-    tb_cursos: {
-      codigo: 1,
-      designacao: "Informática de Gestão",
-      duracao: "3 anos",
-      descricao: "Curso técnico profissional de Informática de Gestão"
-    }
-  },
-  tb_turmas: {
-    codigo: 1,
-    designacao: "IG-2024-M",
-    tb_classes: {
-      codigo: 10,
-      designacao: "10ª Classe"
-    },
-    tb_salas: {
-      codigo: 1,
-      designacao: "Sala 101"
-    },
-    tb_periodos: {
-      codigo: 1,
-      designacao: "Manhã"
-    }
-  },
-  tb_utilizadores: {
-    codigo: 1,
-    nome: "Admin Sistema",
-    user: "admin",
-    email: "admin@JOMORAIS.ao"
-  }
-};
+import { useConfirmation } from '@/hooks/useConfirmation';
 
 export default function ConfirmationDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const confirmationId = params.id;
-  const confirmation = mockConfirmationDetails;
+  const confirmationId = parseInt(params.id as string);
+  const { confirmation, loading, error } = useConfirmation(confirmationId);
 
-  const formatDate = (dateString: string) => {
+  if (loading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin text-[#F9CD1D]" />
+            <span className="text-gray-600">Carregando detalhes da confirmação...</span>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error || !confirmation) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Erro ao carregar confirmação</h3>
+              <p className="text-gray-600">{error || 'Confirmação não encontrada'}</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => router.back()}
+              className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('pt-AO');
   };
 
-  const calculateAge = (birthDate: string) => {
+  const calculateAge = (birthDate: string | null) => {
+    if (!birthDate) return 'N/A';
     const today = new Date();
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
@@ -357,18 +329,24 @@ export default function ConfirmationDetailsPage() {
                 </div>
                 
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.email}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.telefone}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.morada}</span>
-                  </div>
+                  {confirmation.tb_matriculas.tb_alunos.email && (
+                    <div className="flex items-center space-x-3">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.email}</span>
+                    </div>
+                  )}
+                  {confirmation.tb_matriculas.tb_alunos.telefone && (
+                    <div className="flex items-center space-x-3">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.telefone}</span>
+                    </div>
+                  )}
+                  {confirmation.tb_matriculas.tb_alunos.morada && (
+                    <div className="flex items-center space-x-3">
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.morada}</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -407,11 +385,11 @@ export default function ConfirmationDetailsPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Nome do Pai</label>
-                    <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.pai}</p>
+                    <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.pai || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Nome da Mãe</label>
-                    <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.mae}</p>
+                    <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.mae || 'N/A'}</p>
                   </div>
                 </div>
               </CardContent>
@@ -426,33 +404,44 @@ export default function ConfirmationDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Nome</label>
-                    <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.nome}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Profissão</label>
-                    <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.tb_profissao.designacao}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Local de Trabalho</label>
-                    <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.local_Trabalho}</p>
-                  </div>
-                </div>
-                
-                <div className="pt-4 border-t">
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.email}</span>
+                {confirmation.tb_matriculas.tb_alunos.tb_encarregados ? (
+                  <>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Nome</label>
+                        <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.nome}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Profissão</label>
+                        <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.tb_profissao.designacao}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Local de Trabalho</label>
+                        <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.local_Trabalho}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.telefone}</span>
+                    
+                    <div className="pt-4 border-t">
+                      <div className="space-y-3">
+                        {confirmation.tb_matriculas.tb_alunos.tb_encarregados.email && (
+                          <div className="flex items-center space-x-3">
+                            <Mail className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.email}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center space-x-3">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_alunos.tb_encarregados.telefone}</span>
+                        </div>
+                      </div>
                     </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">Dados do encarregado não disponíveis</p>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -512,12 +501,13 @@ export default function ConfirmationDetailsPage() {
                   <p className="text-lg font-semibold text-gray-900">{confirmation.tb_matriculas.tb_cursos.designacao}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Duração do Curso</label>
-                  <p className="text-sm font-semibold text-gray-900">{confirmation.tb_matriculas.tb_cursos.duracao}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-gray-500">Descrição do Curso</label>
-                  <p className="text-sm text-gray-600">{confirmation.tb_matriculas.tb_cursos.descricao}</p>
+                  <label className="text-sm font-medium text-gray-500">Status do Curso</label>
+                  <Badge 
+                    variant={confirmation.tb_matriculas.tb_cursos.codigo_Status === 1 ? "default" : "secondary"}
+                    className={confirmation.tb_matriculas.tb_cursos.codigo_Status === 1 ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}
+                  >
+                    {confirmation.tb_matriculas.tb_cursos.codigo_Status === 1 ? "Ativo" : "Inativo"}
+                  </Badge>
                 </div>
               </div>
             </CardContent>
