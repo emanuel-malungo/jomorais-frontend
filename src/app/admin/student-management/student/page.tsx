@@ -42,12 +42,10 @@ import {
   MoreHorizontal,
   Eye,
   Edit,
-  Trash2,
   UserCheck,
   UserX,
   Calendar,
   Phone,
-  Mail,
   GraduationCap,
   ChevronLeft,
   ChevronRight,
@@ -189,14 +187,6 @@ export default function ListStudentPage() {
     window.location.href = `/admin/student-management/student/edit/${studentId}`;
   };
 
-  const handleDeleteStudent = (studentId: number) => {
-    const student = students.find(s => s.codigo === studentId);
-    if (student) {
-      setStudentToDelete(student);
-      setDeleteModalOpen(true);
-    }
-  };
-
   const confirmDeleteStudent = async () => {
     if (!studentToDelete) return;
     
@@ -226,10 +216,6 @@ export default function ListStudentPage() {
     setStudentToDelete(null);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-AO');
-  };
-
   const calculateAge = (birthDate: any) => {
     // Se o birthDate for um objeto vazio ou inválido, retorna "N/A"
     if (!birthDate || typeof birthDate === 'object' && Object.keys(birthDate).length === 0) {
@@ -252,6 +238,7 @@ export default function ListStudentPage() {
       }
       return age.toString();
     } catch (error) {
+      console.error('Erro ao calcular idade:', error);
       return "N/A";
     }
   };
@@ -357,8 +344,6 @@ export default function ListStudentPage() {
                   <TableHead>Aluno</TableHead>
                   <TableHead>Contacto</TableHead>
                   <TableHead>Documento</TableHead>
-                  <TableHead>Encarregado</TableHead>
-                  <TableHead>Curso/Turma</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -414,10 +399,6 @@ export default function ListStudentPage() {
                       <TableCell>
                         <div className="space-y-1">
                           <div className="flex items-center text-sm">
-                            <Mail className="w-3 h-3 mr-2 text-gray-400" />
-                            <span className="text-gray-600">{student.email}</span>
-                          </div>
-                          <div className="flex items-center text-sm">
                             <Phone className="w-3 h-3 mr-2 text-gray-400" />
                             <span className="text-gray-600">{student.telefone}</span>
                           </div>
@@ -428,31 +409,6 @@ export default function ListStudentPage() {
                           <p className="text-sm font-medium">{student.n_documento_identificacao || 'N/A'}</p>
                           <p className="text-xs text-gray-500">{student.tb_tipo_documento?.designacao || 'N/A'}</p>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">{student.tb_encarregados?.nome || 'N/A'}</p>
-                          <div className="flex items-center text-xs text-gray-500">
-                            <Phone className="w-3 h-3 mr-1" />
-                            {student.tb_encarregados?.telefone || 'N/A'}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {student.tb_matriculas ? (
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium">
-                              {student.tb_matriculas.tb_cursos.designacao}
-                            </p>
-                            <Badge variant="outline" className="text-xs">
-                              Matrícula #{student.tb_matriculas.codigo}
-                            </Badge>
-                          </div>
-                        ) : (
-                          <Badge variant="destructive" className="text-xs text-white">
-                            Sem Matrícula
-                          </Badge>
-                        )}
                       </TableCell>
                       <TableCell>
                         <Badge 
@@ -481,13 +437,13 @@ export default function ListStudentPage() {
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            {/* <DropdownMenuItem 
                               onClick={() => handleDeleteStudent(student.codigo || 0)}
                               className="text-red-600"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Excluir
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
