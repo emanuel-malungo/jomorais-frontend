@@ -119,7 +119,6 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
 
   // Função isActive precisa ser definida antes do useEffect
   const isActive = (href: string) => {
-    console.log('Checking isActive for:', href, 'current pathname:', pathname);
     
     if (pathname === href) return true;
     

@@ -77,6 +77,7 @@ export const useStudent = (): UseStudentReturn => {
             clearError();
             
             const response = await StudentService.getAllStudents(page, limit);
+			
             
             setState(prev => ({
                 ...prev,

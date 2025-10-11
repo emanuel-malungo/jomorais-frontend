@@ -9,26 +9,58 @@ interface IPagination {
   itemsPerPage: number;
 }
 
+interface IStudentParams {
+  page?: number;
+  limit?: number;
+}
+
 export default class StudentService {
 
-    static async getAllStudents(page: number, limit: number): Promise<{ students: Student[], pagination: IPagination }> {
+    static async getAllStudents(page?: number, limit?: number, includeRelations: boolean = true): Promise<{ students: Student[], pagination: IPagination }> {
         try {
+            // Se includeRelations for true, não enviar parâmetros de paginação para obter dados relacionados
+            // Se for false ou se page/limit forem fornecidos, usar paginação normal
+            const shouldPaginate = !includeRelations && page !== undefined && limit !== undefined;
+            
+            const params: IStudentParams = {};
+            if (shouldPaginate) {
+                params.page = page;
+                params.limit = limit;
+            }
+
             const response = await api.get("/api/student-management/alunos", {
-                params: { page, limit },
+                params: shouldPaginate ? params : {},
             });
             
             const apiResponse: StudentResponse = response.data;
             
             if (apiResponse.success) {
-                return {
-                    students: apiResponse.data,
-                    pagination: apiResponse.pagination || {
-                        currentPage: page,
-                        totalPages: 1,
-                        totalItems: apiResponse.data.length,
-                        itemsPerPage: limit
-                    }
-                };
+                // Se não estamos paginando mas page/limit foram fornecidos, simular paginação no frontend
+                if (!shouldPaginate && page !== undefined && limit !== undefined) {
+                    const startIndex = (page - 1) * limit;
+                    const endIndex = startIndex + limit;
+                    const paginatedData = apiResponse.data.slice(startIndex, endIndex);
+                    
+                    return {
+                        students: paginatedData,
+                        pagination: {
+                            currentPage: page,
+                            totalPages: Math.ceil(apiResponse.data.length / limit),
+                            totalItems: apiResponse.data.length,
+                            itemsPerPage: limit
+                        }
+                    };
+                } else {
+                    return {
+                        students: apiResponse.data,
+                        pagination: apiResponse.pagination || {
+                            currentPage: page || 1,
+                            totalPages: 1,
+                            totalItems: apiResponse.data.length,
+                            itemsPerPage: limit || apiResponse.data.length
+                        }
+                    };
+                }
             } else {
                 throw new Error(apiResponse.message || 'Erro ao buscar alunos');
             }

@@ -65,7 +65,8 @@ import { useStatus } from '@/hooks/useStatusControl';
 import { useCourses } from '@/hooks/useCourse';
 
 export default function ListStudentPage() {
-  const { students, loading, error, pagination, getAllStudents, updateStudent, deleteStudent } = useStudent();
+  const { students, loading, pagination, getAllStudents, deleteStudent } = useStudent();
+
 
   // Buscar dados de status e cursos
   const { status } = useStatus(1, 100, ""); // Carregar todos os status
@@ -448,7 +449,7 @@ export default function ListStudentPage() {
                             </Badge>
                           </div>
                         ) : (
-                          <Badge variant="destructive" className="text-xs">
+                          <Badge variant="destructive" className="text-xs text-white">
                             Sem Matrícula
                           </Badge>
                         )}
