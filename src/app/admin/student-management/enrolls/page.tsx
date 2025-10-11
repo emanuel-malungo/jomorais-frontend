@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,40 +51,27 @@ import {
   Eye,
   Edit,
   Trash2,
-  Download,
-  Upload,
   Users,
   BookOpen,
   Calendar,
   CheckCircle,
-  XCircle,
   Clock,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
   Activity,
   Loader2,
-  Save,
-  X,
   AlertCircle,
 } from 'lucide-react';
-import { useMatriculas, useCreateMatricula, useUpdateMatricula, useDeleteMatricula } from '@/hooks/useMatricula';
-import { IMatriculaInput } from '@/types/matricula.types';
+import { useMatriculas, useDeleteMatricula } from '@/hooks/useMatricula';
 
-// Dados de configuração para filtros
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "1", label: "Ativa" },
-  { value: "0", label: "Inativa" },
-];
+import { WelcomeHeader } from '@/components/dashboard';
+import StatCard from '@/components/layout/StatCard';
+import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
-const courseOptions = [
-  { value: "all", label: "Todos os Cursos" },
-  { value: "1", label: "Informática de Gestão" },
-  { value: "2", label: "Contabilidade" },
-  { value: "3", label: "Administração" },
-  { value: "4", label: "Marketing" },
-];
+
+import { useStatus } from '@/hooks/useStatusControl';
+import { useCourses } from '@/hooks/useCourse';
 
 export default function EnrollmentsListPage() {
   // Hooks da API
@@ -93,8 +80,37 @@ export default function EnrollmentsListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const { matriculas, pagination, loading, error, refetch } = useMatriculas(currentPage, itemsPerPage, debouncedSearchTerm);
-  const { createMatricula, loading: createLoading } = useCreateMatricula();
-  const { deleteMatricula, loading: deleteLoading } = useDeleteMatricula();
+  const { deleteMatricula } = useDeleteMatricula();
+
+  
+  const { status } = useStatus(1, 100, "");
+  const { courses } = useCourses(1, 100, "");
+
+  const statusOptions = useMemo(() => {
+	  const options = [{ value: "all", label: "Todos os Status" }];
+	  if (status && status.length > 0) {
+		status.forEach((s) => {
+		  options.push({
+			value: s.codigo.toString(),
+			label: s.designacao
+		  });
+		});
+	  }
+	  return options;
+	}, [status]);
+
+	 const courseOptions = useMemo(() => {
+		const options = [{ value: "all", label: "Todos os Cursos" }];
+		if (courses && courses.length > 0) {
+		  courses.forEach((c) => {
+			options.push({
+			  value: c.codigo.toString(),
+			  label: c.designacao
+			});
+		  });
+		}
+		return options;
+	  }, [courses]);
   
   // Estados para filtros
   const [statusFilter, setStatusFilter] = useState("all");
@@ -197,217 +213,87 @@ export default function EnrollmentsListPage() {
   return (
     <Container>
       {/* Header seguindo padrão do Dashboard */}
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
-        <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
-                  <GraduationCap className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-gray-900">
-                    Matrículas
-                  </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">Gestão de Matrículas</p>
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm max-w-2xl">
-                Gerencie todas as matrículas dos alunos. Visualize informações detalhadas,
-                acompanhe confirmações e mantenha os registros sempre atualizados.
-              </p>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exportar Dados
-              </Button>
-
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Importar Dados
-              </Button>
-
-              <Button
-                onClick={() => window.location.href = '/admin/student-management/enrolls/add'}
-                className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Nova Matrícula
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Decorative elements */}
-        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#FFC506]/5 rounded-full"></div>
-        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
-      </div>
+	  <WelcomeHeader
+	  	title="Gestão de Matrículas"
+		description="erencie todas as matrículas dos alunos. Visualize informações detalhadas, acompanhe confirmações e mantenha os registros sempre atualizados."
+		titleBtnRight=' Nova Matrícula'
+		iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+		onClickBtnRight={() => window.location.href = '/admin/student-management/enrolls/add'}
+	  />
 
       {/* Stats Cards seguindo padrão do Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         {/* Card Total de Matrículas */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
-              <GraduationCap className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+12.5%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Matrículas</p>
-            <p className="text-3xl font-bold text-gray-900">{filteredMatriculas.length}</p>
-            {filteredMatriculas.length !== matriculas.length && (
-              <p className="text-xs text-gray-500">de {matriculas.length} total</p>
-            )}
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
 
-        {/* Card Matrículas Ativas */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
-              <CheckCircle className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+8.2%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-emerald-600">Matrículas Ativas</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {filteredMatriculas.filter(e => e.codigoStatus === 1).length}
-            </p>
-            {filteredMatriculas.filter(e => e.codigoStatus === 1).length !== matriculas.filter(e => e.codigoStatus === 1).length && (
-              <p className="text-xs text-gray-500">de {matriculas.filter(e => e.codigoStatus === 1).length} total</p>
-            )}
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+		<StatCard
+			title="Total de Matrículas"
+			value={(pagination?.totalItems || 0).toString()}
+			change="Total"
+			changeType="up"
+			icon={Users}
+			color="text-[#182F59]"
+			bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+			accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
+		/>
 
-        {/* Card Com Confirmação */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#FFC107] shadow-sm">
-              <BookOpen className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+5.1%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Com Confirmação</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {filteredMatriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length}
-            </p>
-            {filteredMatriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length !== matriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length && (
-              <p className="text-xs text-gray-500">de {matriculas.filter(e => e.tb_confirmacoes && e.tb_confirmacoes.length > 0).length} total</p>
-            )}
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+		<StatCard
+          title="Matrículas Ativos"
+          value={filteredMatriculas.filter(s => s.codigoStatus === 1).length.toString()}
+          change="Ativos"
+          changeType="up"
+          icon={CheckCircle}
+          color="text-emerald-600"
+          bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
+          accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
+        />
 
-        {/* Card Pendentes */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-sm">
-              <Clock className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-blue-500" />
-              <span className="font-bold text-xs text-blue-600">Atenção</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-red-600">Sem Confirmação</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {filteredMatriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length}
-            </p>
-            {filteredMatriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length !== matriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length && (
-              <p className="text-xs text-gray-500">de {matriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length} total</p>
-            )}
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+		<StatCard
+          title="Matrículas Com Confirmação"
+          value={filteredMatriculas.filter(s => s.codigoStatus === 1).length.toString()}
+          change="Confirmação"
+          changeType="up"
+          icon={BookOpen}
+          color="text-[#FFD002]"
+          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
+          accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
+        />
+
+		<StatCard
+          title="Matrículas Sem Confirmação"
+          value={filteredMatriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length}
+          change="Atenção"
+          changeType="up"
+          icon={Clock}
+          color="text-[#FFD002]"
+          bgColor="bg-gradient-to-br from-red-50 via-white to-red-50/50"
+          accentColor="bg-gradient-to-br from-red-500 to-red-600 "
+        />
       </div>
 
       {/* Filtros e Busca */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filtros e Busca</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar por aluno ou curso..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="md:w-48">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:w-48">
-              <Select value={courseFilter} onValueChange={setCourseFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Curso" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courseOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+	     <FilterSearchCard
+        title="Filtros e Busca"
+        searchPlaceholder="Buscar por aluno ou curso..."
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={[
+          {
+            label: "Status",
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: statusOptions,
+            width: "w-48"
+          },
+          {
+            label: "Curso",
+            value: courseFilter,
+            onChange: setCourseFilter,
+            options: courseOptions,
+            width: "w-48"
+          }
+        ]}
+      />
 
       {/* Tabela de Matrículas */}
       <Card>
@@ -417,9 +303,6 @@ export default function EnrollmentsListPage() {
               <Users className="h-5 w-5" />
               <span>Lista de Matrículas</span>
             </div>
-            <Badge variant="outline" className="text-sm">
-              {pagination?.totalItems || 0} matrículas encontradas
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -547,13 +430,13 @@ export default function EnrollmentsListPage() {
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          {/* <DropdownMenuItem 
                             onClick={() => handleDeleteEnrollment(enrollment.codigo)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Excluir
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

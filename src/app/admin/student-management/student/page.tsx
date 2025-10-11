@@ -46,7 +46,6 @@ import {
   UserX,
   Calendar,
   Phone,
-  GraduationCap,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -256,11 +255,11 @@ export default function ListStudentPage() {
       />
 
       {/* Stats Cards usando componente StatCard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
         <StatCard
           title="Total de Alunos"
           value={(pagination?.totalItems || 0).toString()}
-          change="+8.2%"
+          change="Total"
           changeType="up"
           icon={Users}
           color="text-[#182F59]"
@@ -271,23 +270,12 @@ export default function ListStudentPage() {
         <StatCard
           title="Alunos Ativos"
           value={students.filter(s => s.codigo_Status === 1).length.toString()}
-          change="+3.5%"
+          change="Ativos"
           changeType="up"
           icon={UserCheck}
           color="text-emerald-600"
           bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
           accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
-        />
-
-        <StatCard
-          title="Com Matrícula"
-          value={students.filter(s => s.tb_matriculas).length.toString()}
-          change="+2.1%"
-          changeType="up"
-          icon={GraduationCap}
-          color="text-[#FFD002]"
-          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
-          accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
         />
 
         <StatCard

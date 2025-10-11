@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,119 +28,104 @@ import {
   Users,
   CheckCircle,
   Clock,
-  Download,
-  Printer,
-  FileText,
   MapPin,
   Phone,
   Mail,
+  AlertCircle,
 } from 'lucide-react';
 
-// Dados mockados da matrícula
-const mockEnrollmentDetails = {
-  codigo: 1,
-  data_Matricula: "2024-02-01",
-  codigoStatus: 1,
-  codigo_Aluno: 1,
-  codigo_Curso: 1,
-  codigo_Utilizador: 1,
-  tb_alunos: {
-    codigo: 1,
-    nome: "Ana Silva Santos",
-    pai: "João Santos",
-    mae: "Maria Silva",
-    email: "ana.santos@email.com",
-    telefone: "923456789",
-    dataNascimento: "2005-03-15",
-    sexo: "F",
-    n_documento_identificacao: "123456789LA041",
-    morada: "Rua das Flores, 123, Luanda",
-    url_Foto: "/avatars/ana.jpg",
-    saldo: 15000,
-    tb_encarregados: {
-      codigo: 1,
-      nome: "João Santos",
-      telefone: "912345678",
-      email: "joao.santos@email.com",
-      local_Trabalho: "Empresa ABC Lda",
-      tb_profissao: {
-        codigo: 1,
-        designacao: "Engenheiro Civil"
-      }
-    },
-    tb_tipo_documento: {
-      codigo: 1,
-      designacao: "Bilhete de Identidade"
-    }
-  },
-  tb_cursos: {
-    codigo: 1,
-    designacao: "Informática de Gestão",
-    duracao: "3 anos",
-    descricao: "Curso técnico profissional de Informática de Gestão"
-  },
-  tb_utilizadores: {
-    codigo: 1,
-    nome: "Admin Sistema",
-    user: "admin",
-    email: "admin@JOMORAIS.ao"
-  },
-  tb_confirmacoes: [
-    {
-      codigo: 1,
-      data_Confirmacao: "2024-02-15",
-      classificacao: "Aprovado",
-      codigo_Ano_lectivo: 2024,
-      codigo_Status: 1,
-      tb_turmas: {
-        codigo: 1,
-        designacao: "IG-2024-M",
-        tb_classes: {
-          codigo: 10,
-          designacao: "10ª Classe"
-        },
-        tb_salas: {
-          codigo: 1,
-          designacao: "Sala 101"
-        },
-        tb_periodos: {
-          codigo: 1,
-          designacao: "Manhã"
-        }
-      }
-    }
-  ]
-};
+import { useEnrollment } from '@/hooks';
+
+// Tipo estendido para lidar com dados adicionais da API
+interface ExtendedStudent {
+  codigo: number;
+  nome: string;
+  dataNascimento: string | null;
+  sexo: string;
+  url_Foto?: string | null;
+  email?: string;
+  telefone?: string;
+  morada?: string;
+  pai?: string;
+  mae?: string;
+}
 
 export default function EnrollmentDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const enrollmentId = params.id;
-  const enrollment = mockEnrollmentDetails;
+  const enrollmentId = parseInt(params.id as string);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-AO');
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-AO', {
-      style: 'currency',
-      currency: 'AOA'
-    }).format(value);
-  };
-
-  const calculateAge = (birthDate: string) => {
+  const calculateAge = (birthDate: string): number => {
     const today = new Date();
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
+    
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
       age--;
     }
+    
     return age;
   };
+
+  // Hook para buscar dados da matrícula
+  const { enrollment, loading, error, refetch } = useEnrollment(enrollmentId);
+
+  // Mostrar loading enquanto carrega
+  if (loading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-[#F9CD1D] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando dados da matrícula...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  // Mostrar erro se houver
+  if (error) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar matrícula</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={() => refetch()} variant="outline">
+              Tentar Novamente
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  // Mostrar mensagem se não encontrou a matrícula
+  if (!enrollment) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <GraduationCap className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Matrícula não encontrada</h3>
+            <p className="text-gray-600 mb-4">A matrícula solicitada não foi encontrada.</p>
+            <Button onClick={() => router.back()} variant="outline">
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -164,7 +150,7 @@ export default function EnrollmentDetailsPage() {
                   <h1 className="text-4xl font-bold text-gray-900">
                     Detalhes da Matrícula
                   </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">{enrollment.tb_alunos.nome}</p>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">{enrollment.tb_alunos?.nome || 'Nome não disponível'}</p>
                 </div>
               </div>
               <p className="text-gray-600 text-sm max-w-2xl">
@@ -174,22 +160,6 @@ export default function EnrollmentDetailsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exportar
-              </Button>
-
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Printer className="w-5 h-5 mr-2" />
-                Imprimir
-              </Button>
-
               <Button
                 onClick={() => router.push(`/admin/student-management/enrolls/edit/${enrollmentId}`)}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
@@ -249,35 +219,31 @@ export default function EnrollmentDetailsPage() {
               <BookOpen className="h-6 w-6 text-white" />
             </div>
             <Badge variant="outline" className="text-xs">
-              {enrollment.tb_cursos.duracao}
+              Curso
             </Badge>
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-[#FFD002]">Curso</p>
-            <p className="text-lg font-bold text-gray-900">{enrollment.tb_cursos.designacao}</p>
+            <p className="text-lg font-bold text-gray-900">{enrollment.tb_cursos?.designacao || 'Curso não informado'}</p>
           </div>
         </div>
 
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
-              {enrollment.tb_confirmacoes.length > 0 ? (
-                <CheckCircle className="h-6 w-6 text-white" />
-              ) : (
-                <Clock className="h-6 w-6 text-white" />
-              )}
+              <Clock className="h-6 w-6 text-white" />
             </div>
             <Badge 
-              variant={enrollment.tb_confirmacoes.length > 0 ? "default" : "secondary"}
-              className={enrollment.tb_confirmacoes.length > 0 ? "text-xs bg-blue-100 text-blue-800" : "text-xs bg-yellow-100 text-yellow-800"}
+              variant="secondary"
+              className="text-xs bg-yellow-100 text-yellow-800"
             >
-              {enrollment.tb_confirmacoes.length > 0 ? "Confirmada" : "Pendente"}
+              Em Desenvolvimento
             </Badge>
           </div>
           <div>
             <p className="text-sm font-semibold mb-2 text-purple-600">Confirmação</p>
             <p className="text-2xl font-bold text-gray-900">
-              {enrollment.tb_confirmacoes.length > 0 ? "Sim" : "Não"}
+              Em Breve
             </p>
           </div>
         </div>
@@ -304,10 +270,6 @@ export default function EnrollmentDetailsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Código da Matrícula</label>
-                    <p className="text-sm font-semibold text-gray-900">#{enrollment.codigo}</p>
-                  </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Data de Matrícula</label>
                     <p className="text-sm font-semibold text-gray-900">{formatDate(enrollment.data_Matricula)}</p>
@@ -340,12 +302,28 @@ export default function EnrollmentDetailsPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                    <User className="h-8 w-8 text-gray-500" />
+                    {enrollment.tb_alunos?.url_Foto && enrollment.tb_alunos.url_Foto !== "null" ? (
+                      <Image 
+                        src={enrollment.tb_alunos.url_Foto} 
+                        alt="Foto do aluno"
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-8 w-8 text-gray-500" />
+                    )}
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{enrollment.tb_alunos.nome}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{enrollment.tb_alunos?.nome || 'Nome não disponível'}</h3>
                     <p className="text-sm text-gray-500">
-                      {calculateAge(enrollment.tb_alunos.dataNascimento)} anos • {enrollment.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                      {enrollment.tb_alunos?.dataNascimento ? (
+                        <>
+                          {calculateAge(enrollment.tb_alunos.dataNascimento.toString())} anos • {enrollment.tb_alunos?.sexo || 'Sexo não informado'}
+                        </>
+                      ) : (
+                        'Dados não disponíveis'
+                      )}
                     </p>
                   </div>
                 </div>
@@ -353,15 +331,15 @@ export default function EnrollmentDetailsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
                     <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-600">{enrollment.tb_alunos.email}</span>
+                    <span className="text-sm text-gray-600">{(enrollment.tb_alunos as ExtendedStudent)?.email || 'Email não informado'}</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Phone className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-600">{enrollment.tb_alunos.telefone}</span>
+                    <span className="text-sm text-gray-600">{(enrollment.tb_alunos as ExtendedStudent)?.telefone || 'Telefone não informado'}</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <MapPin className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-600">{enrollment.tb_alunos.morada}</span>
+                    <span className="text-sm text-gray-600">{(enrollment.tb_alunos as ExtendedStudent)?.morada || 'Morada não informada'}</span>
                   </div>
                 </div>
               </CardContent>
@@ -383,29 +361,33 @@ export default function EnrollmentDetailsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Nome Completo</label>
-                    <p className="text-sm font-semibold text-gray-900">{enrollment.tb_alunos.nome}</p>
+                    <p className="text-sm font-semibold text-gray-900">{enrollment.tb_alunos?.nome || 'Nome não informado'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Sexo</label>
                     <p className="text-sm font-semibold text-gray-900">
-                      {enrollment.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                      {enrollment.tb_alunos?.sexo || 'Sexo não informado'}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Data de Nascimento</label>
-                    <p className="text-sm font-semibold text-gray-900">{formatDate(enrollment.tb_alunos.dataNascimento)}</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {enrollment.tb_alunos?.dataNascimento ? formatDate(enrollment.tb_alunos.dataNascimento) : 'Data não informada'}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Idade</label>
-                    <p className="text-sm font-semibold text-gray-900">{calculateAge(enrollment.tb_alunos.dataNascimento)} anos</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {enrollment.tb_alunos?.dataNascimento ? `${calculateAge(enrollment.tb_alunos.dataNascimento)} anos` : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Nome do Pai</label>
-                    <p className="text-sm font-semibold text-gray-900">{enrollment.tb_alunos.pai}</p>
+                    <p className="text-sm font-semibold text-gray-900">{(enrollment.tb_alunos as ExtendedStudent)?.pai || 'Nome do pai não informado'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Nome da Mãe</label>
-                    <p className="text-sm font-semibold text-gray-900">{enrollment.tb_alunos.mae}</p>
+                    <p className="text-sm font-semibold text-gray-900">{(enrollment.tb_alunos as ExtendedStudent)?.mae || 'Nome da mãe não informado'}</p>
                   </div>
                 </div>
                 
@@ -413,15 +395,15 @@ export default function EnrollmentDetailsPage() {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-3">
                       <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{enrollment.tb_alunos.email}</span>
+                      <span className="text-sm text-gray-600">{(enrollment.tb_alunos as ExtendedStudent)?.email || 'Email não informado'}</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{enrollment.tb_alunos.telefone}</span>
+                      <span className="text-sm text-gray-600">{(enrollment.tb_alunos as ExtendedStudent)?.telefone || 'Telefone não informado'}</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <MapPin className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{enrollment.tb_alunos.morada}</span>
+                      <span className="text-sm text-gray-600">{(enrollment.tb_alunos as ExtendedStudent)?.morada || 'Morada não informada'}</span>
                     </div>
                   </div>
                 </div>
@@ -436,33 +418,11 @@ export default function EnrollmentDetailsPage() {
                   <span>Encarregado de Educação</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Nome</label>
-                    <p className="text-sm font-semibold text-gray-900">{enrollment.tb_alunos.tb_encarregados.nome}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Profissão</label>
-                    <p className="text-sm font-semibold text-gray-900">{enrollment.tb_alunos.tb_encarregados.tb_profissao.designacao}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Local de Trabalho</label>
-                    <p className="text-sm font-semibold text-gray-900">{enrollment.tb_alunos.tb_encarregados.local_Trabalho}</p>
-                  </div>
-                </div>
-                
-                <div className="pt-4 border-t">
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{enrollment.tb_alunos.tb_encarregados.email}</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">{enrollment.tb_alunos.tb_encarregados.telefone}</span>
-                    </div>
-                  </div>
+              <CardContent>
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Dados em Desenvolvimento</h3>
+                  <p className="text-gray-500">A funcionalidade de dados do encarregado será implementada em breve.</p>
                 </div>
               </CardContent>
             </Card>
@@ -481,15 +441,22 @@ export default function EnrollmentDetailsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Nome do Curso</label>
-                  <p className="text-lg font-semibold text-gray-900">{enrollment.tb_cursos.designacao}</p>
+                  <p className="text-lg font-semibold text-gray-900">{enrollment.tb_cursos?.designacao || 'Curso não informado'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Duração</label>
-                  <p className="text-sm font-semibold text-gray-900">{enrollment.tb_cursos.duracao}</p>
+                  <label className="text-sm font-medium text-gray-500">Código do Curso</label>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {enrollment.tb_cursos?.codigo || 'Código não informado'}
+                  </p>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-gray-500">Descrição</label>
-                  <p className="text-sm text-gray-600">{enrollment.tb_cursos.descricao}</p>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <Badge 
+                    variant={enrollment.tb_cursos?.codigo_Status === 1 ? "default" : "secondary"}
+                    className={enrollment.tb_cursos?.codigo_Status === 1 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}
+                  >
+                    {enrollment.tb_cursos?.codigo_Status === 1 ? "Ativo" : "Inativo"}
+                  </Badge>
                 </div>
               </div>
             </CardContent>
@@ -505,52 +472,11 @@ export default function EnrollmentDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {enrollment.tb_confirmacoes.length > 0 ? (
-                <div className="space-y-4">
-                  {enrollment.tb_confirmacoes.map((confirmacao) => (
-                    <div key={confirmacao.codigo} className="p-4 bg-gray-50 rounded-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Turma</label>
-                          <p className="text-sm font-semibold text-gray-900">{confirmacao.tb_turmas.designacao}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Classe</label>
-                          <p className="text-sm font-semibold text-gray-900">{confirmacao.tb_turmas.tb_classes.designacao}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Sala</label>
-                          <p className="text-sm font-semibold text-gray-900">{confirmacao.tb_turmas.tb_salas.designacao}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Período</label>
-                          <p className="text-sm font-semibold text-gray-900">{confirmacao.tb_turmas.tb_periodos.designacao}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Data de Confirmação</label>
-                          <p className="text-sm font-semibold text-gray-900">{formatDate(confirmacao.data_Confirmacao)}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Classificação</label>
-                          <Badge variant="default" className="bg-green-100 text-green-800">
-                            {confirmacao.classificacao}
-                          </Badge>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Ano Letivo</label>
-                          <p className="text-sm font-semibold text-gray-900">{confirmacao.codigo_Ano_lectivo}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma Confirmação</h3>
-                  <p className="text-gray-500">Esta matrícula ainda não possui confirmações de turma.</p>
-                </div>
-              )}
+              <div className="text-center py-8">
+                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Confirmações em Desenvolvimento</h3>
+                <p className="text-gray-500">A funcionalidade de confirmações de turma será implementada em breve.</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
