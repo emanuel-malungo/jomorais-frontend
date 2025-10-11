@@ -177,7 +177,7 @@ export default function EnrollmentDetailsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
@@ -227,26 +227,6 @@ export default function EnrollmentDetailsPage() {
             <p className="text-lg font-bold text-gray-900">{enrollment.tb_cursos?.designacao || 'Curso não informado'}</p>
           </div>
         </div>
-
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
-              <Clock className="h-6 w-6 text-white" />
-            </div>
-            <Badge 
-              variant="secondary"
-              className="text-xs bg-yellow-100 text-yellow-800"
-            >
-              Em Desenvolvimento
-            </Badge>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-purple-600">Confirmação</p>
-            <p className="text-2xl font-bold text-gray-900">
-              Em Breve
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Tabs Content */}
@@ -255,7 +235,6 @@ export default function EnrollmentDetailsPage() {
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="student">Dados do Aluno</TabsTrigger>
           <TabsTrigger value="course">Curso</TabsTrigger>
-          <TabsTrigger value="confirmations">Confirmações</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -458,24 +437,6 @@ export default function EnrollmentDetailsPage() {
                     {enrollment.tb_cursos?.codigo_Status === 1 ? "Ativo" : "Inativo"}
                   </Badge>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="confirmations" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5" />
-                <span>Confirmações de Turma</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Confirmações em Desenvolvimento</h3>
-                <p className="text-gray-500">A funcionalidade de confirmações de turma será implementada em breve.</p>
               </div>
             </CardContent>
           </Card>

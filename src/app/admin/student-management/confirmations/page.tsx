@@ -472,9 +472,6 @@ export default function ConfirmationsListPage() {
               <span>Lista de Confirmações</span>
               {isLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#F9CD1D]"></div>}
             </div>
-            <Badge variant="outline" className="text-sm">
-              {totalItems} confirmações encontradas
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -516,8 +513,6 @@ export default function ConfirmationsListPage() {
                   <TableHead>Turma</TableHead>
                   <TableHead>Curso</TableHead>
                   <TableHead>Data Confirmação</TableHead>
-                  <TableHead>Classificação</TableHead>
-                  <TableHead>Ano Letivo</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -542,9 +537,8 @@ export default function ConfirmationsListPage() {
                       <div>
                         <p className="font-medium text-gray-900">{confirmation.tb_turmas.designacao}</p>
                         <p className="text-sm text-gray-500">
-                          {confirmation.tb_turmas.tb_classes.designacao} • {confirmation.tb_turmas.tb_salas.designacao}
+                          {confirmation.tb_turmas.tb_classes.designacao} • {confirmation.tb_turmas.tb_periodos.designacao}
                         </p>
-                        <p className="text-xs text-gray-400">{confirmation.tb_turmas.tb_periodos.designacao}</p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -555,25 +549,6 @@ export default function ConfirmationsListPage() {
                         <Calendar className="h-4 w-4 text-gray-400" />
                         <span className="text-sm">{confirmation.data_Confirmacao ? formatDate(confirmation.data_Confirmacao) : 'N/A'}</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={
-                          confirmation.classificacao === "Aprovado" ? "default" : 
-                          confirmation.classificacao === "Pendente" ? "secondary" : 
-                          "destructive"
-                        }
-                        className={
-                          confirmation.classificacao === "Aprovado" ? "bg-green-100 text-green-800" :
-                          confirmation.classificacao === "Pendente" ? "bg-yellow-100 text-yellow-800" :
-                          "bg-red-100 text-red-800"
-                        }
-                      >
-                        {confirmation.classificacao}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm font-medium">{confirmation.codigo_Ano_lectivo}</span>
                     </TableCell>
                     <TableCell>
                       <Badge 
@@ -602,13 +577,13 @@ export default function ConfirmationsListPage() {
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          {/* <DropdownMenuItem 
                             onClick={() => handleDeleteConfirmation(confirmation.codigo)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Excluir
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
