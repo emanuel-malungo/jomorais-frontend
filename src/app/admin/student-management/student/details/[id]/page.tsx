@@ -4,13 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import useStudent from '@/hooks/useStudent';
-import { Student } from '@/types/student.types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -24,7 +22,6 @@ import {
   User,
   ArrowLeft,
   Edit,
-  Trash2,
   Phone,
   Mail,
   MapPin,
@@ -34,11 +31,7 @@ import {
   Users,
   DollarSign,
   Clock,
-  Award,
   BookOpen,
-  Download,
-  Printer,
-  Share2,
 } from 'lucide-react';
 
 export default function StudentDetailsPage() {
@@ -176,7 +169,7 @@ export default function StudentDetailsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button
+              {/* <Button
                 variant="outline"
                 className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
@@ -190,7 +183,7 @@ export default function StudentDetailsPage() {
               >
                 <Printer className="w-5 h-5 mr-2" />
                 Imprimir
-              </Button>
+              </Button> */}
 
               <Button
                 onClick={() => window.location.href = `/admin/student-management/student/edit/${studentId}`}
@@ -209,7 +202,7 @@ export default function StudentDetailsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
@@ -259,7 +252,7 @@ export default function StudentDetailsPage() {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 shadow-sm">
+        {/* <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
               <DollarSign className="h-6 w-6 text-white" />
@@ -274,7 +267,7 @@ export default function StudentDetailsPage() {
               {formatCurrency(student.saldo)}
             </p>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Tabs Content */}
@@ -360,10 +353,6 @@ export default function StudentDetailsPage() {
                         <label className="text-sm font-medium text-gray-500">Nome</label>
                         <p className="text-sm font-semibold text-gray-900">{student.tb_encarregados.nome}</p>
                       </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Código</label>
-                        <p className="text-sm font-semibold text-gray-900">#{student.tb_encarregados.codigo}</p>
-                      </div>
                     </div>
                     
                     <div className="pt-4 border-t">
@@ -402,16 +391,8 @@ export default function StudentDetailsPage() {
                     <p className="text-sm font-semibold text-gray-900">{student.tb_matriculas?.tb_cursos.designacao}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Código do Curso</label>
-                    <p className="text-sm font-semibold text-gray-900">#{student.tb_matriculas?.tb_cursos.codigo}</p>
-                  </div>
-                  <div>
                     <label className="text-sm font-medium text-gray-500">Data de Matrícula</label>
                     <p className="text-sm font-semibold text-gray-900">{formatDate(student.tb_matriculas?.data_Matricula || '')}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Código da Matrícula</label>
-                    <p className="text-sm font-semibold text-gray-900">#{student.tb_matriculas?.codigo}</p>
                   </div>
                   <div className="col-span-2">
                     <label className="text-sm font-medium text-gray-500">Status da Matrícula</label>
@@ -449,12 +430,6 @@ export default function StudentDetailsPage() {
                       <p className="text-sm font-semibold text-gray-900">{student.motivo_Desconto}</p>
                     </div>
                   )}
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Escola de Proveniência</label>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {student.escolaProveniencia ? `Código: ${student.escolaProveniencia}` : 'N/A'}
-                    </p>
-                  </div>
                 </div>
               </CardContent>
             </Card>
