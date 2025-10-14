@@ -69,7 +69,6 @@ export default function ListStudentPage() {
   const { status } = useStatus(1, 100, ""); // Carregar todos os status
   const { courses } = useCourses(1, 100, ""); // Carregar todos os cursos
   
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");
@@ -109,26 +108,28 @@ export default function ListStudentPage() {
     return options;
   }, [courses]);
 
-  // Carregar TODOS os estudantes para pesquisa global
+  // Carregar estudantes do backend quando filtros mudarem
   useEffect(() => {
-    getAllStudents(1, 1000); // Carregar até 1000 estudantes
-  }, [getAllStudents]);
+    getAllStudents(currentPage, itemsPerPage, searchTerm);
+  }, [currentPage, itemsPerPage, searchTerm, getAllStudents]);
 
-  // Filtrar estudantes (aplicado aos dados da página atual)
+  // Resetar para primeira página quando filtros mudarem
   useEffect(() => {
-    let filtered = students;
-
-    // Filtro por busca
-    if (searchTerm) {
-      filtered = filtered.filter(student =>
-        student.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.telefone?.includes(searchTerm) ||
-        student.n_documento_identificacao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.pai?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.mae?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    if (currentPage !== 1) {
+      setCurrentPage(1);
     }
+  }, [searchTerm]);
+
+  // Resetar para primeira página quando filtros mudarem
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [searchTerm]);
+
+  // Aplicar filtros locais de status e curso (já que o backend não suporta ainda)
+  const filteredStudents = useMemo(() => {
+    let filtered = students;
 
     // Filtro por status
     if (statusFilter !== "all") {
@@ -145,38 +146,25 @@ export default function ListStudentPage() {
       });
     }
 
-    setFilteredStudents(filtered);
-  }, [searchTerm, statusFilter, courseFilter, students]);
+    return filtered;
+  }, [students, statusFilter, courseFilter]);
 
-  // Paginação local dos resultados filtrados
-  const paginatedStudents = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredStudents.slice(startIndex, endIndex);
-  }, [filteredStudents, currentPage, itemsPerPage]);
+  // Usar estudantes filtrados para exibição
+  const displayStudents = filteredStudents;
 
-  // Cálculo da paginação local
-  const localPagination = useMemo(() => {
-    const totalItems = filteredStudents.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    return {
-      currentPage,
-      totalPages,
-      totalItems,
-      itemsPerPage,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1
+  // Usar paginação do backend
+  const serverPagination = useMemo(() => {
+    return pagination || {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      itemsPerPage: 10
     };
-  }, [filteredStudents.length, currentPage, itemsPerPage]);
-
-  // Resetar para primeira página quando filtros mudarem
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, courseFilter]);
+  }, [pagination]);
 
   // Cálculos para exibição
-  const startIndex = ((currentPage - 1) * itemsPerPage) + 1;
-  const endIndex = Math.min(currentPage * itemsPerPage, localPagination.totalItems);
+  const startIndex = ((serverPagination.currentPage - 1) * serverPagination.itemsPerPage) + 1;
+  const endIndex = Math.min(serverPagination.currentPage * serverPagination.itemsPerPage, serverPagination.totalItems);
 
   const handleViewStudent = (studentId: number) => {
     window.location.href = `/admin/student-management/student/details/${studentId}`;
@@ -255,7 +243,7 @@ export default function ListStudentPage() {
       />
 
       {/* Stats Cards usando componente StatCard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total de Alunos"
           value={(pagination?.totalItems || 0).toString()}
@@ -279,8 +267,19 @@ export default function ListStudentPage() {
         />
 
         <StatCard
+          title="Alunos Inativos"
+          value={students.filter(s => s.codigo_Status !== 1).length.toString()}
+          change="Inativos"
+          changeType="down"
+          icon={UserX}
+          color="text-red-600"
+          bgColor="bg-gradient-to-br from-red-50 via-white to-red-50/50"
+          accentColor="bg-gradient-to-br from-red-500 to-red-600"
+        />
+
+        <StatCard
           title="Página Atual"
-          value={`${currentPage}/${localPagination.totalPages}`}
+          value={`${currentPage}/${serverPagination.totalPages}`}
           change="Paginação"
           changeType="neutral"
           icon={UserX}
@@ -317,10 +316,10 @@ export default function ListStudentPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Alunos da Página {currentPage} ({filteredStudents.length} de {itemsPerPage})
+            Alunos da Página {currentPage} ({displayStudents.length} alunos)
           </CardTitle>
           <CardDescription>
-            Página {currentPage} de {localPagination.totalPages} - Total: {localPagination.totalItems} alunos
+            Página {currentPage} de {serverPagination.totalPages} - Total: {serverPagination.totalItems} alunos
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -346,7 +345,7 @@ export default function ListStudentPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : paginatedStudents.length === 0 ? (
+                ) : displayStudents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
@@ -359,7 +358,7 @@ export default function ListStudentPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedStudents.map((student, index) => (
+                  displayStudents.map((student, index) => (
                     <TableRow key={student.codigo || index} className="hover:bg-gray-50">
                       <TableCell className="font-medium">
                         {startIndex + index}
@@ -443,10 +442,10 @@ export default function ListStudentPage() {
           </div>
 
           {/* Paginação */}
-          {localPagination.totalPages > 1 && (
+          {serverPagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {startIndex} a {endIndex} de {localPagination.totalItems} alunos
+                Mostrando {startIndex} a {endIndex} de {serverPagination.totalItems} alunos
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -462,7 +461,7 @@ export default function ListStudentPage() {
                   {(() => {
                     const maxPagesToShow = 5;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                    const endPage = Math.min(localPagination.totalPages, startPage + maxPagesToShow - 1);
+                    const endPage = Math.min(serverPagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
                     
                     const pages = [];
@@ -502,19 +501,19 @@ export default function ListStudentPage() {
                     }
                     
                     // Última página
-                    if (endPage < localPagination.totalPages) {
-                      if (endPage < localPagination.totalPages - 1) {
+                    if (endPage < serverPagination.totalPages) {
+                      if (endPage < serverPagination.totalPages - 1) {
                         pages.push(<span key="ellipsis2" className="px-2">...</span>);
                       }
                       pages.push(
                         <Button
-                          key={localPagination.totalPages}
+                          key={serverPagination.totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(localPagination.totalPages)}
+                          onClick={() => setCurrentPage(serverPagination.totalPages)}
                           disabled={loading}
                         >
-                          {localPagination.totalPages}
+                          {serverPagination.totalPages}
                         </Button>
                       );
                     }
@@ -525,8 +524,8 @@ export default function ListStudentPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, localPagination.totalPages))}
-                  disabled={currentPage === localPagination.totalPages || loading}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, serverPagination.totalPages))}
+                  disabled={currentPage === serverPagination.totalPages || loading}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />

@@ -16,7 +16,7 @@ export default class StudentService {
         return this.getAllStudents(1, 1000);
     }
 
-    static async getAllStudents(page: number, limit: number): Promise<{ students: Student[], pagination: IPagination }> {
+    static async getAllStudents(page: number, limit: number, search: string = ''): Promise<{ students: Student[], pagination: IPagination }> {
         try {
 
             // Construir a query string explicitamente para garantir que o backend
@@ -25,6 +25,9 @@ export default class StudentService {
             const params = new URLSearchParams();
             params.append('page', page.toString());
             params.append('limit', limit.toString());
+            if (search) {
+                params.append('search', search);
+            }
             // Cache buster para evitar respostas cacheadas durante desenvolvimento
             params.append('_t', Date.now().toString());
 

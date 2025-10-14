@@ -36,7 +36,7 @@ interface UseStudentState {
 
 // Interface para o retorno do hook
 interface UseStudentReturn extends UseStudentState {
-    getAllStudents: (page?: number, limit?: number) => Promise<void>;
+    getAllStudents: (page?: number, limit?: number, search?: string) => Promise<void>;
     getAllStudentsComplete: () => Promise<void>;
     getStudentById: (id: number) => Promise<void>;
     createStudent: (studentData: Student) => Promise<void>;
@@ -93,12 +93,12 @@ export const useStudent = (): UseStudentReturn => {
         }
     }, [setLoading, clearError, setError]);
 
-    const getAllStudents = useCallback(async (page: number = 1, limit: number = 10) => {
+    const getAllStudents = useCallback(async (page: number = 1, limit: number = 10, search: string = '') => {
         try {
             setLoading(true);
             clearError();
             
-            const response = await StudentService.getAllStudents(page, limit);
+            const response = await StudentService.getAllStudents(page, limit, search);
 			
             
             setState(prev => ({
