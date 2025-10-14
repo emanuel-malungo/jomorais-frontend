@@ -13,7 +13,7 @@ export default class StudentService {
 
     static async getAllStudentsComplete(): Promise<{ students: Student[], pagination: IPagination }> {
         // Buscar todos os estudantes sem paginação
-        return this.getAllStudents(1, 1000);
+        return this.getAllStudents(1, 100);
     }
 
     static async getAllStudents(page: number, limit: number, search: string = ''): Promise<{ students: Student[], pagination: IPagination }> {
