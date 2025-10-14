@@ -50,6 +50,13 @@ class PaymentPrincipalService {
     }
   }
 
+  async getAllPagamentosPrincipais(
+    filters: Record<string, unknown> = {}
+  ): Promise<{ data: IPagamentoPrincipal[]; pagination: Record<string, unknown> }> {
+    // Buscar todos os registros sem paginação
+    return this.getPagamentosPrincipais(1, 1000, filters);
+  }
+
   async getPagamentosPrincipais(
     page: number = 1, 
     limit: number = 10, 
@@ -106,10 +113,35 @@ class PaymentPrincipalService {
       
       let result;
       try {
+        // Verificar se a resposta está vazia
+        if (!responseText || responseText.trim() === '') {
+          console.log('⚠️ Resposta vazia da API');
+          return {
+            data: [],
+            pagination: {
+              currentPage: page,
+              totalPages: 1,
+              totalItems: 0,
+              itemsPerPage: limit
+            }
+          };
+        }
+        
         result = JSON.parse(responseText);
       } catch (e) {
         console.error('❌ Erro ao fazer parse do JSON:', e);
-        throw new Error(`Dados inválidos: Resposta não é um JSON válido. Recebido: ${responseText.substring(0, 200)}...`);
+        console.error('📄 Resposta recebida:', responseText);
+        
+        // Se não conseguir fazer parse, retornar array vazio
+        return {
+          data: [],
+          pagination: {
+            currentPage: page,
+            totalPages: 1,
+            totalItems: 0,
+            itemsPerPage: limit
+          }
+        };
       }
       
       console.log('🔍 Resposta da API de pagamentos (parsed):', result);

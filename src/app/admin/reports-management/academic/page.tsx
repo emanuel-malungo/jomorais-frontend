@@ -31,6 +31,10 @@ import {
 export default function AcademicReportsPage() {
   const [reportType, setReportType] = useState("");
   const [dateRange, setDateRange] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
 
   const reportTypes = [
     { value: "notas", label: "Relatório de Notas" },
@@ -39,6 +43,75 @@ export default function AcademicReportsPage() {
     { value: "disciplinas", label: "Relatório de Disciplinas" },
     { value: "turmas", label: "Relatório de Turmas" },
   ];
+
+  const dateRangeOptions = [
+    { value: "current_month", label: "Mês Atual" },
+    { value: "previous_month", label: "Mês Anterior" },
+    { value: "specific_month", label: "Mês Específico" },
+    { value: "custom", label: "Período Personalizado" },
+  ];
+
+  const months = [
+    { value: 1, label: "Janeiro" },
+    { value: 2, label: "Fevereiro" },
+    { value: 3, label: "Março" },
+    { value: 4, label: "Abril" },
+    { value: 5, label: "Maio" },
+    { value: 6, label: "Junho" },
+    { value: 7, label: "Julho" },
+    { value: 8, label: "Agosto" },
+    { value: 9, label: "Setembro" },
+    { value: 10, label: "Outubro" },
+    { value: 11, label: "Novembro" },
+    { value: 12, label: "Dezembro" },
+  ];
+
+  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
+
+  const handleGenerateReport = () => {
+    if (!reportType) {
+      alert("Por favor, selecione um tipo de relatório");
+      return;
+    }
+
+    let startDate, endDate;
+    const now = new Date();
+
+    switch (dateRange) {
+      case "current_month":
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case "previous_month":
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+        break;
+      case "specific_month":
+        startDate = new Date(selectedYear, selectedMonth - 1, 1);
+        endDate = new Date(selectedYear, selectedMonth, 0);
+        break;
+      case "custom":
+        if (!customStartDate || !customEndDate) {
+          alert("Por favor, selecione as datas de início e fim");
+          return;
+        }
+        startDate = new Date(customStartDate);
+        endDate = new Date(customEndDate);
+        break;
+      default:
+        alert("Por favor, selecione um período");
+        return;
+    }
+
+    console.log("Gerando relatório:", {
+      type: reportType,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    });
+
+    // Aqui você implementaria a lógica real de geração do relatório
+    alert(`Relatório ${reportTypes.find(r => r.value === reportType)?.label} gerado para o período de ${startDate.toLocaleDateString()} a ${endDate.toLocaleDateString()}`);
+  };
 
   return (
     <Container>

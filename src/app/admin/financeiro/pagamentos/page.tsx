@@ -89,16 +89,16 @@ const PagamentosPage = () => {
   useEffect(() => {
     if (showStudentsModal) {
       // Reset página quando filtros mudam (mas não quando é mudança de página)
-      if (currentPage !== 1 && (searchTerm || selectedTurma !== 'all' || selectedCurso !== 'all')) {
+      if (currentPage !== 1 && (debouncedSearchTerm || selectedTurma !== 'all' || selectedCurso !== 'all')) {
         setCurrentPage(1);
         return;
       }
       
       const turmaId = selectedTurma !== 'all' ? parseInt(selectedTurma) : undefined;
       const cursoId = selectedCurso !== 'all' ? parseInt(selectedCurso) : undefined;
-      fetchStudents(currentPage, 10, searchTerm, turmaId, cursoId);
+      fetchStudents(currentPage, 1000, debouncedSearchTerm, turmaId, cursoId);
     }
-  }, [showStudentsModal, currentPage, searchTerm, selectedTurma, selectedCurso]);
+  }, [showStudentsModal, currentPage, debouncedSearchTerm, selectedTurma, selectedCurso]);
 
   // Carregar pagamentos quando a página carrega ou filtros mudam
   useEffect(() => {

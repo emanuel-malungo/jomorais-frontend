@@ -77,15 +77,6 @@ const periodoOptions = [
   { value: "noite", label: "Noite" },
 ];
 
-const cursoOptions = [
-  { value: "all", label: "Todos os Cursos" },
-  { value: "informatica", label: "Informática de Gestão" },
-  { value: "contabilidade", label: "Contabilidade e Gestão" },
-  { value: "administracao", label: "Administração" },
-  { value: "secretariado", label: "Secretariado Executivo" },
-  { value: "electronica", label: "Electrónica e Telecomunicações" },
-];
-
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
   { value: "ativo", label: "Ativo" },
@@ -110,6 +101,23 @@ export default function TurmasPage() {
   const [periodoFilter, setPeriodoFilter] = useState("all");
   const [cursoFilter, setCursoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Opções de curso dinâmicas baseadas nos dados reais
+  const cursoOptions = useMemo(() => {
+    const cursosUnicos = Array.from(new Set(
+      turmas
+        .filter((turma: any) => turma.tb_cursos?.designacao)
+        .map((turma: any) => turma.tb_cursos!.designacao)
+    ));
+    
+    return [
+      { value: "all", label: "Todos os Cursos" },
+      ...cursosUnicos.map((curso: string) => ({
+        value: curso.toLowerCase().replace(/\s+/g, '-'),
+        label: curso
+      }))
+    ];
+  }, [turmas]);
   
   // Estados para o modal de relatórios
   const [showReportModal, setShowReportModal] = useState(false);

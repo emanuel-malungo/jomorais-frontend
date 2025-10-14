@@ -34,7 +34,16 @@ class TeacherService {
   // DOCENTES - CRUD
   // ===============================
 
-  // Buscar todos os docentes
+  // Buscar TODOS os docentes sem paginação
+  async getAllDocentes(search?: string): Promise<IDocenteListResponse> {
+    let endpoint = `/api/academic-staff/docentes?page=1&limit=1000`
+    if (search) {
+      endpoint += `&search=${encodeURIComponent(search)}`
+    }
+    return this.request<IDocenteListResponse>(endpoint)
+  }
+
+  // Buscar todos os docentes (com paginação)
   async getDocentes(page: number = 1, limit: number = 10, search?: string): Promise<IDocenteListResponse> {
     let endpoint = `/api/academic-staff/docentes?page=${page}&limit=${limit}`
     if (search) {

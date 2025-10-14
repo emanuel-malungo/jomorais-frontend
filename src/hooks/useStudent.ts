@@ -37,6 +37,7 @@ interface UseStudentState {
 // Interface para o retorno do hook
 interface UseStudentReturn extends UseStudentState {
     getAllStudents: (page?: number, limit?: number) => Promise<void>;
+    getAllStudentsComplete: () => Promise<void>;
     getStudentById: (id: number) => Promise<void>;
     createStudent: (studentData: Student) => Promise<void>;
     updateStudent: (id: number, studentData: Student) => Promise<void>;
@@ -70,6 +71,27 @@ export const useStudent = (): UseStudentReturn => {
     const clearStudent = useCallback(() => {
         setState(prev => ({ ...prev, student: null }));
     }, []);
+
+    const getAllStudentsComplete = useCallback(async () => {
+        try {
+            setLoading(true);
+            clearError();
+            
+            const response = await StudentService.getAllStudentsComplete();
+            
+            setState(prev => ({
+                ...prev,
+                students: response.students,
+                pagination: response.pagination,
+                loading: false,
+                error: null,
+            }));
+        } catch (error: unknown) {
+            const axiosError = error as any;
+            const errorMessage = axiosError?.response?.data?.message || axiosError?.message || 'Erro ao carregar alunos';
+            setError(errorMessage);
+        }
+    }, [setLoading, clearError, setError]);
 
     const getAllStudents = useCallback(async (page: number = 1, limit: number = 10) => {
         try {
@@ -181,6 +203,7 @@ export const useStudent = (): UseStudentReturn => {
     return {
         ...state,
         getAllStudents,
+        getAllStudentsComplete,
         getStudentById,
         createStudent,
         updateStudent,

@@ -15,11 +15,36 @@ class TurmaService {
       toast.error(apiResponse.message || "Erro ao criar turma")
       throw new Error(apiResponse.message || "Erro ao criar turma")
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar turma"
+      let errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar turma"
+      
+      // Verificar se é erro específico de sala já usada
+      if (errorMessage.toLowerCase().includes('sala') && 
+          (errorMessage.toLowerCase().includes('já') || 
+           errorMessage.toLowerCase().includes('atribuída') ||
+           errorMessage.toLowerCase().includes('ocupada') ||
+           errorMessage.toLowerCase().includes('conflito'))) {
+        errorMessage = "Sala já atribuída para outro horário. Por favor, escolha uma sala diferente ou verifique os horários disponíveis."
+      }
+      
       toast.error(errorMessage)
       console.error("Erro ao criar turma:", error)
-      throw error
+      throw new Error(errorMessage)
     }
+  }
+
+  async getAllTurmas(search = ""): Promise<ITurmaListResponse> {
+    console.log('TurmaService: Fazendo requisição para TODAS as turmas...', { search })
+    const response = await api.get("/api/academic-management/turmas", {
+      params: { page: 1, limit: 1000, search } // Buscar até 1000 registros
+    })
+    console.log('TurmaService: Resposta da API (todas):', response.data)
+    const apiResponse = response.data
+
+    if (apiResponse.success) {
+      console.log('TurmaService: Dados de todas as turmas:', apiResponse.data)
+      return { data: apiResponse.data, pagination: apiResponse.pagination }
+    }
+    throw new Error(apiResponse.message || "Erro ao buscar todas as turmas")
   }
 
   async getTurmas(page = 1, limit = 10, search = ""): Promise<ITurmaListResponse> {

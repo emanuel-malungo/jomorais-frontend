@@ -37,7 +37,45 @@ export const useCreatePagamentoPrincipal = () => {
 };
 
 // ===============================
-// HOOK PARA LISTAR PAGAMENTOS PRINCIPAIS
+// HOOK PARA LISTAR TODOS OS PAGAMENTOS PRINCIPAIS (SEM PAGINAÇÃO)
+// ===============================
+
+export const useAllPagamentosPrincipais = (
+  filters: Record<string, unknown> = {}
+) => {
+  const [pagamentos, setPagamentos] = useState<IPagamentoPrincipal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAllPagamentos = useCallback(async (filters: Record<string, unknown> = {}) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await paymentPrincipalService.getAllPagamentosPrincipais(filters);
+      setPagamentos(result.data);
+    } catch (err: unknown) {
+      console.error('❌ Erro ao buscar todos os pagamentos:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao buscar pagamentos principais');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [JSON.stringify(filters)]);
+
+  useEffect(() => {
+    fetchAllPagamentos(filters);
+  }, [fetchAllPagamentos, filters]);
+
+  return {
+    pagamentos,
+    isLoading,
+    error,
+    refetch: fetchAllPagamentos,
+  };
+};
+
+// ===============================
+// HOOK PARA LISTAR PAGAMENTOS PRINCIPAIS (COM PAGINAÇÃO)
 // ===============================
 
 export const usePagamentosPrincipais = (

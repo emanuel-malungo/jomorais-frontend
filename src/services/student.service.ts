@@ -11,6 +11,11 @@ interface IPagination {
 
 export default class StudentService {
 
+    static async getAllStudentsComplete(): Promise<{ students: Student[], pagination: IPagination }> {
+        // Buscar todos os estudantes sem paginação
+        return this.getAllStudents(1, 1000);
+    }
+
     static async getAllStudents(page: number, limit: number): Promise<{ students: Student[], pagination: IPagination }> {
         try {
 

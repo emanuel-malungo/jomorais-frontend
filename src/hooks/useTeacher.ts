@@ -2,7 +2,38 @@ import { useState, useEffect, useCallback } from 'react';
 import { IDocente, IDocenteInput, IEspecialidade, IDocenteListResponse } from '@/types/teacher.types';
 import teacherService from '@/services/teacher.service';
 
-// Hook para buscar todos os docentes
+// Hook para buscar TODOS os docentes sem paginação
+export function useAllDocentes(search?: string) {
+  const [docentes, setDocentes] = useState<IDocente[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchAllDocentes = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await teacherService.getAllDocentes(search)
+      setDocentes(response.data)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar docentes')
+    } finally {
+      setLoading(false)
+    }
+  }, [search])
+
+  useEffect(() => {
+    fetchAllDocentes()
+  }, [fetchAllDocentes])
+
+  return {
+    docentes,
+    loading,
+    error,
+    refetch: fetchAllDocentes
+  }
+}
+
+// Hook para buscar todos os docentes (com paginação)
 export function useDocentes(page: number = 1, limit: number = 10, search?: string) {
   const [docentes, setDocentes] = useState<IDocente[]>([])
   const [loading, setLoading] = useState(false)

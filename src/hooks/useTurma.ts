@@ -2,7 +2,39 @@ import { useState, useEffect, useCallback } from "react"
 import turmaService from "@/services/turma.service"
 import { ITurma, ITurmaInput, ITurmaListResponse } from "@/types/turma.types"
 
-// Hook para listar turmas
+// Hook para listar TODAS as turmas (sem paginação)
+export const useAllTurmas = () => {
+  const [turmas, setTurmas] = useState<ITurma[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchAllTurmas = useCallback(async (search = "") => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      console.log('Hook useAllTurmas: Buscando TODAS as turmas...', { search })
+      const response = await turmaService.getAllTurmas(search)
+      console.log('Hook useAllTurmas: Resposta recebida:', response)
+      setTurmas(response.data)
+    } catch (error: unknown) {
+      console.error('Hook useAllTurmas: Erro ao buscar turmas:', error)
+      setError(error instanceof Error ? error.message : "Erro ao buscar turmas")
+      setTurmas([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  return {
+    turmas,
+    isLoading,
+    error,
+    fetchAllTurmas,
+    refetch: () => fetchAllTurmas()
+  }
+}
+
+// Hook para listar turmas (com paginação)
 export const useTurmas = () => {
   const [turmas, setTurmas] = useState<ITurma[]>([])
   const [pagination, setPagination] = useState<ITurmaListResponse['pagination'] | null>(null)
@@ -149,41 +181,29 @@ export const useDeleteTurma = () => {
   }
 }
 
-// Hook personalizado para gerenciar estado local das turmas
+// Hook personalizado para gerenciar estado local das turmas (TODAS)
 export const useTurmaManager = () => {
-  const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
-  const [limit, setLimit] = useState(10)
   const [selectedTurma, setSelectedTurma] = useState<ITurma | null>(null)
 
-  const { turmas, pagination, isLoading, error, fetchTurmas } = useTurmas()
+  const { turmas, isLoading, error, fetchAllTurmas } = useAllTurmas()
 
   // Effect para carregar dados quando parâmetros mudarem
   useEffect(() => {
-    fetchTurmas(currentPage, limit, searchTerm)
-  }, [currentPage, limit, searchTerm, fetchTurmas])
+    fetchAllTurmas(searchTerm)
+  }, [searchTerm, fetchAllTurmas])
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term)
-    setCurrentPage(1) // Reset para primeira página ao fazer busca
-  }, [])
-
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page)
-  }, [])
-
-  const handleLimitChange = useCallback((newLimit: number) => {
-    setLimit(newLimit)
-    setCurrentPage(1)
   }, [])
 
   const refetch = useCallback(() => {
-    fetchTurmas(currentPage, limit, searchTerm)
-  }, [fetchTurmas, currentPage, limit, searchTerm])
+    fetchAllTurmas(searchTerm)
+  }, [fetchAllTurmas, searchTerm])
 
   // Estatísticas básicas
   const stats = {
-    total: pagination?.totalItems || 0,
+    total: turmas?.length || 0,
     active: turmas?.filter((t: ITurma) => t.status === "Ativo").length || 0,
     inactive: turmas?.filter((t: ITurma) => t.status === "Inativo").length || 0,
   }
@@ -191,22 +211,17 @@ export const useTurmaManager = () => {
   return {
     // Dados
     turmas: turmas || [],
-    pagination,
     stats,
     isLoading,
     error,
     
     // Estado local
-    currentPage,
     searchTerm,
-    limit,
     selectedTurma,
     
-    // Ações
+    // Funções
     handleSearch,
-    handlePageChange,
-    handleLimitChange,
-    setSelectedTurma,
     refetch,
+    setSelectedTurma
   }
 }

@@ -135,7 +135,7 @@ export const useStudentsConfirmed = () => {
 
   const fetchStudents = async (
     page: number = 1,
-    limit: number = 10,
+    limit: number = 1000, // CORREÇÃO: Aumentar limite para buscar mais alunos
     search?: string,
     turma?: number,
     curso?: number
@@ -149,7 +149,10 @@ export const useStudentsConfirmed = () => {
         limit: limit.toString(),
       });
       
-      if (search) params.append('search', search);
+      if (search) {
+        params.append('search', search);
+        console.log('🔍 Buscando alunos com termo:', search);
+      }
       if (turma) params.append('turma', turma.toString());
       if (curso) params.append('curso', curso.toString());
 
@@ -157,7 +160,10 @@ export const useStudentsConfirmed = () => {
       const response = await api.get(`/api/payment-management/alunos-confirmados?${params}`);
       
       if (response.data.success) {
-        console.log('Alunos recebidos:', response.data.data.length);
+        console.log('✅ Alunos recebidos:', response.data.data.length);
+        if (search) {
+          console.log('🔍 Resultados da busca por "' + search + '":', response.data.data.map((s: any) => s.nome));
+        }
         setStudents(response.data.data);
         setPagination(response.data.pagination);
       } else {
@@ -165,7 +171,7 @@ export const useStudentsConfirmed = () => {
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar alunos';
-      console.error('Erro ao buscar alunos:', errorMessage);
+      console.error('❌ Erro ao buscar alunos:', errorMessage);
       setError(errorMessage);
       setStudents([]);
     } finally {
@@ -246,41 +252,14 @@ export const useGenerateInvoicePDF = () => {
           console.error('Erro ao buscar dados completos do aluno:', error);
         }
         
-        // Buscar todos os pagamentos do mesmo grupo (mesmo borderô E mesma data)
+        // CORREÇÃO: Usar apenas o pagamento específico selecionado
+        // A fatura deve mostrar apenas o mês do pagamento clicado, não todos os meses do depósito
         let mesesPagos = [];
         let valorTotal = payment.preco || 0;
         
-        try {
-          // Buscar por borderô E data para encontrar pagamentos da mesma transação
-          const grupoResponse = await api.get(`/api/payment-management/pagamentos?n_Bordoro=${encodeURIComponent(payment.n_Bordoro)}&codigo_Aluno=${payment.codigo_Aluno}`);
-          if (grupoResponse.data.success && grupoResponse.data.data.length > 0) {
-            // Filtrar apenas pagamentos da mesma data (mesma transação)
-            const paymentDate = new Date(payment.data).toDateString();
-            const pagamentosMesmaTransacao = grupoResponse.data.data.filter((pag: any) => {
-              const pagDate = new Date(pag.data).toDateString();
-              return pagDate === paymentDate;
-            });
-            
-            if (pagamentosMesmaTransacao.length > 1) {
-              // Se encontrou múltiplos pagamentos da mesma transação, usar todos os meses
-              mesesPagos = pagamentosMesmaTransacao.map((pag: any) => `${pag.mes}-${pag.ano}`);
-              valorTotal = pagamentosMesmaTransacao.reduce((total: number, pag: any) => total + (pag.preco || 0), 0);
-              console.log(`Encontrados ${pagamentosMesmaTransacao.length} pagamentos da mesma transação (${paymentDate})`);
-            } else {
-              // Fallback: usar apenas o pagamento atual
-              mesesPagos = payment.mes ? [`${payment.mes}-${payment.ano}`] : [];
-              console.log('Pagamento único, usando apenas o mês atual');
-            }
-          } else {
-            // Fallback: usar apenas o pagamento atual
-            mesesPagos = payment.mes ? [`${payment.mes}-${payment.ano}`] : [];
-            console.log('Nenhum pagamento encontrado com este borderô');
-          }
-        } catch (error) {
-          console.error('Erro ao buscar pagamentos do grupo:', error);
-          // Fallback: usar apenas o pagamento atual
-          mesesPagos = payment.mes ? [`${payment.mes}-${payment.ano}`] : [];
-        }
+        // Usar apenas o pagamento atual (específico que foi clicado)
+        mesesPagos = payment.mes ? [`${payment.mes}-${payment.ano}`] : [];
+        console.log('Gerando fatura para pagamento específico:', payment.codigo, 'Mês:', payment.mes, 'Ano:', payment.ano);
         
         // Obter nome do funcionário logado
         let nomeOperador = 'Sistema';

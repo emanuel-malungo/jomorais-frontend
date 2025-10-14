@@ -2,8 +2,34 @@ import { useState, useEffect, useCallback } from "react"
 import CourseService from "@/services/course.service"
 import { ICourse, ICourseInput, ICourseListResponse } from "@/types/course.types"
 
+// Listar TODOS os cursos sem paginação
+export function useAllCourses(search = "", includeArchived = false) {
+    const [courses, setCourses] = useState<ICourse[]>([])
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const fetchAllCourses = useCallback(async () => {
+        try {
+            setLoading(true)
+            setError(null)
+            const { data } = await CourseService.getAllCourses(search, includeArchived)
+            setCourses(data)
+        } catch (err: any) {
+            setError(err.message || "Erro ao carregar cursos")
+        } finally {
+            setLoading(false)
+        }
+    }, [search, includeArchived])
+
+    useEffect(() => {
+        fetchAllCourses()
+    }, [fetchAllCourses])
+
+    return { courses, loading, error, refetch: fetchAllCourses }
+}
+
 // Listar cursos com paginação e busca
-export function useCourses(page = 1, limit = 10, search = "") {
+export function useCourses(page = 1, limit = 10, search = "", includeArchived = false) {
     const [courses, setCourses] = useState<ICourse[]>([])
     const [pagination, setPagination] = useState<ICourseListResponse["pagination"] | null>(null)
     const [loading, setLoading] = useState(false)
@@ -13,7 +39,7 @@ export function useCourses(page = 1, limit = 10, search = "") {
         try {
             setLoading(true)
             setError(null)
-            const { data, pagination } = await CourseService.getCourses(page, limit, search)
+            const { data, pagination } = await CourseService.getCourses(page, limit, search, includeArchived)
             setCourses(data)
             setPagination(pagination)
         } catch (err: any) {
@@ -21,7 +47,7 @@ export function useCourses(page = 1, limit = 10, search = "") {
         } finally {
             setLoading(false)
         }
-    }, [page, limit, search])
+    }, [page, limit, search, includeArchived])
 
     useEffect(() => {
         fetchCourses()
@@ -99,7 +125,49 @@ export function useUpdateCourse(id: number) {
     return { updateCourse, loading, error }
 }
 
-// Deletar curso
+// Arquivar curso
+export function useArchiveCourse() {
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const archiveCourse = useCallback(async (id: number) => {
+        try {
+            setLoading(true)
+            setError(null)
+            await CourseService.archiveCourse(id)
+        } catch (err: any) {
+            setError(err.message || "Erro ao arquivar curso")
+            throw err
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    return { archiveCourse, loading, error }
+}
+
+// Restaurar curso
+export function useUnarchiveCourse() {
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const unarchiveCourse = useCallback(async (id: number) => {
+        try {
+            setLoading(true)
+            setError(null)
+            await CourseService.unarchiveCourse(id)
+        } catch (err: any) {
+            setError(err.message || "Erro ao restaurar curso")
+            throw err
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    return { unarchiveCourse, loading, error }
+}
+
+// Deletar curso (apenas para admin)
 export function useDeleteCourse() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)

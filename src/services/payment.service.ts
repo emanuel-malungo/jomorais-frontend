@@ -26,6 +26,11 @@ export default class PaymentService {
   // PAGAMENTOS PRINCIPAIS
   // ===============================
 
+  static async getAllPagamentosPrincipais(filters?: IPagamentoFilter): Promise<IPagamentoPrincipalListResponse> {
+    // Buscar todos os pagamentos principais sem paginação
+    return this.getPagamentosPrincipais(1, 1000, filters);
+  }
+
   static async getPagamentosPrincipais(page: number = 1, limit: number = 10, filters?: IPagamentoFilter): Promise<IPagamentoPrincipalListResponse> {
     try {
       const params = new URLSearchParams({

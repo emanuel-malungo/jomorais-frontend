@@ -15,6 +15,9 @@ export interface StudentData {
   numero_documento?: string;
   email?: string;
   telefone?: string;
+  data_nascimento?: string;
+  idade?: number;
+  genero?: string;
 }
 
 export interface TurmaReportData {
@@ -30,6 +33,34 @@ export interface TurmaReportData {
 }
 
 export class TurmaReportService {
+  
+  /**
+   * Calcula a idade baseada na data de nascimento
+   */
+  private static calculateAge(birthDate: string): number {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  }
+
+  /**
+   * Formata a data de nascimento
+   */
+  private static formatBirthDate(dateString: string): string {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('pt-BR');
+    } catch {
+      return 'N/A';
+    }
+  }
   
   /**
    * Busca alunos de uma turma específica
@@ -111,20 +142,28 @@ export class TurmaReportService {
     // Ordenar alunos alfabeticamente
     const alunosOrdenados = alunos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
     
-    // Tabela de alunos - apenas relação nominal
-    const tableData = alunosOrdenados.map((aluno, index) => [
-      (index + 1).toString(),
-      aluno.nome
-    ]);
+    // Tabela de alunos com informações completas
+    const tableData = alunosOrdenados.map((aluno, index) => {
+      const dataNascimento = aluno.data_nascimento ? this.formatBirthDate(aluno.data_nascimento) : 'N/A';
+      const idade = aluno.data_nascimento ? this.calculateAge(aluno.data_nascimento) : (aluno.idade || 'N/A');
+      
+      return [
+        (index + 1).toString(),
+        aluno.nome,
+        dataNascimento,
+        idade.toString(),
+        turma.tb_cursos?.designacao || 'N/A'
+      ];
+    });
     
     autoTable(doc, {
-      head: [['Nº', 'Nome do Aluno']],
+      head: [['Nº', 'Nome Completo', 'Data Nascimento', 'Idade', 'Curso']],
       body: tableData,
       startY: yPosition + 10,
       margin: { left: margin, right: margin },
       styles: {
-        fontSize: 12,
-        cellPadding: 4,
+        fontSize: 10,
+        cellPadding: 3,
       },
       headStyles: {
         fillColor: [41, 128, 185],
@@ -135,8 +174,11 @@ export class TurmaReportService {
         fillColor: [245, 245, 245]
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 20 },
-        1: { cellWidth: 140 }
+        0: { halign: 'center', cellWidth: 15 },
+        1: { cellWidth: 80 },
+        2: { halign: 'center', cellWidth: 30 },
+        3: { halign: 'center', cellWidth: 20 },
+        4: { cellWidth: 45 }
       }
     });
     
@@ -221,11 +263,19 @@ export class TurmaReportService {
               (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' })
             );
             
-            // Tabela de alunos - apenas relação nominal
-            const tableData = alunosOrdenados.map((aluno, index) => [
-              (index + 1).toString(),
-              aluno.nome || 'Nome não informado'
-            ]);
+            // Tabela de alunos com informações completas
+            const tableData = alunosOrdenados.map((aluno, index) => {
+              const dataNascimento = aluno.data_nascimento ? this.formatBirthDate(aluno.data_nascimento) : 'N/A';
+              const idade = aluno.data_nascimento ? this.calculateAge(aluno.data_nascimento) : (aluno.idade || 'N/A');
+              
+              return [
+                (index + 1).toString(),
+                aluno.nome || 'Nome não informado',
+                dataNascimento,
+                idade.toString(),
+                turmaData.turma.tb_cursos?.designacao || 'N/A'
+              ];
+            });
             
             // Verificar se há espaço suficiente na página
             const estimatedTableHeight = (tableData.length + 1) * 8; // Estimativa
@@ -252,13 +302,13 @@ export class TurmaReportService {
                 );
                 
                 autoTable(doc, {
-                  head: currentPage === 0 ? [['Nº', 'Nome do Aluno']] : [],
+                  head: currentPage === 0 ? [['Nº', 'Nome Completo', 'Data Nascimento', 'Idade', 'Curso']] : [],
                   body: pageData,
                   startY: yPosition + 10,
                   margin: { left: margin, right: margin },
                   styles: {
-                    fontSize: 11,
-                    cellPadding: 3,
+                    fontSize: 9,
+                    cellPadding: 2,
                   },
                   headStyles: {
                     fillColor: [41, 128, 185],
@@ -269,8 +319,11 @@ export class TurmaReportService {
                     fillColor: [245, 245, 245]
                   },
                   columnStyles: {
-                    0: { halign: 'center', cellWidth: 20 },
-                    1: { cellWidth: 140 }
+                    0: { halign: 'center', cellWidth: 15 },
+                    1: { cellWidth: 70 },
+                    2: { halign: 'center', cellWidth: 25 },
+                    3: { halign: 'center', cellWidth: 15 },
+                    4: { cellWidth: 40 }
                   }
                 });
                 
@@ -279,12 +332,12 @@ export class TurmaReportService {
             } else {
               // Tabela cabe em uma página
               autoTable(doc, {
-                head: [['Nº', 'Nome do Aluno']],
+                head: [['Nº', 'Nome Completo', 'Data Nascimento', 'Idade', 'Curso']],
                 body: tableData,
                 startY: yPosition + 10,
                 margin: { left: margin, right: margin },
                 styles: {
-                  fontSize: 11,
+                  fontSize: 10,
                   cellPadding: 3,
                 },
                 headStyles: {
@@ -296,8 +349,11 @@ export class TurmaReportService {
                   fillColor: [245, 245, 245]
                 },
                 columnStyles: {
-                  0: { halign: 'center', cellWidth: 20 },
-                  1: { cellWidth: 140 }
+                  0: { halign: 'center', cellWidth: 15 },
+                  1: { cellWidth: 80 },
+                  2: { halign: 'center', cellWidth: 30 },
+                  3: { halign: 'center', cellWidth: 20 },
+                  4: { cellWidth: 45 }
                 }
               });
             }
@@ -333,16 +389,16 @@ export class TurmaReportService {
    */
   private static getMockStudents(): StudentData[] {
     return [
-      { codigo: 1, nome: 'João Silva Santos', numero_documento: '123456789LA041', email: 'joao@email.com', telefone: '923456789' },
-      { codigo: 2, nome: 'Maria Fernanda Costa', numero_documento: '987654321LA042', email: 'maria@email.com', telefone: '924567890' },
-      { codigo: 3, nome: 'Pedro Miguel Oliveira', numero_documento: '456789123LA043', email: 'pedro@email.com', telefone: '925678901' },
-      { codigo: 4, nome: 'Ana Beatriz Sousa', numero_documento: '789123456LA044', email: 'ana@email.com', telefone: '926789012' },
-      { codigo: 5, nome: 'Carlos Eduardo Lima', numero_documento: '321654987LA045', email: 'carlos@email.com', telefone: '927890123' },
-      { codigo: 6, nome: 'Luísa Marques Pereira', numero_documento: '654987321LA046', email: 'luisa@email.com', telefone: '928901234' },
-      { codigo: 7, nome: 'Rafael Santos Almeida', numero_documento: '147258369LA047', email: 'rafael@email.com', telefone: '929012345' },
-      { codigo: 8, nome: 'Beatriz Gonçalves', numero_documento: '369258147LA048', email: 'beatriz@email.com', telefone: '930123456' },
-      { codigo: 9, nome: 'Miguel Ângelo Ferreira', numero_documento: '258147369LA049', email: 'miguel@email.com', telefone: '931234567' },
-      { codigo: 10, nome: 'Sofia Rodrigues Martins', numero_documento: '741852963LA050', email: 'sofia@email.com', telefone: '932345678' }
+      { codigo: 1, nome: 'João Silva Santos', numero_documento: '123456789LA041', email: 'joao@email.com', telefone: '923456789', data_nascimento: '2005-03-15', genero: 'M' },
+      { codigo: 2, nome: 'Maria Fernanda Costa', numero_documento: '987654321LA042', email: 'maria@email.com', telefone: '924567890', data_nascimento: '2004-07-22', genero: 'F' },
+      { codigo: 3, nome: 'Pedro Miguel Oliveira', numero_documento: '456789123LA043', email: 'pedro@email.com', telefone: '925678901', data_nascimento: '2005-11-08', genero: 'M' },
+      { codigo: 4, nome: 'Ana Beatriz Sousa', numero_documento: '789123456LA044', email: 'ana@email.com', telefone: '926789012', data_nascimento: '2004-12-03', genero: 'F' },
+      { codigo: 5, nome: 'Carlos Eduardo Lima', numero_documento: '321654987LA045', email: 'carlos@email.com', telefone: '927890123', data_nascimento: '2005-01-28', genero: 'M' },
+      { codigo: 6, nome: 'Luísa Marques Pereira', numero_documento: '654987321LA046', email: 'luisa@email.com', telefone: '928901234', data_nascimento: '2004-09-14', genero: 'F' },
+      { codigo: 7, nome: 'Rafael Santos Almeida', numero_documento: '147258369LA047', email: 'rafael@email.com', telefone: '929012345', data_nascimento: '2005-05-19', genero: 'M' },
+      { codigo: 8, nome: 'Beatriz Gonçalves', numero_documento: '369258147LA048', email: 'beatriz@email.com', telefone: '930123456', data_nascimento: '2004-10-07', genero: 'F' },
+      { codigo: 9, nome: 'Miguel Ângelo Ferreira', numero_documento: '258147369LA049', email: 'miguel@email.com', telefone: '931234567', data_nascimento: '2005-02-11', genero: 'M' },
+      { codigo: 10, nome: 'Sofia Rodrigues Martins', numero_documento: '741852963LA050', email: 'sofia@email.com', telefone: '932345678', data_nascimento: '2004-08-25', genero: 'F' }
     ];
   }
 
