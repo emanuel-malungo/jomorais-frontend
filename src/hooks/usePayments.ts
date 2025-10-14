@@ -246,7 +246,54 @@ export const useGenerateInvoicePDF = () => {
           console.error('Erro ao buscar dados completos do aluno:', error);
         }
         
-        // Preparar dados para a fatura térmica
+        // Buscar todos os pagamentos do mesmo grupo (mesmo borderô E mesma data)
+        let mesesPagos = [];
+        let valorTotal = payment.preco || 0;
+        
+        try {
+          // Buscar por borderô E data para encontrar pagamentos da mesma transação
+          const grupoResponse = await api.get(`/api/payment-management/pagamentos?n_Bordoro=${encodeURIComponent(payment.n_Bordoro)}&codigo_Aluno=${payment.codigo_Aluno}`);
+          if (grupoResponse.data.success && grupoResponse.data.data.length > 0) {
+            // Filtrar apenas pagamentos da mesma data (mesma transação)
+            const paymentDate = new Date(payment.data).toDateString();
+            const pagamentosMesmaTransacao = grupoResponse.data.data.filter((pag: any) => {
+              const pagDate = new Date(pag.data).toDateString();
+              return pagDate === paymentDate;
+            });
+            
+            if (pagamentosMesmaTransacao.length > 1) {
+              // Se encontrou múltiplos pagamentos da mesma transação, usar todos os meses
+              mesesPagos = pagamentosMesmaTransacao.map((pag: any) => `${pag.mes}-${pag.ano}`);
+              valorTotal = pagamentosMesmaTransacao.reduce((total: number, pag: any) => total + (pag.preco || 0), 0);
+              console.log(`Encontrados ${pagamentosMesmaTransacao.length} pagamentos da mesma transação (${paymentDate})`);
+            } else {
+              // Fallback: usar apenas o pagamento atual
+              mesesPagos = payment.mes ? [`${payment.mes}-${payment.ano}`] : [];
+              console.log('Pagamento único, usando apenas o mês atual');
+            }
+          } else {
+            // Fallback: usar apenas o pagamento atual
+            mesesPagos = payment.mes ? [`${payment.mes}-${payment.ano}`] : [];
+            console.log('Nenhum pagamento encontrado com este borderô');
+          }
+        } catch (error) {
+          console.error('Erro ao buscar pagamentos do grupo:', error);
+          // Fallback: usar apenas o pagamento atual
+          mesesPagos = payment.mes ? [`${payment.mes}-${payment.ano}`] : [];
+        }
+        
+        // Obter nome do funcionário logado
+        let nomeOperador = 'Sistema';
+        try {
+          const userData = localStorage.getItem('user');
+          if (userData) {
+            const user = JSON.parse(userData);
+            nomeOperador = user.nome || user.username || 'Sistema';
+          }
+        } catch (error) {
+          console.error('Erro ao obter dados do usuário:', error);
+        }
+
         const dadosFatura = {
           numeroFatura: payment.fatura || `FAT_${Date.now()}`,
           dataEmissao: new Date(payment.data || new Date()).toLocaleString('pt-BR'),
@@ -259,20 +306,23 @@ export const useGenerateInvoicePDF = () => {
           servicos: [
             {
               descricao: payment.tipoServico?.designacao || 'Serviço',
-              quantidade: 1,
+              quantidade: mesesPagos.length,
               precoUnitario: payment.preco || 0,
-              total: payment.preco || 0
+              total: valorTotal
             }
           ],
           formaPagamento: payment.formaPagamento?.designacao || 'DINHEIRO',
-          subtotal: payment.preco || 0,
+          contaBancaria: (payment.formaPagamento?.designacao === 'DEPOSITO' || payment.formaPagamento?.designacao === 'DEPÓSITO') ? payment.contaMovimentada : null,
+          numeroBordero: (payment.formaPagamento?.designacao === 'DEPOSITO' || payment.formaPagamento?.designacao === 'DEPÓSITO') ? payment.n_Bordoro : null,
+          mesesPagos: mesesPagos.join(', '),
+          subtotal: valorTotal,
           iva: 0.00,
           desconto: 0.00,
-          totalPagar: payment.preco || 0,
-          totalPago: payment.preco || 0,
+          totalPagar: valorTotal,
+          totalPago: valorTotal,
           pagoEmSaldo: 0.00,
           saldoAtual: 0.00,
-          operador: 'Sistema'
+          operador: nomeOperador
         };
         
         // Criar uma nova janela para impressão
@@ -407,6 +457,9 @@ export const useGenerateInvoicePDF = () => {
 
               <div class="totais">
                 <p>Forma de Pagamento: ${dadosFatura.formaPagamento}</p>
+                ${dadosFatura.contaBancaria ? `<p>Conta Bancária: ${dadosFatura.contaBancaria}</p>` : ''}
+                ${dadosFatura.numeroBordero ? `<p>Nº Borderô: ${dadosFatura.numeroBordero}</p>` : ''}
+                ${dadosFatura.mesesPagos ? `<p>Meses: ${dadosFatura.mesesPagos}</p>` : ''}
                 <p>Total: ${dadosFatura.subtotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                 <p>Total IVA: ${dadosFatura.iva.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                 <p>N.º de Itens: ${dadosFatura.servicos.length}</p>

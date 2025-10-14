@@ -32,6 +32,7 @@ import {
   Building,
   Globe,
   UserCog,
+  TrendingUp,
 } from "lucide-react"
 
 export interface MenuItem {
@@ -83,6 +84,7 @@ const menuItems: MenuItem[] = [
     icon: DollarSign,
     children: [
       { title: "Pagamentos", icon: Wallet, href: "/admin/financeiro/pagamentos" },
+      { title: "Relatórios de Vendas", icon: TrendingUp, href: "/admin/financeiro/relatorios-vendas" },
       { title: "Serviços", icon: FileText, href: "/admin/finance-management/services" },
       { title: "Notas de Crédito", icon: FileText, href: "/admin/finance-management/credit-notes" }
     ]

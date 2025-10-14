@@ -37,6 +37,9 @@ export interface ThermalInvoiceData {
     formaPagamento: {
       designacao: string;
     };
+    contaMovimentada?: string;
+    n_Bordoro?: string;
+    mesesPagos?: string[];
   };
   operador?: string;
 }
@@ -152,9 +155,23 @@ export default function ThermalInvoice({
         {/* Totais */}
         <div className="text-sm space-y-1">
           <p>Forma de Pagamento: {data.pagamento.formaPagamento.designacao}</p>
+          
+          {/* Informações bancárias apenas para depósitos */}
+          {data.pagamento.contaMovimentada && (
+            <p>Conta Bancária: {data.pagamento.contaMovimentada}</p>
+          )}
+          {data.pagamento.n_Bordoro && (
+            <p>Nº Borderô: {data.pagamento.n_Bordoro}</p>
+          )}
+          
+          {/* Meses pagos */}
+          {data.pagamento.mesesPagos && data.pagamento.mesesPagos.length > 0 && (
+            <p>Meses: {data.pagamento.mesesPagos.join(', ')}</p>
+          )}
+          
           <p>Total: {formatCurrency(data.pagamento.preco)}</p>
           <p>Total IVA: 0.00</p>
-          <p>N.º de Itens: 1</p>
+          <p>N.º de Itens: {data.pagamento.mesesPagos?.length || 1}</p>
           <p>Desconto: 0.00</p>
           <p>A Pagar: {formatCurrency(data.pagamento.preco)}</p>
           <p>Total Pago: {formatCurrency(data.pagamento.preco)}</p>

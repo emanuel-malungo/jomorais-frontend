@@ -2,7 +2,7 @@
 import { useState, type ReactNode } from 'react';
 import Header from './Header';
 import Sidebar from './sidebar';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface ContainerProps {
   children: ReactNode;
@@ -32,6 +32,9 @@ const Container: React.FC<ContainerProps> = ({ children, onLogout }) => {
           onEscapeKeyDown={() => setMobileSidebarOpen(false)}
           onPointerDownOutside={() => setMobileSidebarOpen(false)}
         >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Menu de Navegação</SheetTitle>
+          </SheetHeader>
           <Sidebar onLogout={onLogout} />
         </SheetContent>
       </Sheet>

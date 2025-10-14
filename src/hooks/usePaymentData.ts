@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import api from '@/utils/api.utils';
 
 export interface ITipoServico {
@@ -171,6 +171,15 @@ export const ANOS_OPTIONS = Array.from({ length: 10 }, (_, i) => {
   return { value: year, label: year.toString() };
 });
 
+export interface IAnoLectivo {
+  codigo: number;
+  designacao: string;
+  mesInicial: string;
+  mesFinal: string;
+  anoInicial: string;
+  anoFinal: string;
+}
+
 // Hook para buscar dados completos do aluno
 export const useAlunoCompleto = () => {
   const [aluno, setAluno] = useState<IAluno | null>(null);
@@ -209,5 +218,208 @@ export const useAlunoCompleto = () => {
     error,
     fetchAlunoCompleto,
     clearAluno
+  };
+};
+
+// Hook para buscar tipo de serviço específico da turma do aluno
+export const useTipoServicoTurmaAluno = () => {
+  const [tipoServico, setTipoServico] = useState<ITipoServico | null>(null);
+  const [dadosAluno, setDadosAluno] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTipoServicoTurma = async (alunoId: number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get(`/api/payment-management/aluno/${alunoId}/tipo-servico-turma`);
+      if (response.data.success) {
+        setTipoServico(response.data.data);
+        setDadosAluno(null); // Não há dados do aluno nesta resposta
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Erro ao buscar tipo de serviço da turma');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar tipo de serviço da turma';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearTipoServico = () => {
+    setTipoServico(null);
+    setDadosAluno(null);
+    setError(null);
+  };
+
+  return {
+    tipoServico,
+    dadosAluno,
+    loading,
+    error,
+    fetchTipoServicoTurma,
+    clearTipoServico
+  };
+};
+
+// Hook para buscar meses pendentes do aluno
+export const useMesesPendentesAluno = () => {
+  const [mesesPendentes, setMesesPendentes] = useState<string[]>([]);
+  const [mesesPagos, setMesesPagos] = useState<string[]>([]);
+  const [proximoMes, setProximoMes] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMesesPendentes = async (alunoId: number, codigoAnoLectivo?: number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const params = codigoAnoLectivo ? `?codigoAnoLectivo=${codigoAnoLectivo}` : '';
+      const response = await api.get(`/api/payment-management/aluno/${alunoId}/meses-pendentes${params}`);
+      if (response.data.success) {
+        const data = response.data.data;
+        setMesesPendentes(data.mesesPendentes || []);
+        setMesesPagos(data.mesesPagos || []);
+        setProximoMes(data.proximoMes || null);
+        setMensagem(data.mensagem || null);
+        
+        return data;
+      } else {
+        throw new Error(response.data.message || 'Erro ao buscar meses pendentes');
+      }
+    } catch (err: any) {
+      // Se for erro 400, pode ser que o aluno não esteja matriculado no ano
+      if (err.response?.status === 400) {
+        console.log('Aluno não encontrado no ano letivo especificado');
+        setMesesPendentes([]);
+        setMesesPagos([]);
+        setProximoMes(null);
+        return {
+          mesesPendentes: [],
+          mesesPagos: [],
+          totalMeses: 0,
+          mesesPagosCount: 0,
+          mesesPendentesCount: 0,
+          proximoMes: null,
+          dividasAnteriores: [],
+          temDividas: false,
+          mensagem: 'Aluno não encontrado no ano letivo especificado'
+        };
+      }
+      
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar meses pendentes';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearMesesPendentes = useCallback(() => {
+    setMesesPendentes([]);
+    setMesesPagos([]);
+    setProximoMes(null);
+    setMensagem(null);
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  const refreshMesesPendentes = useCallback(async (alunoId: number, codigoAnoLectivo?: number) => {
+    // Força uma nova busca limpando o cache primeiro
+    clearMesesPendentes();
+    await fetchMesesPendentes(alunoId, codigoAnoLectivo);
+  }, [fetchMesesPendentes, clearMesesPendentes]);
+
+  return {
+    mesesPendentes,
+    mesesPagos,
+    proximoMes,
+    mensagem,
+    loading,
+    error,
+    fetchMesesPendentes,
+    clearMesesPendentes,
+    refreshMesesPendentes
+  };
+};
+
+// Hook para buscar anos letivos
+export const useAnosLectivos = () => {
+  const [anosLectivos, setAnosLectivos] = useState<IAnoLectivo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAnosLectivos = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get('/api/payment-management/anos-lectivos');
+      if (response.data.success) {
+        setAnosLectivos(response.data.data);
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Erro ao buscar anos letivos');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar anos letivos';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnosLectivos();
+  }, []);
+
+  return {
+    anosLectivos,
+    loading,
+    error,
+    refetch: fetchAnosLectivos
+  };
+};
+
+// Hook para validar número de borderô
+export const useValidateBordero = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateBordero = async (bordero: string, excludeId?: number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const params = excludeId ? `?excludeId=${excludeId}` : '';
+      const response = await api.post(`/api/payment-management/validate-bordero${params}`, {
+        bordero
+      });
+      
+      if (response.data.success) {
+        return true;
+      } else {
+        throw new Error(response.data.message || 'Número de borderô inválido');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao validar borderô';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    validateBordero,
+    loading,
+    error
   };
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   User, 
@@ -25,8 +25,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { IStudentFinancialData } from '@/hooks/usePayments';
+import { useAnosLectivos, useMesesPendentesAluno } from '@/hooks/usePaymentData';
 
 interface StudentFinancialModalProps {
   open: boolean;
@@ -43,6 +52,56 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
   financialData,
   loading
 }) => {
+  const [selectedAnoLectivo, setSelectedAnoLectivo] = useState<number | null>(null);
+  const { anosLectivos } = useAnosLectivos();
+  const { mesesPendentes, mesesPagos, fetchMesesPendentes, clearMesesPendentes, refreshMesesPendentes, loading: mesesLoading, mensagem } = useMesesPendentesAluno();
+
+  // Buscar meses pendentes quando o ano letivo mudar
+  useEffect(() => {
+    if (student && selectedAnoLectivo) {
+      fetchMesesPendentes(student.codigo, selectedAnoLectivo);
+    }
+  }, [student?.codigo, selectedAnoLectivo]); // Removido fetchMesesPendentes das dependências
+
+  // Definir ano letivo padrão
+  useEffect(() => {
+    if (anosLectivos.length > 0 && !selectedAnoLectivo) {
+      setSelectedAnoLectivo(anosLectivos[0].codigo);
+    }
+  }, [anosLectivos, selectedAnoLectivo]);
+
+  // Limpar dados quando modal abrir/fechar
+  useEffect(() => {
+    if (open && student) {
+      clearMesesPendentes();
+      setSelectedAnoLectivo(null);
+    } else if (!open) {
+      clearMesesPendentes();
+      setSelectedAnoLectivo(null);
+    }
+  }, [open, student?.codigo]); // Removido clearMesesPendentes das dependências
+
+  // Escutar eventos de pagamento criado para atualizar automaticamente
+  useEffect(() => {
+    const handlePaymentCreated = (event: CustomEvent) => {
+      const { alunoId } = event.detail;
+      if (student && student.codigo === alunoId && selectedAnoLectivo) {
+        console.log('Pagamento criado para este aluno, forçando atualização dos dados...');
+        // Aguardar um pouco para o backend processar e usar refresh para forçar atualização
+        setTimeout(() => {
+          refreshMesesPendentes(student.codigo, selectedAnoLectivo);
+        }, 1500);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('paymentCreated', handlePaymentCreated as EventListener);
+      return () => {
+        window.removeEventListener('paymentCreated', handlePaymentCreated as EventListener);
+      };
+    }
+  }, [student, selectedAnoLectivo, refreshMesesPendentes]);
+
   if (!student) return null;
 
   const formatCurrency = (value: number) => {
@@ -152,7 +211,7 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-500">Total Meses</p>
-                      <p className="text-2xl font-bold">{financialData.resumo.totalMeses}</p>
+                      <p className="text-2xl font-bold">{mesesPagos.length + mesesPendentes.length}</p>
                     </div>
                     <Calendar className="w-8 h-8 text-blue-500" />
                   </div>
@@ -164,7 +223,7 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-500">Meses Pagos</p>
-                      <p className="text-2xl font-bold text-green-600">{financialData.resumo.mesesPagos}</p>
+                      <p className="text-2xl font-bold text-green-600">{mesesPagos.length}</p>
                     </div>
                     <CheckCircle className="w-8 h-8 text-green-500" />
                   </div>
@@ -200,36 +259,93 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
               </Card>
             </div>
 
-            {/* Status dos Meses de Propina */}
+            {/* Seleção de Ano Letivo */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
-                  Status das Propinas (Setembro - Julho)
+                  Status das Propinas por Ano Letivo
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {financialData.mesesPropina.map((mes, index) => (
-                    <Card key={index} className="border">
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-sm">{mes.mes}</span>
-                          {getStatusIcon(mes.status)}
+                <div className="mb-4">
+                  <Label htmlFor="ano-letivo">Selecionar Ano Letivo</Label>
+                  <Select
+                    value={selectedAnoLectivo?.toString() || ''}
+                    onValueChange={(value) => setSelectedAnoLectivo(parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o ano letivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {anosLectivos.map((ano) => (
+                        <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
+                          {ano.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {mesesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                    <span className="ml-3 text-gray-600">Carregando meses...</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Meses Pagos */}
+                    {mesesPagos.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="font-medium text-green-700 mb-3 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" />
+                          Meses Pagos ({mesesPagos.length})
+                        </h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                          {mesesPagos.map((mes, index) => (
+                            <Badge key={index} className="bg-green-100 text-green-800 justify-center py-2">
+                              {mes}
+                            </Badge>
+                          ))}
                         </div>
-                        <Badge className={`w-full justify-center ${getStatusColor(mes.status)}`}>
-                          {mes.status === 'PAGO' ? 'PAGO' : 'PENDENTE'}
-                        </Badge>
-                        <div className="mt-2 text-xs text-gray-500">
-                          <div>Valor: {formatCurrency(mes.valor)}</div>
-                          {mes.dataPagamento && (
-                            <div>Pago em: {formatDate(mes.dataPagamento)}</div>
+                      </div>
+                    )}
+
+                    {/* Meses Pendentes */}
+                    {mesesPendentes.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="font-medium text-red-700 mb-3 flex items-center gap-2">
+                          <XCircle className="w-4 h-4" />
+                          Meses Pendentes ({mesesPendentes.length})
+                        </h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                          {mesesPendentes.map((mes, index) => (
+                            <Badge key={index} className="bg-red-100 text-red-800 justify-center py-2">
+                              {mes}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mensagem quando não há dados */}
+                    {mesesPendentes.length === 0 && mesesPagos.length === 0 && (
+                      <div className="text-center py-8">
+                        <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50 text-blue-500" />
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                          <p className="text-blue-800 font-medium">
+                            {mensagem || "Nenhum dado encontrado para este ano letivo"}
+                          </p>
+                          {!mensagem && (
+                            <p className="text-blue-600 text-sm mt-2">
+                              O aluno pode não estar matriculado neste período
+                            </p>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
 

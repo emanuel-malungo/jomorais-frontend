@@ -39,6 +39,10 @@ import {
   useFormasPagamento, 
   useAlunosSearch,
   useAlunoCompleto,
+  useTipoServicoTurmaAluno,
+  useMesesPendentesAluno,
+  useAnosLectivos,
+  useValidateBordero,
   MESES_OPTIONS,
   ANOS_OPTIONS
 } from '@/hooks/usePaymentData';
@@ -53,11 +57,13 @@ interface NovoPaymentModalProps {
 interface FormData {
   codigo_Aluno: number | null;
   codigo_Tipo_Servico: number | null;
-  mes: string;
+  mesesSelecionados: string[];
   ano: number | null;
   preco: string;
   observacao: string;
   codigo_FormaPagamento: number | null;
+  tipoConta: string;
+  numeroBordero: string;
 }
 
 const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) => {
@@ -65,11 +71,13 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const [formData, setFormData] = useState<FormData>({
     codigo_Aluno: null,
     codigo_Tipo_Servico: null,
-    mes: '',
+    mesesSelecionados: [],
     ano: new Date().getFullYear(),
     preco: '',
     observacao: '',
     codigo_FormaPagamento: null,
+    tipoConta: '',
+    numeroBordero: '',
   });
 
   // Estados para busca de alunos
@@ -81,16 +89,23 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   // Estados para modal de fatura
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [createdPayment, setCreatedPayment] = useState<any>(null);
+  
+  // Estados para depósito bancário
+  const [isDeposito, setIsDeposito] = useState(false);
+  const [borderoError, setBorderoError] = useState<string>('');
 
   // Debounce para busca de alunos
   const debouncedAlunoSearch = useDebounce(alunoSearch, 500);
 
   // Hooks
   const { createPayment, loading: createLoading, error: createError } = useCreatePayment();
-  const { tiposServico, loading: tiposLoading } = useTiposServico();
   const { formasPagamento, loading: formasLoading } = useFormasPagamento();
   const { alunos, loading: alunosLoading, searchAlunos, clearAlunos } = useAlunosSearch();
   const { fetchAlunoCompleto } = useAlunoCompleto();
+  const { tipoServico: tipoServicoTurma, fetchTipoServicoTurma, loading: tipoServicoLoading } = useTipoServicoTurmaAluno();
+  const { mesesPendentes, mensagem, fetchMesesPendentes, loading: mesesLoading } = useMesesPendentesAluno();
+  const { anosLectivos, loading: anosLoading } = useAnosLectivos();
+  const { validateBordero, loading: borderoValidating } = useValidateBordero();
 
   // Buscar alunos quando o termo de busca muda
   useEffect(() => {
@@ -109,15 +124,19 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       setFormData({
         codigo_Aluno: null,
         codigo_Tipo_Servico: null,
-        mes: '',
+        mesesSelecionados: [],
         ano: new Date().getFullYear(),
         preco: '',
         observacao: '',
         codigo_FormaPagamento: null,
+        tipoConta: '',
+        numeroBordero: '',
       });
       setAlunoSearch('');
       setSelectedAluno(null);
       setShowAlunoResults(false);
+      setIsDeposito(false);
+      setBorderoError('');
       clearAlunos();
     }
   }, [open]);
@@ -129,17 +148,77 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       [field]: value
     }));
   };
-
   const handleSelectAluno = async (aluno: any) => {
     setSelectedAluno(aluno);
     setFormData(prev => ({ ...prev, codigo_Aluno: aluno.codigo }));
     setAlunoSearch(aluno.nome);
     setShowAlunoResults(false);
-    
-    // Buscar dados completos do aluno
     try {
+      // Buscar dados completos do aluno
       const alunoCompletoData = await fetchAlunoCompleto(aluno.codigo);
       setAlunoCompleto(alunoCompletoData);
+      
+      // Buscar tipo de serviço específico da turma
+      await fetchTipoServicoTurma(aluno.codigo);
+      
+      // Buscar meses pendentes - usar o ano do aluno se disponível
+      let codigoAnoLectivo = formData.ano;
+      
+      // Se não há ano selecionado, tentar encontrar o ano letivo do aluno
+      if (!codigoAnoLectivo && alunoCompletoData?.tb_matriculas?.tb_confirmacoes?.length > 0) {
+        // Usar o ano letivo da confirmação ativa do aluno
+        const confirmacaoAtiva = alunoCompletoData.tb_matriculas.tb_confirmacoes.find(
+          (conf: any) => conf.codigo_Status === 1
+        );
+        if (confirmacaoAtiva) {
+          codigoAnoLectivo = confirmacaoAtiva.codigo_Ano_lectivo;
+          console.log('Usando ano letivo do aluno:', codigoAnoLectivo);
+        }
+      }
+      
+      // Fallback: tentar encontrar um ano onde o aluno tenha dados
+      if (!codigoAnoLectivo && anosLectivos.length > 0) {
+        // Tentar anos letivos em ordem até encontrar um com dados do aluno
+        for (const ano of anosLectivos.reverse()) {
+          try {
+            const testData = await fetchMesesPendentes(aluno.codigo, ano.codigo);
+            if (testData.mesesPendentes.length > 0 || testData.mesesPagos.length > 0) {
+              codigoAnoLectivo = ano.codigo;
+              console.log('Encontrado ano com dados:', ano.designacao);
+              break;
+            }
+          } catch (error) {
+            // Continuar tentando outros anos
+          }
+        }
+        
+        // Se ainda não encontrou, usar o último ano da lista
+        if (!codigoAnoLectivo) {
+          codigoAnoLectivo = anosLectivos[anosLectivos.length - 1].codigo;
+        }
+      }
+      if (codigoAnoLectivo) {
+        try {
+          const mesesData = await fetchMesesPendentes(aluno.codigo, codigoAnoLectivo);
+          if (mesesData.mesesPendentes.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              ano: codigoAnoLectivo,
+              mesesSelecionados: [mesesData.proximoMes || mesesData.mesesPendentes[0]]
+            }));
+          } else {
+            // Se não há meses pendentes, apenas definir o ano
+            setFormData(prev => ({
+              ...prev,
+              ano: codigoAnoLectivo,
+              mesesSelecionados: []
+            }));
+          }
+        } catch (error) {
+          console.error('Erro ao buscar meses pendentes:', error);
+          // Não impedir a seleção do aluno por causa disso
+        }
+      }
     } catch (error) {
       console.error('Erro ao buscar dados completos do aluno:', error);
     }
@@ -148,28 +227,98 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const handleClearAluno = () => {
     setSelectedAluno(null);
     setAlunoCompleto(null);
-    setFormData(prev => ({ ...prev, codigo_Aluno: null }));
+    setFormData(prev => ({ 
+      ...prev, 
+      codigo_Aluno: null,
+      codigo_Tipo_Servico: null,
+      mesesSelecionados: [],
+      preco: '',
+      tipoConta: '',
+      numeroBordero: ''
+    }));
     setAlunoSearch('');
     setShowAlunoResults(false);
+    setIsDeposito(false);
+    setBorderoError('');
     clearAlunos();
   };
 
-  const handleTipoServicoChange = (tipoServicoId: string) => {
-    const tipoServico = tiposServico.find(tipo => tipo.codigo === parseInt(tipoServicoId));
+  // Atualizar preço quando tipo de serviço da turma é carregado
+  useEffect(() => {
+    if (tipoServicoTurma) {
+      setFormData(prev => ({
+        ...prev,
+        codigo_Tipo_Servico: tipoServicoTurma.codigo,
+        preco: tipoServicoTurma.preco ? tipoServicoTurma.preco.toString() : prev.preco
+      }));
+    }
+  }, [tipoServicoTurma]);
+
+  // Handler para mudança de forma de pagamento
+  const handleFormaPagamentoChange = (formaPagamentoId: string) => {
+    const formaPagamento = formasPagamento.find(forma => forma.codigo === parseInt(formaPagamentoId));
+    const isDepositoForm = formaPagamento?.designacao?.toLowerCase().includes('depósito') || 
+                          formaPagamento?.designacao?.toLowerCase().includes('deposito') ||
+                          formaPagamento?.designacao?.toLowerCase().includes('transferência') ||
+                          formaPagamento?.designacao?.toLowerCase().includes('transferencia');
+    
+    setIsDeposito(isDepositoForm || false);
     setFormData(prev => ({
       ...prev,
-      codigo_Tipo_Servico: parseInt(tipoServicoId),
-      preco: tipoServico?.preco ? tipoServico.preco.toString() : prev.preco
+      codigo_FormaPagamento: parseInt(formaPagamentoId),
+      // Limpar campos de depósito se não for depósito
+      ...((!isDepositoForm) && {
+        tipoConta: '',
+        numeroBordero: ''
+      })
     }));
+    
+    // Limpar erros de borderô
+    if (!isDepositoForm) {
+      setBorderoError('');
+    }
+  };
+
+  // Handler para validação de borderô em tempo real
+  const handleBorderoChange = async (value: string) => {
+    setBorderoError('');
+    
+    // Permitir apenas dígitos e máximo 9 caracteres
+    const numericValue = value.replace(/\D/g, '').slice(0, 9);
+    
+    setFormData(prev => ({
+      ...prev,
+      numeroBordero: numericValue
+    }));
+    
+    // Validar quando tiver 9 dígitos
+    if (numericValue.length === 9) {
+      try {
+        await validateBordero(numericValue);
+        setBorderoError('');
+      } catch (error) {
+        setBorderoError((error as Error).message);
+      }
+    } else if (numericValue.length > 0) {
+      setBorderoError('Número deve conter exatamente 9 dígitos');
+    }
   };
 
   const validateForm = (): string | null => {
     if (!formData.codigo_Aluno) return 'Selecione um aluno';
-    if (!formData.codigo_Tipo_Servico) return 'Selecione o tipo de serviço';
-    if (!formData.mes) return 'Selecione o mês';
+    if (!formData.codigo_Tipo_Servico) return 'Tipo de serviço não encontrado para esta turma';
+    if (!formData.mesesSelecionados.length) return 'Selecione pelo menos um mês';
     if (!formData.ano) return 'Informe o ano';
     if (!formData.preco || parseFloat(formData.preco) <= 0) return 'Informe um valor válido';
     if (!formData.codigo_FormaPagamento) return 'Selecione a forma de pagamento';
+    
+    // Validações específicas para depósito
+    if (isDeposito) {
+      if (!formData.tipoConta) return 'Selecione o tipo de conta para depósito';
+      if (!formData.numeroBordero) return 'Informe o número do borderô';
+      if (!/^\d{9}$/.test(formData.numeroBordero)) return 'Número do borderô deve conter exatamente 9 dígitos';
+    }
+    
     return null;
   };
 
@@ -183,21 +332,63 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     }
 
     try {
-      const paymentData = {
-        codigo_Aluno: formData.codigo_Aluno!,
-        codigo_Tipo_Servico: formData.codigo_Tipo_Servico!,
-        mes: formData.mes,
-        ano: formData.ano!,
-        preco: parseFloat(formData.preco),
-        observacao: formData.observacao,
-        codigo_FormaPagamento: formData.codigo_FormaPagamento!,
-      };
+      // Encontrar o ano letivo selecionado para obter o ano numérico correto por mês
+      const anoLetivoSelecionado = anosLectivos.find(ano => ano.codigo === formData.ano);
 
-      console.log('Enviando dados do pagamento:', paymentData);
-      const payment = await createPayment(paymentData);
-      console.log('Pagamento criado com sucesso:', payment);
+      // Criar pagamentos para cada mês selecionado
+      const pagamentosPromises = formData.mesesSelecionados.map(mes => {
+        // Determinar o ano correto baseado no mês
+        let anoCorreto = formData.ano!;
+        if (anoLetivoSelecionado) {
+          const mesesPrimeiroAno = ['SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+          const mesesSegundoAno = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO'];
+          
+          if (mesesPrimeiroAno.includes(mes)) {
+            anoCorreto = parseInt(anoLetivoSelecionado.anoInicial);
+          } else if (mesesSegundoAno.includes(mes)) {
+            anoCorreto = parseInt(anoLetivoSelecionado.anoFinal);
+          }
+        }
+
+        const paymentData = {
+          codigo_Aluno: formData.codigo_Aluno!,
+          codigo_Tipo_Servico: formData.codigo_Tipo_Servico!,
+          mes: mes,
+          ano: anoCorreto,
+          preco: parseFloat(formData.preco),
+          observacao: formData.observacao,
+          codigo_FormaPagamento: formData.codigo_FormaPagamento!,
+          ...(isDeposito && {
+            tipoConta: formData.tipoConta,
+            numeroBordero: formData.numeroBordero
+          })
+        };
+        console.log('Dados do pagamento para mês', mes, ':', paymentData);
+        return createPayment(paymentData);
+      });
+
+      console.log('Criando pagamentos para meses:', formData.mesesSelecionados);
+      const payments = await Promise.all(pagamentosPromises);
+      console.log('Pagamentos criados com sucesso:', payments);
       
-      setCreatedPayment(payment);
+      // Atualizar dados de meses pendentes (sempre disparar evento para atualizar)
+      console.log('Pagamento criado, disparando evento de atualização...');
+      // Disparar evento para atualizar o modal de status
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('paymentCreated', { 
+          detail: { 
+            alunoId: formData.codigo_Aluno,
+            meses: formData.mesesSelecionados 
+          }
+        }));
+      }
+      
+      // Usar o primeiro pagamento para o modal de fatura
+      setCreatedPayment({
+        ...payments[0],
+        mesesPagos: formData.mesesSelecionados,
+        totalPago: parseFloat(formData.preco) * formData.mesesSelecionados.length
+      });
       setShowInvoiceModal(true);
       
     } catch (error) {
@@ -224,6 +415,21 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     try {
       if (createdPayment) {
         // Preparar dados para a fatura térmica
+        const mesesPagos = createdPayment.mesesPagos || [createdPayment.mes];
+        const valorTotal = createdPayment.totalPago || createdPayment.preco || 0;
+        
+        // Obter nome do funcionário logado
+        let nomeOperador = 'Sistema';
+        try {
+          const userData = localStorage.getItem('user');
+          if (userData) {
+            const user = JSON.parse(userData);
+            nomeOperador = user.nome || user.username || 'Sistema';
+          }
+        } catch (error) {
+          console.error('Erro ao obter dados do usuário:', error);
+        }
+        
         const dadosFatura = {
           numeroFatura: createdPayment.fatura || `FAT_${Date.now()}`,
           dataEmissao: new Date(createdPayment.data || new Date()).toLocaleString('pt-BR'),
@@ -235,21 +441,25 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           },
           servicos: [
             {
-              descricao: createdPayment.tipoServico?.designacao || 'Serviço',
-              quantidade: 1,
+              descricao: `${createdPayment.tipoServico?.designacao || 'Propina'}`,
+              quantidade: mesesPagos.length,
               precoUnitario: createdPayment.preco || 0,
-              total: createdPayment.preco || 0
+              total: valorTotal
             }
           ],
+          mesesPagos: mesesPagos.join(', '),
           formaPagamento: createdPayment.formaPagamento?.designacao || 'DINHEIRO',
-          subtotal: createdPayment.preco || 0,
+          // Só mostrar dados bancários se for realmente depósito
+          contaBancaria: (createdPayment.formaPagamento?.designacao === 'DEPOSITO' || createdPayment.formaPagamento?.designacao === 'DEPÓSITO') ? createdPayment.contaMovimentada : null,
+          numeroBordero: (createdPayment.formaPagamento?.designacao === 'DEPOSITO' || createdPayment.formaPagamento?.designacao === 'DEPÓSITO') ? createdPayment.numeroBordero : null,
+          subtotal: valorTotal,
           iva: 0.00,
           desconto: 0.00,
-          totalPagar: createdPayment.preco || 0,
-          totalPago: createdPayment.preco || 0,
+          totalPagar: valorTotal,
+          totalPago: valorTotal,
           pagoEmSaldo: 0.00,
           saldoAtual: 0.00,
-          operador: 'Sistema'
+          operador: nomeOperador
         };
         
         // Criar uma nova janela para impressão
@@ -384,6 +594,9 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
 
               <div class="totais">
                 <p>Forma de Pagamento: ${dadosFatura.formaPagamento}</p>
+                ${dadosFatura.contaBancaria ? `<p>Conta Bancária: ${dadosFatura.contaBancaria}</p>` : ''}
+                ${dadosFatura.numeroBordero ? `<p>Nº Borderô: ${dadosFatura.numeroBordero}</p>` : ''}
+                <p>Mês(s) pago(s): ${dadosFatura.mesesPagos}</p>
                 <p>Total: ${dadosFatura.subtotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                 <p>Total IVA: ${dadosFatura.iva.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                 <p>N.º de Itens: ${dadosFatura.servicos.length}</p>
@@ -521,74 +734,188 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 </Card>
               )}
             </div>
-            {/* Tipo de Serviço */}
-            <div className="space-y-2">
-              <Label htmlFor="tipo-servico">Tipo de Serviço *</Label>
-              <Select
-                value={formData.codigo_Tipo_Servico?.toString() || ""}
-                onValueChange={handleTipoServicoChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo de serviço" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tiposLoading ? (
-                    <SelectItem value="" disabled>Carregando...</SelectItem>
-                  ) : (
-                    tiposServico.map((tipo) => (
-                      <SelectItem key={tipo.codigo} value={tipo.codigo.toString()}>
-                        {tipo.designacao} - {tipo.preco?.toLocaleString('pt-AO')} Kz
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Mês e Ano */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Tipo de Serviço da Turma */}
+            {selectedAluno && (
               <div className="space-y-2">
-                <Label htmlFor="mes">Mês *</Label>
-                <Select
-                  value={formData.mes}
-                  onValueChange={(value) => handleInputChange('mes', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o mês" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MESES_OPTIONS.map((mes) => (
-                      <SelectItem key={mes.value} value={mes.value}>
-                        {mes.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="tipo-servico">Tipo de Serviço (Propina da Turma) *</Label>
+                {tipoServicoLoading ? (
+                  <div className="p-3 border rounded-md bg-gray-50">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="text-center text-sm text-gray-500 mt-2">Carregando tipo de serviço...</p>
+                  </div>
+                ) : tipoServicoTurma ? (
+                  <Card className="border-blue-200 bg-blue-50">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-blue-800">{tipoServicoTurma.designacao}</div>
+                          <div className="text-sm text-blue-600">
+                            Preço: {tipoServicoTurma.preco?.toLocaleString('pt-AO')} Kz
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                          <CreditCard className="w-3 h-3 mr-1" />
+                          Propina
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="p-3 border rounded-md bg-red-50 border-red-200">
+                    <p className="text-red-600 text-sm">
+                      Tipo de serviço de propina não encontrado para esta turma.
+                    </p>
+                  </div>
+                )}
               </div>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor="ano">Ano *</Label>
-                <Select
-                  value={formData.ano?.toString() || ""}
-                  onValueChange={(value) => handleInputChange('ano', parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o ano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ANOS_OPTIONS.map((ano) => (
-                      <SelectItem key={ano.value} value={ano.value.toString()}>
-                        {ano.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {/* Seleção de Meses Pendentes */}
+            {selectedAluno && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ano">Ano Letivo *</Label>
+                    <Select
+                      value={formData.ano?.toString() || ""}
+                      onValueChange={(value) => {
+                        const codigoAnoLectivo = parseInt(value);
+                        handleInputChange('ano', codigoAnoLectivo);
+                        // Recarregar meses pendentes para o novo ano letivo
+                        if (selectedAluno) {
+                          fetchMesesPendentes(selectedAluno.codigo, codigoAnoLectivo);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o ano" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {anosLoading ? (
+                          <SelectItem value="" disabled>Carregando...</SelectItem>
+                        ) : anosLectivos.length > 0 ? (
+                          anosLectivos.map((ano) => (
+                            <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
+                              {ano.designacao}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          ANOS_OPTIONS.map((ano) => (
+                            <SelectItem key={ano.value} value={ano.value.toString()}>
+                              {ano.label}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Meses Selecionados</Label>
+                    <div className="p-2 border rounded-md bg-gray-50 min-h-[40px] flex items-center">
+                      {formData.mesesSelecionados.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {formData.mesesSelecionados.map((mes) => (
+                            <Badge key={mes} variant="secondary" className="bg-green-100 text-green-800">
+                              {mes}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-500">Nenhum mês selecionado</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Lista de Meses Pendentes */}
+                {mesesLoading ? (
+                  <div className="p-3 text-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mx-auto"></div>
+                    <span className="text-sm text-gray-500 mt-2">Carregando meses...</span>
+                  </div>
+                ) : mesesPendentes.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label>Meses Pendentes (Selecione os que deseja pagar)</Label>
+                    <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
+                      {mesesPendentes.map((mes) => {
+                        const isSelected = formData.mesesSelecionados.includes(mes);
+                        return (
+                          <button
+                            key={mes}
+                            type="button"
+                            onClick={() => {
+                              const newMeses = isSelected 
+                                ? formData.mesesSelecionados.filter(m => m !== mes)
+                                : [...formData.mesesSelecionados, mes];
+                              setFormData(prev => ({ ...prev, mesesSelecionados: newMeses }));
+                            }}
+                            className={`p-2 text-xs rounded border transition-colors ${
+                              isSelected 
+                                ? 'bg-green-100 border-green-300 text-green-800' 
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {mes}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Botões de Seleção Rápida */}
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Selecionar próximos 3 meses pendentes
+                          const proximos3 = mesesPendentes.slice(0, 3);
+                          setFormData(prev => ({ ...prev, mesesSelecionados: proximos3 }));
+                        }}
+                      >
+                        Próximos 3
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Selecionar todos os meses pendentes
+                          setFormData(prev => ({ ...prev, mesesSelecionados: [...mesesPendentes] }));
+                        }}
+                      >
+                        Todos
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Limpar seleção
+                          setFormData(prev => ({ ...prev, mesesSelecionados: [] }));
+                        }}
+                      >
+                        Limpar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 text-center border rounded-md bg-blue-50 border-blue-200">
+                    <p className="text-blue-600 text-sm">
+                      {mensagem && mensagem.includes('não estava matriculado')
+                        ? '📋 Aluno não estava matriculado neste ano letivo'
+                        : '✓ Todos os meses já foram pagos para este ano letivo!'
+                      }
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             {/* Valor */}
             <div className="space-y-2">
-              <Label htmlFor="preco">Valor (Kz) *</Label>
+              <Label htmlFor="preco">Valor por Mês (Kz) *</Label>
               <Input
                 id="preco"
                 type="number"
@@ -597,7 +924,15 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 placeholder="0.00"
                 value={formData.preco}
                 onChange={(e) => handleInputChange('preco', e.target.value)}
+                disabled={!tipoServicoTurma}
               />
+              {formData.mesesSelecionados.length > 0 && formData.preco && (
+                <div className="text-sm text-gray-600">
+                  <strong>Total a pagar:</strong> {(parseFloat(formData.preco) * formData.mesesSelecionados.length).toLocaleString('pt-AO')} Kz
+                  <br />
+                  <span className="text-xs">({formData.mesesSelecionados.length} meses × {parseFloat(formData.preco).toLocaleString('pt-AO')} Kz)</span>
+                </div>
+              )}
             </div>
 
             {/* Forma de Pagamento */}
@@ -605,7 +940,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
               <Label htmlFor="forma-pagamento">Forma de Pagamento *</Label>
               <Select
                 value={formData.codigo_FormaPagamento?.toString() || ""}
-                onValueChange={(value) => handleInputChange('codigo_FormaPagamento', parseInt(value))}
+                onValueChange={handleFormaPagamentoChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a forma de pagamento" />
@@ -623,6 +958,87 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Informação sobre dívidas de anos anteriores */}
+            {mesesPendentes.length === 0 && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <p className="text-blue-800 font-medium">
+                    {mensagem && mensagem.includes('não estava matriculado') 
+                      ? 'Aluno não estava matriculado neste ano letivo'
+                      : 'Nenhuma dívida encontrada para este ano letivo'
+                    }
+                  </p>
+                </div>
+                <p className="text-sm text-blue-600 mt-1">
+                  {mensagem && mensagem.includes('não estava matriculado')
+                    ? 'Este aluno não possui matrícula confirmada para o ano letivo selecionado.'
+                    : 'O aluno não possui dívidas neste período ou não estava matriculado neste ano letivo.'
+                  }
+                </p>
+              </div>
+            )}
+
+            {/* Seção de Depósito Bancário */}
+            {isDeposito && (
+              <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-800 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  Informações do Depósito Bancário
+                </h4>
+                
+                {/* Tipo de Conta */}
+                <div className="space-y-2">
+                  <Label htmlFor="tipo-conta">Banco/Conta *</Label>
+                  <Select
+                    value={formData.tipoConta}
+                    onValueChange={(value) => handleInputChange('tipoConta', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o banco" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BAI">
+                        BAI - Conta: 89248669/10/001
+                      </SelectItem>
+                      <SelectItem value="BFA">
+                        BFA - Conta: 180912647/30/001
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Número do Borderô */}
+                <div className="space-y-2">
+                  <Label htmlFor="numero-bordero">Número do Borderô *</Label>
+                  <Input
+                    id="numero-bordero"
+                    type="text"
+                    placeholder="Digite exatamente 9 dígitos"
+                    value={formData.numeroBordero}
+                    onChange={(e) => handleBorderoChange(e.target.value)}
+                    maxLength={9}
+                    className={borderoError ? 'border-red-300 focus:border-red-500' : ''}
+                  />
+                  {borderoError && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <span className="text-red-500">⚠</span>
+                      {borderoError}
+                    </p>
+                  )}
+                  {formData.numeroBordero && !borderoError && formData.numeroBordero.length === 9 && (
+                    <p className="text-sm text-green-600 flex items-center gap-1">
+                      <span className="text-green-500">✓</span>
+                      Número válido
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Este número deve ser único e conter exatamente 9 dígitos
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Observações */}
             <div className="space-y-2">
@@ -691,20 +1107,24 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
 
           <div className="space-y-4">
             {createdPayment && (
-              <Card className="border-green-200 bg-green-50">
+              <Card className="border-green-200">
                 <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Fatura:</span>
-                      <span className="font-medium">{createdPayment.fatura}</span>
-                    </div>
+                  <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Aluno:</span>
                       <span className="font-medium">{createdPayment.aluno?.nome}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Valor:</span>
-                      <span className="font-medium">{createdPayment.preco?.toLocaleString('pt-AO')} Kz</span>
+                      <span className="font-medium">{(createdPayment.preco || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Mês:</span>
+                      <span className="font-medium">{createdPayment.mes}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Fatura:</span>
+                      <span className="font-medium">{createdPayment.fatura}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -724,6 +1144,21 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 onClick={() => {
                   // Mostrar preview da fatura antes de imprimir
                   if (createdPayment) {
+                    const mesesPagos = createdPayment.mesesPagos || [createdPayment.mes];
+                    const valorTotal = createdPayment.totalPago || createdPayment.preco || 0;
+                    
+                    // Obter nome do funcionário logado
+                    let nomeOperador = 'Sistema';
+                    try {
+                      const userData = localStorage.getItem('user');
+                      if (userData) {
+                        const user = JSON.parse(userData);
+                        nomeOperador = user.nome || user.username || 'Sistema';
+                      }
+                    } catch (error) {
+                      console.error('Erro ao obter dados do usuário:', error);
+                    }
+                    
                     const dadosFatura = {
                       numeroFatura: createdPayment.fatura || `FAT_${Date.now()}`,
                       dataEmissao: new Date(createdPayment.data || new Date()).toLocaleString('pt-BR'),
@@ -736,20 +1171,24 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                       servicos: [
                         {
                           descricao: createdPayment.tipoServico?.designacao || 'Serviço',
-                          quantidade: 1,
+                          quantidade: mesesPagos.length,
                           precoUnitario: createdPayment.preco || 0,
-                          total: createdPayment.preco || 0
+                          total: valorTotal
                         }
                       ],
+                      mesesPagos: mesesPagos.join(', '),
                       formaPagamento: createdPayment.formaPagamento?.designacao || 'DINHEIRO',
-                      subtotal: createdPayment.preco || 0,
+                      // Só mostrar dados bancários se for realmente depósito
+                      contaBancaria: (createdPayment.formaPagamento?.designacao === 'DEPOSITO' || createdPayment.formaPagamento?.designacao === 'DEPÓSITO') ? createdPayment.contaMovimentada : null,
+                      numeroBordero: (createdPayment.formaPagamento?.designacao === 'DEPOSITO' || createdPayment.formaPagamento?.designacao === 'DEPÓSITO') ? createdPayment.numeroBordero : null,
+                      subtotal: valorTotal,
                       iva: 0.00,
                       desconto: 0.00,
-                      totalPagar: createdPayment.preco || 0,
-                      totalPago: createdPayment.preco || 0,
+                      totalPagar: valorTotal,
+                      totalPago: valorTotal,
                       pagoEmSaldo: 0.00,
                       saldoAtual: 0.00,
-                      operador: 'Sistema'
+                      operador: nomeOperador
                     };
                     
                     // Abrir nova janela com preview da fatura
