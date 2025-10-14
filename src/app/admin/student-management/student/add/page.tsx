@@ -139,7 +139,7 @@ export default function AddStudentPage() {
 
     try {
       const data = await BIService.fetchBIDetails(biNumber.trim());
-      
+      console.log("Dados do BI recebidos:", data);
       if (data.error) {
         setBiError("Erro ao consultar BI. Verifique o número e tente novamente.");
         return;

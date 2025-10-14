@@ -6,3 +6,4 @@ export * from './profession.types';
 export * from './student.types';
 export * from './teacher.types';
 export * from './status-control.types';
+export * from './dashboard.types';
