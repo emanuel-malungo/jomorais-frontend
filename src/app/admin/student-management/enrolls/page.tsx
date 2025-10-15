@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -28,13 +27,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -43,12 +35,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  GraduationCap,
-  Search,
-  Filter,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
   Trash2,
   Users,
@@ -58,8 +46,6 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  Activity,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
@@ -82,43 +68,43 @@ export default function EnrollmentsListPage() {
   const { matriculas, pagination, loading, error, refetch } = useMatriculas(currentPage, itemsPerPage, debouncedSearchTerm);
   const { deleteMatricula } = useDeleteMatricula();
 
-  
+
   const { status } = useStatus(1, 100, "");
   const { courses } = useCourses(1, 100, "");
 
   const statusOptions = useMemo(() => {
-	  const options = [{ value: "all", label: "Todos os Status" }];
-	  if (status && status.length > 0) {
-		status.forEach((s) => {
-		  options.push({
-			value: s.codigo.toString(),
-			label: s.designacao
-		  });
-		});
-	  }
-	  return options;
-	}, [status]);
+    const options = [{ value: "all", label: "Todos os Status" }];
+    if (status && status.length > 0) {
+      status.forEach((s) => {
+        options.push({
+          value: s.codigo.toString(),
+          label: s.designacao
+        });
+      });
+    }
+    return options;
+  }, [status]);
 
-	 const courseOptions = useMemo(() => {
-		const options = [{ value: "all", label: "Todos os Cursos" }];
-		if (courses && courses.length > 0) {
-		  courses.forEach((c) => {
-			options.push({
-			  value: c.codigo.toString(),
-			  label: c.designacao
-			});
-		  });
-		}
-		return options;
-	  }, [courses]);
-  
+  const courseOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Cursos" }];
+    if (courses && courses.length > 0) {
+      courses.forEach((c) => {
+        options.push({
+          value: c.codigo.toString(),
+          label: c.designacao
+        });
+      });
+    }
+    return options;
+  }, [courses]);
+
   // Estados para filtros
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");
-  
+
   // Estados para modal de confirmação de exclusão
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{id: number, nome: string} | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: number, nome: string } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Debounce para busca
@@ -131,18 +117,19 @@ export default function EnrollmentsListPage() {
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
-  // Filtrar matrículas localmente
+  // Filtrar matrículas localmente (apenas para filtros de status e curso)
+  // A busca por texto já é feita pela API
   const filteredMatriculas = matriculas.filter((matricula: any) => {
     // Filtro por status
     if (statusFilter !== "all" && matricula.codigoStatus.toString() !== statusFilter) {
       return false;
     }
-    
+
     // Filtro por curso
     if (courseFilter !== "all" && matricula.codigo_Curso.toString() !== courseFilter) {
       return false;
     }
-    
+
     return true;
   });
 
@@ -159,10 +146,10 @@ export default function EnrollmentsListPage() {
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
-    
+
     setDeletingId(itemToDelete.id);
     setShowDeleteModal(false);
-    
+
     try {
       await deleteMatricula(itemToDelete.id);
       await refetch();
@@ -214,30 +201,30 @@ export default function EnrollmentsListPage() {
     <Container>
       {/* Header seguindo padrão do Dashboard */}
 
-	  <WelcomeHeader
-	  	title="Gestão de Matrículas"
-		description="erencie todas as matrículas dos alunos. Visualize informações detalhadas, acompanhe confirmações e mantenha os registros sempre atualizados."
-		titleBtnRight=' Nova Matrícula'
-		iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
-		onClickBtnRight={() => window.location.href = '/admin/student-management/enrolls/add'}
-	  />
+      <WelcomeHeader
+        title="Gestão de Matrículas"
+        description="erencie todas as matrículas dos alunos. Visualize informações detalhadas, acompanhe confirmações e mantenha os registros sempre atualizados."
+        titleBtnRight=' Nova Matrícula'
+        iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+        onClickBtnRight={() => window.location.href = '/admin/student-management/enrolls/add'}
+      />
 
       {/* Stats Cards seguindo padrão do Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         {/* Card Total de Matrículas */}
 
-		<StatCard
-			title="Total de Matrículas"
-			value={(pagination?.totalItems || 0).toString()}
-			change="Total"
-			changeType="up"
-			icon={Users}
-			color="text-[#182F59]"
-			bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
-			accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
-		/>
+        <StatCard
+          title="Total de Matrículas"
+          value={(pagination?.totalItems || 0).toString()}
+          change="Total"
+          changeType="up"
+          icon={Users}
+          color="text-[#182F59]"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
+        />
 
-		<StatCard
+        <StatCard
           title="Matrículas Ativos"
           value={filteredMatriculas.filter(s => s.codigoStatus === 1).length.toString()}
           change="Ativos"
@@ -248,7 +235,7 @@ export default function EnrollmentsListPage() {
           accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
         />
 
-		<StatCard
+        <StatCard
           title="Matrículas Com Confirmação"
           value={filteredMatriculas.filter(s => s.codigoStatus === 1).length.toString()}
           change="Confirmação"
@@ -259,9 +246,9 @@ export default function EnrollmentsListPage() {
           accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
         />
 
-		<StatCard
+        <StatCard
           title="Matrículas Sem Confirmação"
-          value={filteredMatriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length}
+          value={filteredMatriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length.toString()}
           change="Atenção"
           changeType="up"
           icon={Clock}
@@ -272,7 +259,7 @@ export default function EnrollmentsListPage() {
       </div>
 
       {/* Filtros e Busca */}
-	     <FilterSearchCard
+      <FilterSearchCard
         title="Filtros e Busca"
         searchPlaceholder="Buscar por aluno ou curso..."
         searchValue={searchTerm}
@@ -342,8 +329,8 @@ export default function EnrollmentsListPage() {
                       <div className="flex flex-col items-center space-y-2">
                         <AlertCircle className="h-8 w-8 text-gray-400" />
                         <p className="text-gray-600">
-                          {searchTerm || statusFilter !== "all" || courseFilter !== "all" 
-                            ? "Nenhuma matrícula encontrada com os filtros aplicados." 
+                          {searchTerm || statusFilter !== "all" || courseFilter !== "all"
+                            ? "Nenhuma matrícula encontrada com os filtros aplicados."
                             : "Nenhuma matrícula encontrada."}
                         </p>
                         {(searchTerm || statusFilter !== "all" || courseFilter !== "all") && (
@@ -354,93 +341,82 @@ export default function EnrollmentsListPage() {
                   </TableRow>
                 ) : (
                   filteredMatriculas.map((enrollment) => (
-                  <TableRow key={enrollment.codigo}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-gray-500" />
+                    <TableRow key={enrollment.codigo}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <Users className="h-5 w-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{enrollment.tb_alunos.nome}</p>
+                            <p className="text-sm text-gray-500">
+                              {enrollment.tb_alunos.dataNascimento ? calculateAge(enrollment.tb_alunos.dataNascimento) : 'N/A'} anos • {enrollment.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                            </p>
+                          </div>
                         </div>
+                      </TableCell>
+                      <TableCell>
                         <div>
-                          <p className="font-medium text-gray-900">{enrollment.tb_alunos.nome}</p>
-                          <p className="text-sm text-gray-500">
-                            {enrollment.tb_alunos.dataNascimento ? calculateAge(enrollment.tb_alunos.dataNascimento) : 'N/A'} anos • {enrollment.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
-                          </p>
+                          <p className="font-medium text-gray-900">{enrollment.tb_cursos.designacao}</p>
+                          <p className="text-sm text-gray-500">{enrollment.tb_cursos.duracao}</p>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900">{enrollment.tb_cursos.designacao}</p>
-                        <p className="text-sm text-gray-500">{enrollment.tb_cursos.duracao}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm">{formatDate(enrollment.data_Matricula)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={enrollment.codigoStatus === 1 ? "default" : "secondary"}
-                        className={enrollment.codigoStatus === 1 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
-                      >
-                        {enrollment.codigoStatus === 1 ? "Ativa" : "Inativa"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {enrollment.tb_confirmacoes && enrollment.tb_confirmacoes.length > 0 ? (
-                        <Badge variant="default" className="bg-blue-100 text-blue-800">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Confirmada
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pendente
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {enrollment.tb_confirmacoes && enrollment.tb_confirmacoes.length > 0 ? (
-                        <div>
-                          <p className="text-sm font-medium">{enrollment.tb_confirmacoes[0].tb_turmas.designacao}</p>
-                          <p className="text-xs text-gray-500">{enrollment.tb_confirmacoes[0].tb_turmas.tb_classes.designacao}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm">{formatDate(enrollment.data_Matricula)}</span>
                         </div>
-                      ) : (
-                        <span className="text-sm text-gray-400">Não atribuída</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewEnrollment(enrollment.codigo)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditEnrollment(enrollment.codigo)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {/* <DropdownMenuItem 
-                            onClick={() => handleDeleteEnrollment(enrollment.codigo)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem> */}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={enrollment.codigoStatus === 1 ? "default" : "secondary"}
+                          className={enrollment.codigoStatus === 1 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
+                        >
+                          {enrollment.codigoStatus === 1 ? "Ativa" : "Inativa"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {enrollment.tb_confirmacoes && enrollment.tb_confirmacoes.length > 0 ? (
+                          <Badge variant="default" className="bg-blue-100 text-blue-800">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Confirmada
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pendente
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {enrollment.tb_confirmacoes && enrollment.tb_confirmacoes.length > 0 ? (
+                          <div>
+                            <p className="text-sm font-medium">{enrollment.tb_confirmacoes[0].tb_turmas.designacao}</p>
+                            <p className="text-xs text-gray-500">{enrollment.tb_confirmacoes[0].tb_turmas.tb_classes.designacao}</p>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">Não atribuída</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleEditEnrollment(enrollment.codigo)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
               </TableBody>
@@ -469,9 +445,9 @@ export default function EnrollmentsListPage() {
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
+
                     const pages = [];
-                    
+
                     // Primeira página
                     if (adjustedStartPage > 1) {
                       pages.push(
@@ -488,7 +464,7 @@ export default function EnrollmentsListPage() {
                         pages.push(<span key="ellipsis1" className="px-2">...</span>);
                       }
                     }
-                    
+
                     // Páginas do meio
                     for (let i = adjustedStartPage; i <= endPage; i++) {
                       pages.push(
@@ -503,7 +479,7 @@ export default function EnrollmentsListPage() {
                         </Button>
                       );
                     }
-                    
+
                     // Última página
                     if (endPage < pagination.totalPages) {
                       if (endPage < pagination.totalPages - 1) {
@@ -520,7 +496,7 @@ export default function EnrollmentsListPage() {
                         </Button>
                       );
                     }
-                    
+
                     return pages;
                   })()}
                 </div>

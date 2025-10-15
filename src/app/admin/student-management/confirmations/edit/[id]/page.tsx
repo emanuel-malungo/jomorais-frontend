@@ -198,10 +198,21 @@ export default function EditConfirmationPage() {
     setIsLoading(true);
     
     try {
-      // Usar o hook real para atualizar confirmação
-      await updateConfirmation(formData);
+      // Preparar dados para envio com conversão de datas para ISO
+      const dataToSend: any = {
+        ...formData,
+        data_Confirmacao: new Date(formData.data_Confirmacao + 'T00:00:00.000Z').toISOString(),
+      };
       
-      console.log("Dados atualizados da confirmação:", formData);
+      // Só adicionar mes_Comecar se tiver valor
+      if (formData.mes_Comecar && formData.mes_Comecar.trim() !== '') {
+        dataToSend.mes_Comecar = new Date(formData.mes_Comecar + 'T00:00:00.000Z').toISOString();
+      }
+      
+      // Usar o hook real para atualizar confirmação
+      await updateConfirmation(dataToSend);
+      
+      console.log("Dados atualizados da confirmação:", dataToSend);
       
       // Mostrar mensagem de sucesso e redirecionar
       success('Confirmação alterada com sucesso!', 'As informações foram atualizadas no sistema.');
