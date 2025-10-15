@@ -31,9 +31,9 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useMatricula, useUpdateMatricula } from '@/hooks/useMatricula';
-import { useStudent } from '@/hooks/useStudent';
 import { useCourses } from '@/hooks/useCourse';
 import { IMatriculaInput } from '@/types/matricula.types';
+import api from '@/utils/api.utils';
 
 
 
@@ -44,11 +44,16 @@ export default function EditEnrollmentPage() {
   
   const enrollmentId = parseInt(params.id as string);
   
+  // Estados para busca de alunos via API
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  
   // Hooks da API
   const { matricula, loading: matriculaLoading, error: matriculaError } = useMatricula(enrollmentId);
   const { updateMatricula, loading: updateLoading } = useUpdateMatricula(enrollmentId);
-  const { students, loading: studentsLoading, getAllStudents } = useStudent();
-  const { courses, loading: coursesLoading } = useCourses(1, 100); // Carregar mais cursos para o select
+  const { courses, loading: coursesLoading } = useCourses(1, 100);
   
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -57,11 +62,6 @@ export default function EditEnrollmentPage() {
     data_Matricula: "",
     codigoStatus: "1",
   });
-  
-  // Carregar dados iniciais
-  React.useEffect(() => {
-    getAllStudents(1, 100); // Carregar mais estudantes para o select
-  }, [getAllStudents]);
   
   // Preencher formulário quando matrícula carregar
   React.useEffect(() => {
@@ -77,16 +77,85 @@ export default function EditEnrollmentPage() {
         data_Matricula: dataFormatada,
         codigoStatus: matricula.codigoStatus.toString(),
       });
+      
+      // Definir aluno selecionado inicial
+      if (matricula.tb_alunos) {
+        setSelectedStudent(matricula.tb_alunos);
+        setStudentSearch(matricula.tb_alunos.nome);
+      }
     }
   }, [matricula]);
   
-  // Filtrar alunos baseado na busca
-  const filteredStudents = studentSearch 
-    ? students?.filter((student: any) =>
-        student.nome.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.email?.toLowerCase().includes(studentSearch.toLowerCase())
-      ) || []
-    : students || [];
+  // Função para buscar alunos via API com parâmetro search
+  const searchStudents = async (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    try {
+      setLoadingSearch(true);
+
+      const response = await api.get('/api/student-management/alunos', {
+        params: {
+          page: 1,
+          limit: 50,
+          search: searchTerm
+        }
+      });
+
+      const data = response.data;
+      if (data.success && data.data) {
+        setSearchResults(data.data);
+        setShowSearchResults(true);
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(true);
+      }
+    } catch (error) {
+      setSearchResults([]);
+      setShowSearchResults(true);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  // Debounce para busca de alunos
+  useEffect(() => {
+    // Não buscar se for o nome do aluno já selecionado
+    if (selectedStudent && studentSearch === selectedStudent.nome) {
+      return;
+    }
+    
+    const timeoutId = setTimeout(() => {
+      searchStudents(studentSearch);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [studentSearch]);
+  
+  // Selecionar aluno
+  const handleSelectStudent = (student: any) => {
+    setSelectedStudent(student);
+    setFormData(prev => ({
+      ...prev,
+      codigo_Aluno: student.codigo.toString()
+    }));
+    setShowSearchResults(false);
+    setStudentSearch(student.nome || '');
+    
+    // Limpar erro se existir
+    if (errors.codigo_Aluno) {
+      setErrors(prev => ({
+        ...prev,
+        codigo_Aluno: ""
+      }));
+    }
+  };
+  
+  // Filtrar alunos baseado na busca (não mais usado, mas mantido para compatibilidade)
+  const filteredStudents = searchResults;
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -129,10 +198,14 @@ export default function EditEnrollmentPage() {
     }
 
     try {
+      // Converter a data para formato ISO datetime (com timezone)
+      // Adicionando horário explícito para evitar problemas de timezone
+      const dataMatriculaISO = new Date(formData.data_Matricula + 'T00:00:00.000Z').toISOString();
+      
       const matriculaData: IMatriculaInput = {
         codigo_Aluno: parseInt(formData.codigo_Aluno),
         codigo_Curso: parseInt(formData.codigo_Curso),
-        data_Matricula: formData.data_Matricula,
+        data_Matricula: dataMatriculaISO,
         codigoStatus: parseInt(formData.codigoStatus),
         codigo_Utilizador: 1 // TODO: Pegar do contexto de autenticação
       };
@@ -146,11 +219,10 @@ export default function EditEnrollmentPage() {
     }
   };
 
-  const selectedStudent = students?.find((s: any) => s.codigo.toString() === formData.codigo_Aluno);
   const selectedCourse = courses?.find((c: any) => c.codigo.toString() === formData.codigo_Curso);
   
   // Loading state
-  if (matriculaLoading || studentsLoading || coursesLoading) {
+  if (matriculaLoading || coursesLoading) {
     return (
       <Container>
         <div className="flex items-center justify-center min-h-screen">
@@ -221,7 +293,7 @@ export default function EditEnrollmentPage() {
 
               <Button
                 onClick={handleSubmit}
-                disabled={updateLoading || matriculaLoading || studentsLoading || coursesLoading}
+                disabled={updateLoading || matriculaLoading || coursesLoading}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
                 {updateLoading ? (
@@ -305,36 +377,104 @@ export default function EditEnrollmentPage() {
                   <Input
                     placeholder="Digite o nome ou email do aluno..."
                     value={studentSearch}
-                    onChange={(e) => setStudentSearch(e.target.value)}
-                    className="pl-10"
+                    onChange={(e) => {
+                      setStudentSearch(e.target.value);
+                      if (e.target.value.length >= 2) {
+                        setShowSearchResults(true);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (studentSearch.length >= 2 && searchResults.length > 0) {
+                        setShowSearchResults(true);
+                      }
+                    }}
+                    className={`pl-10 ${errors.codigo_Aluno ? "border-red-500" : ""}`}
                   />
+                  {loadingSearch && (
+                    <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                  )}
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Aluno *
-                </label>
-                <Select 
-                  value={formData.codigo_Aluno} 
-                  onValueChange={(value) => handleInputChange('codigo_Aluno', value)}
-                >
-                  <SelectTrigger className={errors.codigo_Aluno ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Selecione o aluno" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredStudents.map((student) => (
-                      <SelectItem key={student.codigo} value={student.codigo.toString()}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{student.nome}</span>
-                          <span className="text-xs text-gray-500">{student.email}</span>
+                {/* Resultados da busca */}
+                {showSearchResults && studentSearch.length >= 2 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                    {loadingSearch ? (
+                      <div className="p-4 text-center">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto text-gray-400" />
+                        <p className="text-sm text-gray-500 mt-2">Buscando alunos...</p>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map((student: any) => (
+                        <button
+                          key={student.codigo}
+                          type="button"
+                          onClick={() => handleSelectStudent(student)}
+                          className="w-full p-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                              <User className="h-5 w-5 text-gray-500" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900">{student.nome}</p>
+                              <p className="text-xs text-gray-500">{student.email || 'Sem email'}</p>
+                              <p className="text-xs text-gray-400">
+                                {student.dataNascimento 
+                                  ? `${new Date().getFullYear() - new Date(student.dataNascimento).getFullYear()} anos` 
+                                  : 'Idade não informada'} • {student.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center">
+                        <AlertCircle className="h-5 w-5 mx-auto text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">Nenhum aluno encontrado</p>
+                        <p className="text-xs text-gray-400 mt-1">Tente buscar por outro nome</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Aluno selecionado */}
+                {selectedStudent && (
+                  <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-blue-200 rounded-full flex items-center justify-center">
+                          <User className="h-6 w-6 text-blue-600" />
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.codigo_Aluno && (
-                  <p className="text-sm text-red-500 flex items-center">
+                        <div>
+                          <p className="font-semibold text-blue-900">{selectedStudent.nome}</p>
+                          <p className="text-sm text-blue-600">{selectedStudent.email || 'Sem email'}</p>
+                          <p className="text-xs text-blue-500">
+                            {selectedStudent.dataNascimento 
+                              ? `${new Date().getFullYear() - new Date(selectedStudent.dataNascimento).getFullYear()} anos` 
+                              : 'Idade não informada'} • {selectedStudent.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedStudent(null);
+                          setFormData(prev => ({ ...prev, codigo_Aluno: "" }));
+                          setStudentSearch("");
+                          setShowSearchResults(false);
+                        }}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {errors.codigo_Aluno && !selectedStudent && (
+                  <p className="text-sm text-red-500 flex items-center mt-2">
                     <AlertCircle className="h-4 w-4 mr-1" />
                     {errors.codigo_Aluno}
                   </p>

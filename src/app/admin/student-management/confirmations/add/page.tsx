@@ -384,7 +384,7 @@ export default function AddConfirmationPage() {
       const dataToSend: any = {
         codigo_Matricula: formData.codigo_Matricula,
         codigo_Turma: formData.codigo_Turma,
-        data_Confirmacao: new Date(formData.data_Confirmacao).toISOString(),
+        data_Confirmacao: new Date(formData.data_Confirmacao + 'T00:00:00.000Z').toISOString(),
         codigo_Ano_lectivo: formData.codigo_Ano_lectivo,
         codigo_Utilizador: formData.codigo_Utilizador,
         codigo_Status: formData.codigo_Status,
@@ -393,7 +393,7 @@ export default function AddConfirmationPage() {
       
       // Só adicionar mes_Comecar se tiver valor
       if (formData.mes_Comecar && formData.mes_Comecar.trim() !== '') {
-        dataToSend.mes_Comecar = new Date(formData.mes_Comecar).toISOString();
+        dataToSend.mes_Comecar = new Date(formData.mes_Comecar + 'T00:00:00.000Z').toISOString();
       }
       
       console.log('Dados originais:', formData);

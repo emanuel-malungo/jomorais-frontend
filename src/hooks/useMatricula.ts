@@ -10,9 +10,8 @@ import {
   IBatchResponse
 } from "@/types/matricula.types"
 
-// Listagem com paginação e busca local
+// Listagem com paginação e busca via API
 export function useMatriculas(page = 1, limit = 10, search = "") {
-  const [allMatriculas, setAllMatriculas] = useState<IMatricula[]>([])
   const [matriculas, setMatriculas] = useState<IMatricula[]>([])
   const [pagination, setPagination] = useState<IMatriculaListResponse["pagination"] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -22,20 +21,10 @@ export function useMatriculas(page = 1, limit = 10, search = "") {
     try {
       setLoading(true)
       setError(null)
-      // Buscar sem filtro no backend
-      const { data, pagination } = await MatriculaService.getMatriculas(page, limit, "")
-      setAllMatriculas(data)
+      // Buscar com filtro no backend
+      const { data, pagination } = await MatriculaService.getMatriculas(page, limit, search)
       
-      // Aplicar busca localmente
-      const filteredData = search ? data.filter((matricula: IMatricula) => {
-        const nomeAluno = matricula.tb_alunos?.nome?.toLowerCase() || ''
-        const nomeCurso = matricula.tb_cursos?.designacao?.toLowerCase() || ''
-        const searchLower = search.toLowerCase()
-        
-        return nomeAluno.includes(searchLower) || nomeCurso.includes(searchLower)
-      }) : data
-      
-      setMatriculas(filteredData)
+      setMatriculas(data)
       setPagination(pagination)
     } catch (err: any) {
       setError(err.message || "Erro ao carregar matrículas")
@@ -89,11 +78,7 @@ export function useCreateMatricula() {
       setError(null)
       return await MatriculaService.createMatricula(payload)
     } catch (err: any) {
-      const errorMessage = err.response?.status === 409 
-        ? "Já existe uma matrícula para este aluno"
-        : err.response?.status === 404
-        ? "Aluno, curso ou utilizador não encontrado"
-        : err.message || "Erro ao criar matrícula"
+      const errorMessage = err.response?.data?.message || err.message || "Erro ao criar matrícula"
       setError(errorMessage)
       throw new Error(errorMessage)
     } finally {
@@ -115,11 +100,7 @@ export function useUpdateMatricula(id: number) {
       setError(null)
       return await MatriculaService.updateMatricula(id, payload)
     } catch (err: any) {
-      const errorMessage = err.response?.status === 404
-        ? "Matrícula, aluno, curso ou utilizador não encontrado"
-        : err.response?.status === 409
-        ? "Já existe uma matrícula para este aluno"
-        : err.message || "Erro ao atualizar matrícula"
+      const errorMessage = err.response?.data?.message || err.message || "Erro ao atualizar matrícula"
       setError(errorMessage)
       throw new Error(errorMessage)
     } finally {

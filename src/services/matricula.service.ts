@@ -10,12 +10,10 @@ import {
   IBatchResponse
 } from "@/types/matricula.types"
 
+
 export default class MatriculaService {
   static async createMatricula(payload: IMatriculaInput): Promise<IMatricula> {
     try {
-      console.log('MatriculaService - Enviando payload:', payload);
-      console.log('MatriculaService - URL:', "/api/student-management/matriculas");
-      
       const response = await api.post("/api/student-management/matriculas", payload)
       const apiResponse = response.data
       if (apiResponse.success) {
@@ -25,11 +23,6 @@ export default class MatriculaService {
       toast.error(apiResponse.message || "Erro ao criar matrícula")
       throw new Error(apiResponse.message || "Erro ao criar matrícula")
     } catch (error: any) {
-      console.error("MatriculaService - Erro completo:", error);
-      console.error("MatriculaService - Response data:", error?.response?.data);
-      console.error("MatriculaService - Status:", error?.response?.status);
-      console.error("MatriculaService - Headers:", error?.response?.headers);
-      
       const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar matrícula"
       toast.error(errorMessage)
       throw error
@@ -38,9 +31,6 @@ export default class MatriculaService {
 
   static async getMatriculas(page = 1, limit = 10, search = ""): Promise<IMatriculaListResponse> {
     try {
-      console.log('MatriculaService - Fazendo requisição para:', "/api/student-management/matriculas");
-      console.log('MatriculaService - Parâmetros:', { page, limit, search });
-      
       const response = await api.get("/api/student-management/matriculas", {
         params: { page, limit, search }
       })
@@ -50,10 +40,7 @@ export default class MatriculaService {
       }
       throw new Error(apiResponse.message || "Erro ao buscar matrículas")
     } catch (error: any) {
-      console.error("MatriculaService - Erro ao buscar matrículas:", error)
-      console.error("MatriculaService - Status:", error?.response?.status)
-      console.error("MatriculaService - Data:", error?.response?.data)
-      console.error("MatriculaService - URL:", error?.config?.url)
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao buscar matrículas"
       throw error
     }
   }
@@ -85,7 +72,6 @@ export default class MatriculaService {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar matrícula"
       toast.error(errorMessage)
-      console.error("Erro ao atualizar matrícula:", error)
       throw error
     }
   }
@@ -103,7 +89,6 @@ export default class MatriculaService {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || "Erro ao deletar matrícula"
       toast.error(errorMessage)
-      console.error("Erro ao deletar matrícula:", error)
       throw error
     }
   }
@@ -149,7 +134,7 @@ export default class MatriculaService {
       }
       throw new Error(apiResponse.message || "Erro ao buscar matrículas sem confirmação")
     } catch (error: any) {
-      console.error("Erro ao buscar matrículas sem confirmação:", error)
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao buscar matrículas sem confirmação"
       throw error
     }
   }
