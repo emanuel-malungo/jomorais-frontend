@@ -26,3 +26,4 @@ export * from './useUsers';
 export * from './usePayments';
 export * from './usePaymentData';
 export * from './useDebounce';
+export * from './useSAFT';

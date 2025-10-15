@@ -95,7 +95,8 @@ const menuItems: MenuItem[] = [
     children: [
       { title: "Relatórios de Alunos", icon: Users, href: "/admin/reports-management/students" },
       { title: "Relatórios Financeiros", icon: DollarSign, href: "/admin/reports-management/financial" },
-      { title: "Relatórios Acadêmicos", icon: BookOpen, href: "/admin/reports-management/academic" }
+      { title: "Relatórios Acadêmicos", icon: BookOpen, href: "/admin/reports-management/academic" },
+      { title: "Exportação SAFT", icon: FileText, href: "/admin/reports-management/saft-export" }
     ]
   },
   {

@@ -63,8 +63,12 @@ import {
   MapPin,
   Clock,
   Activity,
+  Archive,
+  ToggleLeft,
+  ToggleRight,
+  AlertTriangle,
 } from 'lucide-react';
-import { useTurmaManager } from '@/hooks';
+import { useTurmaManager, useArchiveTurma } from '@/hooks';
 import { TurmaReportService } from '@/services/turmaReport.service';
 import api from '@/utils/api.utils';
 
@@ -81,26 +85,39 @@ const statusOptions = [
   { value: "all", label: "Todos os Status" },
   { value: "ativo", label: "Ativo" },
   { value: "inativo", label: "Inativo" },
+  { value: "arquivado", label: "Arquivado" },
 ];
 
 export default function TurmasPage() {
   const {
     turmas,
-    pagination,
     stats,
     isLoading,
     error,
-    currentPage,
     searchTerm,
-    limit,
     handleSearch,
-    handlePageChange,
     refetch
   } = useTurmaManager();
+  
+  const { archiveTurma, isLoading: archivingTurma } = useArchiveTurma();
   
   const [periodoFilter, setPeriodoFilter] = useState("all");
   const [cursoFilter, setCursoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // Estados para paginação local (já que useTurmaManager carrega todas as turmas)
+  const [currentPage, setCurrentPage] = useState(1);
+  const limit = 10; // Itens por página
+  
+  // Função para mudança de página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Reset da página quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [periodoFilter, cursoFilter, statusFilter, searchTerm]);
 
   // Opções de curso dinâmicas baseadas nos dados reais
   const cursoOptions = useMemo(() => {
@@ -235,9 +252,11 @@ export default function TurmasPage() {
     }
   };
 
-  // Usar dados diretamente da API (já paginados)
-  const currentTurmas = turmas;
-  const totalPages = pagination?.totalPages || 1;
+  // Implementar paginação local já que todas as turmas são carregadas
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = startIndex + limit;
+  const currentTurmas = filteredTurmas.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(filteredTurmas.length / limit);
 
 
   const handleEditTurma = (turmaId: number) => {
@@ -247,6 +266,42 @@ export default function TurmasPage() {
   const handleDeleteTurma = (turmaId: number) => {
     console.log("Excluir turma:", turmaId);
     // Implementar confirmação e exclusão
+  };
+
+  // Função para arquivar turma
+  const handleArchiveTurma = async (turmaId: number) => {
+    if (window.confirm("Tem certeza que deseja arquivar esta turma? Esta ação pode ser revertida.")) {
+      try {
+        await archiveTurma(turmaId, 'Arquivado');
+        refetch(); // Recarregar a lista
+      } catch (error) {
+        console.error("Erro ao arquivar turma:", error);
+      }
+    }
+  };
+
+  // Função para desativar turma
+  const handleDeactivateTurma = async (turmaId: number) => {
+    if (window.confirm("Tem certeza que deseja desativar esta turma? Esta ação pode ser revertida.")) {
+      try {
+        await archiveTurma(turmaId, 'Inativo');
+        refetch(); // Recarregar a lista
+      } catch (error) {
+        console.error("Erro ao desativar turma:", error);
+      }
+    }
+  };
+
+  // Função para ativar turma
+  const handleActivateTurma = async (turmaId: number) => {
+    if (window.confirm("Tem certeza que deseja ativar esta turma?")) {
+      try {
+        await archiveTurma(turmaId, 'Ativo');
+        refetch(); // Recarregar a lista
+      } catch (error) {
+        console.error("Erro ao ativar turma:", error);
+      }
+    }
   };
 
   // Estatísticas das turmas baseadas nos dados da API
@@ -523,7 +578,7 @@ export default function TurmasPage() {
               <span>Lista de Turmas</span>
             </div>
             <Badge variant="outline" className="text-sm">
-              {pagination?.totalItems || turmas.length} turmas encontradas
+              {filteredTurmas.length} turmas encontradas
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -603,6 +658,62 @@ export default function TurmasPage() {
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          
+                          {/* Ações de status baseadas no status atual */}
+                          {turma.status === 'Ativo' && (
+                            <>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeactivateTurma(turma.codigo)}
+                                className="text-orange-600"
+                                disabled={archivingTurma}
+                              >
+                                <ToggleLeft className="mr-2 h-4 w-4" />
+                                Desativar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleArchiveTurma(turma.codigo)}
+                                className="text-blue-600"
+                                disabled={archivingTurma}
+                              >
+                                <Archive className="mr-2 h-4 w-4" />
+                                Arquivar
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          
+                          {turma.status === 'Inativo' && (
+                            <>
+                              <DropdownMenuItem 
+                                onClick={() => handleActivateTurma(turma.codigo)}
+                                className="text-green-600"
+                                disabled={archivingTurma}
+                              >
+                                <ToggleRight className="mr-2 h-4 w-4" />
+                                Ativar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleArchiveTurma(turma.codigo)}
+                                className="text-blue-600"
+                                disabled={archivingTurma}
+                              >
+                                <Archive className="mr-2 h-4 w-4" />
+                                Arquivar
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          
+                          {turma.status === 'Arquivado' && (
+                            <DropdownMenuItem 
+                              onClick={() => handleActivateTurma(turma.codigo)}
+                              className="text-green-600"
+                              disabled={archivingTurma}
+                            >
+                              <ToggleRight className="mr-2 h-4 w-4" />
+                              Reativar
+                            </DropdownMenuItem>
+                          )}
+                          
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             onClick={() => handleDeleteTurma(turma.codigo)}
                             className="text-red-600"
@@ -623,7 +734,7 @@ export default function TurmasPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, pagination?.totalItems || 0)} de {pagination?.totalItems || 0} turmas
+Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, filteredTurmas.length)} de {filteredTurmas.length} turmas
               </div>
               <div className="flex items-center space-x-2">
                 <Button

@@ -181,6 +181,59 @@ export const useDeleteTurma = () => {
   }
 }
 
+// Hook para validar disponibilidade de sala
+export const useValidateSala = () => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const validateSalaDisponibilidade = async (codigoSala: number, codigoPeriodo: number, codigoAnoLectivo: number) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await turmaService.validateSalaDisponibilidade(codigoSala, codigoPeriodo, codigoAnoLectivo)
+      return response
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Erro ao validar sala"
+      setError(errorMessage)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return {
+    validateSalaDisponibilidade,
+    isLoading,
+    error
+  }
+}
+
+// Hook para arquivar/desativar turma
+export const useArchiveTurma = () => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const archiveTurma = async (id: number, status: 'Ativo' | 'Inativo' | 'Arquivado') => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await turmaService.updateTurmaStatus(id, status)
+      return response
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Erro ao arquivar turma")
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return {
+    archiveTurma,
+    isLoading,
+    error
+  }
+}
+
 // Hook personalizado para gerenciar estado local das turmas (TODAS)
 export const useTurmaManager = () => {
   const [searchTerm, setSearchTerm] = useState("")

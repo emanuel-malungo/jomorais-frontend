@@ -109,6 +109,55 @@ class TurmaService {
       throw error
     }
   }
+
+  // Validar disponibilidade de sala
+  async validateSalaDisponibilidade(codigoSala: number, codigoPeriodo: number, codigoAnoLectivo: number): Promise<{
+    disponivel: boolean;
+    conflitos?: Array<{
+      turma: string;
+      periodo: string;
+      anoLectivo: string;
+    }>;
+    message?: string;
+  }> {
+    try {
+      const response = await api.get(`/api/academic-management/salas/${codigoSala}/disponibilidade`, {
+        params: { codigoPeriodo, codigoAnoLectivo }
+      })
+      const apiResponse = response.data
+
+      if (apiResponse.success) {
+        return apiResponse.data
+      }
+      throw new Error(apiResponse.message || "Erro ao validar disponibilidade da sala")
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao validar sala"
+      console.error("Erro ao validar sala:", error)
+      throw new Error(errorMessage)
+    }
+  }
+
+  // Atualizar status da turma (Ativo/Inativo/Arquivado)
+  async updateTurmaStatus(id: number, status: 'Ativo' | 'Inativo' | 'Arquivado'): Promise<ITurma> {
+    try {
+      const response = await api.patch(`/api/academic-management/turmas/${id}/status`, { status })
+      const apiResponse = response.data
+
+      if (apiResponse.success) {
+        const statusMessage = status === 'Arquivado' ? 'arquivada' : 
+                            status === 'Inativo' ? 'desativada' : 'ativada'
+        toast.success(apiResponse.message || `Turma ${statusMessage} com sucesso!`)
+        return apiResponse.data
+      }
+      toast.error(apiResponse.message || "Erro ao atualizar status da turma")
+      throw new Error(apiResponse.message || "Erro ao atualizar status da turma")
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar status da turma"
+      toast.error(errorMessage)
+      console.error("Erro ao atualizar status da turma:", error)
+      throw new Error(errorMessage)
+    }
+  }
 }
 
 const turmaService = new TurmaService();

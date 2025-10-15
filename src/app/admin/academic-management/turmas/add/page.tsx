@@ -28,10 +28,10 @@ import {
   Clock,
   GraduationCap,
 } from 'lucide-react';
-import { useCreateTurma, useClasses, useSalas, usePeriodos } from '@/hooks';
+import { useCreateTurma, useClasses, useSalas, usePeriodos, useValidateSala } from '@/hooks';
 import { useAnosLectivos } from '@/hooks/useAnoLectivo';
 import { useCourses } from '@/hooks/useCourse';
-import { School } from 'lucide-react';
+import { School, AlertTriangle } from 'lucide-react';
 import { ITurmaInput } from '@/types/turma.types';
 
 // Dados mockados removidos - agora usa dados reais da API
@@ -44,6 +44,7 @@ export default function AddTurmaPage() {
   const { periodos, fetchPeriodos, isLoading: periodosLoading, error: periodosError } = usePeriodos();
   const { anosLectivos, fetchAnosLectivos, isLoading: anosLoading, error: anosError } = useAnosLectivos();
   const { courses, loading: coursesLoading, error: coursesError, refetch: fetchCourses } = useCourses();
+  const { validateSalaDisponibilidade, isLoading: validatingRoom } = useValidateSala();
 
   const [formData, setFormData] = useState<ITurmaInput>({
     designacao: '',
@@ -57,6 +58,15 @@ export default function AddTurmaPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [salaConflito, setSalaConflito] = useState<{
+    hasConflict: boolean;
+    message?: string;
+    conflitos?: Array<{
+      turma: string;
+      periodo: string;
+      anoLectivo: string;
+    }>;
+  }>({ hasConflict: false });
 
   useEffect(() => {
     fetchClasses(1, 100);
@@ -70,11 +80,39 @@ export default function AddTurmaPage() {
     router.back();
   };
 
+  // Função para validar disponibilidade da sala
+  const checkSalaDisponibilidade = async (codigoSala: number, codigoPeriodo: number, codigoAnoLectivo: number) => {
+    if (!codigoSala || !codigoPeriodo || !codigoAnoLectivo) {
+      setSalaConflito({ hasConflict: false });
+      return;
+    }
+
+    try {
+      const result = await validateSalaDisponibilidade(codigoSala, codigoPeriodo, codigoAnoLectivo);
+      
+      if (!result.disponivel) {
+        setSalaConflito({
+          hasConflict: true,
+          message: result.message || "Sala já atribuída para este período",
+          conflitos: result.conflitos
+        });
+      } else {
+        setSalaConflito({ hasConflict: false });
+      }
+    } catch (error) {
+      // Se a API não existir ainda, apenas limpar o conflito
+      setSalaConflito({ hasConflict: false });
+      console.log('API de validação de sala ainda não implementada no backend');
+    }
+  };
+
   const handleInputChange = (field: keyof ITurmaInput, value: string | number) => {
-    setFormData(prev => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       [field]: value
-    }));
+    };
+    
+    setFormData(newFormData);
     
     // Limpar erro do campo quando usuário começar a digitar
     if (errors[field]) {
@@ -82,6 +120,17 @@ export default function AddTurmaPage() {
         ...prev,
         [field]: ''
       }));
+    }
+
+    // Verificar disponibilidade da sala quando sala, período ou ano letivo mudarem
+    if (field === 'codigo_Sala' || field === 'codigo_Periodo' || field === 'codigo_AnoLectivo') {
+      const sala = field === 'codigo_Sala' ? Number(value) : newFormData.codigo_Sala;
+      const periodo = field === 'codigo_Periodo' ? Number(value) : newFormData.codigo_Periodo;
+      const anoLectivo = field === 'codigo_AnoLectivo' ? Number(value) : newFormData.codigo_AnoLectivo;
+      
+      if (sala && periodo && anoLectivo) {
+        checkSalaDisponibilidade(sala, periodo, anoLectivo);
+      }
     }
   };
 
@@ -110,6 +159,11 @@ export default function AddTurmaPage() {
 
     if (!formData.max_Alunos || formData.max_Alunos <= 0) {
       newErrors.max_Alunos = "Capacidade é obrigatória e deve ser maior que zero";
+    }
+
+    // Verificar conflito de sala
+    if (salaConflito.hasConflict) {
+      newErrors.codigo_Sala = "Sala já atribuída para este período. Escolha outra sala ou período.";
     }
 
     setErrors(newErrors);
@@ -373,6 +427,46 @@ export default function AddTurmaPage() {
                   )}
                   {salasError && (
                     <p className="text-sm text-red-500">Erro ao carregar salas: {salasError}</p>
+                  )}
+                  
+                  {/* Aviso de validação de sala */}
+                  {validatingRoom && (
+                    <div className="flex items-center text-sm text-blue-600">
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Verificando disponibilidade da sala...
+                    </div>
+                  )}
+                  
+                  {/* Aviso de conflito de sala */}
+                  {salaConflito.hasConflict && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <div className="flex items-start">
+                        <AlertTriangle className="w-5 h-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
+                        <div className="text-sm">
+                          <p className="text-red-700 font-medium">
+                            ⚠️ Sala já atribuída!
+                          </p>
+                          <p className="text-red-600 mt-1">
+                            {salaConflito.message || "Esta sala já está sendo usada neste período."}
+                          </p>
+                          {salaConflito.conflitos && salaConflito.conflitos.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-red-600 font-medium">Conflitos encontrados:</p>
+                              <ul className="mt-1 space-y-1">
+                                {salaConflito.conflitos.map((conflito, index) => (
+                                  <li key={index} className="text-red-600 text-xs">
+                                    • Turma: {conflito.turma} - {conflito.periodo} ({conflito.anoLectivo})
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          <p className="text-red-600 mt-2 text-xs">
+                            💡 Sugestão: Escolha uma sala diferente ou altere o período.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
 
