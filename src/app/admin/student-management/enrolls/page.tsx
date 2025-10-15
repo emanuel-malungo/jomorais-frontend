@@ -37,7 +37,6 @@ import {
 import {
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
   Trash2,
   Users,
