@@ -5,27 +5,9 @@ import {
   IDiretorTurmaListResponse,
   IDiretorTurmaActionResponse
 } from '@/types/directorTurma.types';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import api from '@/utils/api.utils';
 
 class DirectorTurmaService {
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${BASE_URL}${endpoint}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return response.json();
-  }
   // Listar diretores de turma com paginação
   async getDiretoresTurma(
     page: number = 1,
@@ -38,41 +20,32 @@ class DirectorTurmaService {
       endpoint += `&search=${encodeURIComponent(search)}`;
     }
     
-    return this.request<IDiretorTurmaListResponse>(endpoint);
+    const response = await api.get(endpoint);
+    return response.data;
   }
 
   // Buscar diretor de turma por ID
   async getDiretorTurmaById(id: number): Promise<IDiretorTurmaResponse> {
-    return this.request<IDiretorTurmaResponse>(`/api/academic-staff/diretores-turmas/${id}`);
+    const response = await api.get(`/api/academic-staff/diretores-turmas/${id}`);
+    return response.data;
   }
 
   // Criar diretor de turma
   async createDiretorTurma(data: IDiretorTurmaInput): Promise<IDiretorTurmaActionResponse> {
-    return this.request<IDiretorTurmaActionResponse>('/api/academic-staff/diretores-turmas', {
-      method: 'POST',
-      body: JSON.stringify(data),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await api.post('/api/academic-staff/diretores-turmas', data);
+    return response.data;
   }
 
   // Atualizar diretor de turma
   async updateDiretorTurma(id: number, data: IDiretorTurmaInput): Promise<IDiretorTurmaActionResponse> {
-    return this.request<IDiretorTurmaActionResponse>(`/api/academic-staff/diretores-turmas/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await api.put(`/api/academic-staff/diretores-turmas/${id}`, data);
+    return response.data;
   }
 
   // Excluir diretor de turma
   async deleteDiretorTurma(id: number): Promise<IDiretorTurmaActionResponse> {
-    return this.request<IDiretorTurmaActionResponse>(`/api/academic-staff/diretores-turmas/${id}`, {
-      method: 'DELETE',
-    });
+    const response = await api.delete(`/api/academic-staff/diretores-turmas/${id}`);
+    return response.data;
   }
 }
 

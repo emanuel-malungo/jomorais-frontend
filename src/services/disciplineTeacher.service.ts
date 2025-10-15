@@ -4,28 +4,9 @@ import {
   IDisciplinaDocenteInput, 
   IDisciplinaDocenteActionResponse 
 } from '@/types/disciplineTeacher.types';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import api from '@/utils/api.utils';
 
 class DisciplineTeacherService {
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${BASE_URL}${endpoint}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return response.json();
-  }
-
   // Listar disciplinas do docente com paginação
   async getDisciplinasDocente(
     page: number = 1, 
@@ -38,23 +19,22 @@ class DisciplineTeacherService {
       ...(search && { search })
     });
 
-    return this.request<IDisciplinaDocenteResponse>(`/api/academic-staff/disciplinas-docente?${params}`);
+    const response = await api.get(`/api/academic-staff/disciplinas-docente?${params}`);
+    return response.data;
   }
 
   // Buscar disciplina do docente por ID
   async getDisciplinaDocenteById(id: number): Promise<IDisciplinaDocenteActionResponse> {
-    return this.request<IDisciplinaDocenteActionResponse>(`/api/academic-staff/disciplinas-docente/${id}`);
+    const response = await api.get(`/api/academic-staff/disciplinas-docente/${id}`);
+    return response.data;
   }
 
   // Criar nova associação disciplina-docente
   async createDisciplinaDocente(data: IDisciplinaDocenteInput): Promise<IDisciplinaDocenteActionResponse> {
     try {
-      const result = await this.request<IDisciplinaDocenteActionResponse>('/api/academic-staff/disciplinas-docente', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-      toast.success(result.message || "Disciplina associada ao docente com sucesso!");
-      return result;
+      const response = await api.post('/api/academic-staff/disciplinas-docente', data);
+      toast.success(response.data.message || "Disciplina associada ao docente com sucesso!");
+      return response.data;
     } catch (error: any) {
       toast.error(error?.message || "Erro ao associar disciplina ao docente");
       throw error;
@@ -64,12 +44,9 @@ class DisciplineTeacherService {
   // Atualizar associação disciplina-docente
   async updateDisciplinaDocente(id: number, data: IDisciplinaDocenteInput): Promise<IDisciplinaDocenteActionResponse> {
     try {
-      const result = await this.request<IDisciplinaDocenteActionResponse>(`/api/academic-staff/disciplinas-docente/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
-      toast.success(result.message || "Associação atualizada com sucesso!");
-      return result;
+      const response = await api.put(`/api/academic-staff/disciplinas-docente/${id}`, data);
+      toast.success(response.data.message || "Associação atualizada com sucesso!");
+      return response.data;
     } catch (error: any) {
       toast.error(error?.message || "Erro ao atualizar associação");
       throw error;
@@ -79,11 +56,9 @@ class DisciplineTeacherService {
   // Excluir associação disciplina-docente
   async deleteDisciplinaDocente(id: number): Promise<IDisciplinaDocenteActionResponse> {
     try {
-      const result = await this.request<IDisciplinaDocenteActionResponse>(`/api/academic-staff/disciplinas-docente/${id}`, {
-        method: 'DELETE',
-      });
-      toast.success(result.message || "Associação removida com sucesso!");
-      return result;
+      const response = await api.delete(`/api/academic-staff/disciplinas-docente/${id}`);
+      toast.success(response.data.message || "Associação removida com sucesso!");
+      return response.data;
     } catch (error: any) {
       toast.error(error?.message || "Erro ao remover associação");
       throw error;

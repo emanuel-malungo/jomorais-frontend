@@ -1,28 +1,8 @@
 import { toast } from "react-toastify"
 import { ITransfer, ITransferInput, ITransferListResponse } from '@/types/transfer.types'
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import api from '@/utils/api.utils';
 
 class TransferService {
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${BASE_URL}/api/student-management${endpoint}`
-    
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
-    }
-
-    return response.json()
-  }
-
   // Listar transferências com paginação e busca
   async getTransfers(page = 1, limit = 10, search = ""): Promise<ITransferListResponse> {
     const params = new URLSearchParams({
@@ -31,54 +11,51 @@ class TransferService {
       ...(search && { search }),
     })
 
-    return this.request<ITransferListResponse>(`/transferencias?${params}`)
+    const response = await api.get(`/api/student-management/transferencias?${params}`);
+    return response.data;
   }
 
   // Buscar transferência por ID
   async getTransferById(id: number): Promise<ITransfer> {
-    return this.request<ITransfer>(`/transferencias/${id}`)
+    const response = await api.get(`/api/student-management/transferencias/${id}`);
+    return response.data.data;
   }
 
   // Criar nova transferência
   async createTransfer(data: ITransferInput): Promise<ITransfer> {
     try {
-      const result = await this.request<ITransfer>('/transferencias', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      })
-      toast.success("Transferência criada com sucesso!")
-      return result
+      const response = await api.post('/api/student-management/transferencias', data);
+      toast.success("Transferência criada com sucesso!");
+      return response.data.data;
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao criar transferência")
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar transferência";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 
   // Atualizar transferência
   async updateTransfer(id: number, data: ITransferInput): Promise<ITransfer> {
     try {
-      const result = await this.request<ITransfer>(`/transferencias/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      })
-      toast.success("Transferência atualizada com sucesso!")
-      return result
+      const response = await api.put(`/api/student-management/transferencias/${id}`, data);
+      toast.success("Transferência atualizada com sucesso!");
+      return response.data.data;
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao atualizar transferência")
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar transferência";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 
   // Excluir transferência
   async deleteTransfer(id: number): Promise<void> {
     try {
-      await this.request<void>(`/transferencias/${id}`, {
-        method: 'DELETE',
-      })
-      toast.success("Transferência excluída com sucesso!")
+      await api.delete(`/api/student-management/transferencias/${id}`);
+      toast.success("Transferência excluída com sucesso!");
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao excluir transferência")
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao excluir transferência";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 }

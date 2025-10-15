@@ -7,102 +7,69 @@ import {
   IEspecialidadeResponse,
   IDisciplinaDocenteResponse
 } from '@/types/teacher.types'
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import api from '@/utils/api.utils';
 
 class TeacherService {
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${BASE_URL}${endpoint}`
-    
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
-    }
-
-    return response.json()
-  }
-
   // ===============================
   // DOCENTES - CRUD
   // ===============================
 
-  // Buscar TODOS os docentes sem paginação
   async getAllDocentes(search?: string): Promise<IDocenteListResponse> {
     let endpoint = `/api/academic-staff/docentes?page=1&limit=1000`
     if (search) {
       endpoint += `&search=${encodeURIComponent(search)}`
     }
-    return this.request<IDocenteListResponse>(endpoint)
+    const response = await api.get(endpoint);
+    return response.data;
   }
 
-  // Buscar todos os docentes (com paginação)
   async getDocentes(page: number = 1, limit: number = 10, search?: string): Promise<IDocenteListResponse> {
     let endpoint = `/api/academic-staff/docentes?page=${page}&limit=${limit}`
     if (search) {
       endpoint += `&search=${encodeURIComponent(search)}`
     }
-    return this.request<IDocenteListResponse>(endpoint)
+    const response = await api.get(endpoint);
+    return response.data;
   }
 
-  // Buscar docentes ativos
-  async getDocentesAtivos(): Promise<IDocenteListResponse> {
-    return this.request<IDocenteListResponse>('/api/academic-staff/docentes/ativos')
-  }
-
-  // Buscar docente por ID
   async getDocenteById(id: number): Promise<IDocenteResponse> {
-    return this.request<IDocenteResponse>(`/api/academic-staff/docentes/${id}`)
+    const response = await api.get(`/api/academic-staff/docentes/${id}`);
+    return response.data;
   }
 
-  // Criar docente
   async createDocente(data: IDocenteInput): Promise<IDocenteResponse> {
     try {
-      const result = await this.request<IDocenteResponse>('/api/academic-staff/docentes', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      })
-      toast.success(result.message || "Docente criado com sucesso!")
-      return result
+      const response = await api.post('/api/academic-staff/docentes', data);
+      toast.success(response.data.message || "Docente criado com sucesso!");
+      return response.data;
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao criar docente")
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar docente";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 
-  // Atualizar docente
   async updateDocente(id: number, data: IDocenteInput): Promise<IDocenteResponse> {
     try {
-      const result = await this.request<IDocenteResponse>(`/api/academic-staff/docentes/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      })
-      toast.success(result.message || "Docente atualizado com sucesso!")
-      return result
+      const response = await api.put(`/api/academic-staff/docentes/${id}`, data);
+      toast.success(response.data.message || "Docente atualizado com sucesso!");
+      return response.data;
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao atualizar docente")
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar docente";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 
-  // Excluir docente
   async deleteDocente(id: number): Promise<{ success: boolean; message: string }> {
     try {
-      const result = await this.request<{ success: boolean; message: string }>(`/api/academic-staff/docentes/${id}`, {
-        method: 'DELETE',
-      })
-      toast.success(result.message || "Docente excluído com sucesso!")
-      return result
+      const response = await api.delete(`/api/academic-staff/docentes/${id}`);
+      toast.success(response.data.message || "Docente excluído com sucesso!");
+      return response.data;
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao excluir docente")
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao excluir docente";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 
@@ -110,73 +77,68 @@ class TeacherService {
   // ESPECIALIDADES
   // ===============================
 
-  // Buscar todas as especialidades
   async getEspecialidades(): Promise<IEspecialidadeResponse> {
-    return this.request<IEspecialidadeResponse>('/api/academic-staff/especialidades')
+    const response = await api.get('/api/academic-staff/especialidades');
+    return response.data;
   }
 
-  // Buscar docentes por especialidade
   async getDocentesPorEspecialidade(especialidadeId: number): Promise<IDocenteListResponse> {
-    return this.request<IDocenteListResponse>(`/api/academic-staff/especialidades/${especialidadeId}/docentes`)
+    const response = await api.get(`/api/academic-staff/docentes/especialidade/${especialidadeId}`);
+    return response.data;
   }
 
   // ===============================
-  // DISCIPLINAS DOCENTE
+  // DISCIPLINAS DO DOCENTE
   // ===============================
 
-  // Buscar disciplinas do docente
   async getDisciplinasDocente(): Promise<IDisciplinaDocenteResponse> {
-    return this.request<IDisciplinaDocenteResponse>('/api/academic-staff/disciplinas-docente')
+    const response = await api.get('/api/academic-staff/disciplinas-docente');
+    return response.data;
   }
 
-  // Criar associação disciplina-docente
-  async createDisciplinaDocente(data: { codigoCurso: number; codigoDisciplina: number; codigoDocente: number }): Promise<{ success: boolean; message: string }> {
+  async createDisciplinaDocente(data: { codigoDocente: number; codigoCurso: number; codigoDisciplina: number }): Promise<{ success: boolean; message: string }> {
     try {
-      const result = await this.request<{ success: boolean; message: string }>('/api/academic-staff/disciplinas-docente', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      })
-      toast.success(result.message || "Disciplina associada ao docente com sucesso!")
-      return result
+      const response = await api.post('/api/academic-staff/disciplinas-docente', data);
+      toast.success(response.data.message || "Disciplina associada ao docente com sucesso!");
+      return response.data;
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao associar disciplina ao docente")
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao associar disciplina ao docente";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 
-  // Excluir associação disciplina-docente
   async deleteDisciplinaDocente(id: number): Promise<{ success: boolean; message: string }> {
     try {
-      const result = await this.request<{ success: boolean; message: string }>(`/api/academic-staff/disciplinas-docente/${id}`, {
-        method: 'DELETE',
-      })
-      toast.success(result.message || "Associação removida com sucesso!")
-      return result
+      const response = await api.delete(`/api/academic-staff/disciplinas-docente/${id}`);
+      toast.success(response.data.message || "Associação removida com sucesso!");
+      return response.data;
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao remover associação")
-      throw error
+      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao remover associação";
+      toast.error(errorMessage);
+      throw error;
     }
   }
 
   // ===============================
-  // CONSULTAS ESPECIAIS
+  // RELATÓRIOS E CONSULTAS AVANÇADAS
   // ===============================
 
-  // Buscar turmas por docente
-  async getTurmasPorDocente(docenteId: number): Promise<{ data: Record<string, unknown>[] }> {
-    return this.request<{ data: Record<string, unknown>[] }>(`/api/academic-staff/docentes/${docenteId}/turmas`)
+  async getTurmasPorDocente(docenteId: number): Promise<Record<string, unknown>[]> {
+    const response = await api.get(`/api/academic-staff/docentes/${docenteId}/turmas`);
+    return response.data.data || [];
   }
 
-  // Buscar docentes por turma
   async getDocentesPorTurma(turmaId: number): Promise<IDocenteListResponse> {
-    return this.request<IDocenteListResponse>(`/api/academic-staff/turmas/${turmaId}/docentes`)
+    const response = await api.get(`/api/academic-staff/turmas/${turmaId}/docentes`);
+    return response.data;
   }
 
-  // Relatório acadêmico
-  async getRelatorioAcademico(): Promise<{ data: Record<string, unknown> }> {
-    return this.request<{ data: Record<string, unknown> }>('/api/academic-staff/relatorio')
+  async getRelatorioAcademico(): Promise<Record<string, any>> {
+    const response = await api.get('/api/academic-staff/relatorio-academico');
+    return response.data;
   }
 }
 
-const teacherService = new TeacherService()
+export const teacherService = new TeacherService()
 export default teacherService
