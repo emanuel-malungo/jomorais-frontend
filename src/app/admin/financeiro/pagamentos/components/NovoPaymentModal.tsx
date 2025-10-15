@@ -67,6 +67,39 @@ interface FormData {
 }
 
 const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) => {
+  // Função auxiliar para extrair dados acadêmicos do aluno
+  const extractAcademicData = (alunoCompleto: any) => {
+    if (!alunoCompleto) return {};
+
+    // Tentar diferentes estruturas de dados
+    const confirmacao = alunoCompleto?.tb_matriculas?.tb_confirmacoes?.[0];
+    const turma = confirmacao?.tb_turmas;
+    
+    return {
+      curso: turma?.tb_cursos?.designacao || 
+             alunoCompleto?.dadosAcademicos?.curso || 
+             alunoCompleto?.curso || 
+             'Não informado',
+      classe: turma?.tb_classes?.designacao || 
+              alunoCompleto?.dadosAcademicos?.classe || 
+              alunoCompleto?.classe || 
+              'Não informado',
+      turma: turma?.designacao || 
+             alunoCompleto?.dadosAcademicos?.turma || 
+             alunoCompleto?.turma || 
+             'Não informado',
+      periodo: turma?.tb_periodos?.designacao || 
+               alunoCompleto?.periodo || 
+               'Não informado',
+      sala: turma?.tb_salas?.designacao || 
+            alunoCompleto?.sala || 
+            null,
+      anoLetivo: confirmacao?.tb_ano_lectivo?.designacao || 
+                 alunoCompleto?.anoLetivo || 
+                 null
+    };
+  };
+
   // Estados do formulário
   const [formData, setFormData] = useState<FormData>({
     codigo_Aluno: null,
@@ -153,9 +186,13 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     setFormData(prev => ({ ...prev, codigo_Aluno: aluno.codigo }));
     setAlunoSearch(aluno.nome);
     setShowAlunoResults(false);
+    
     try {
+      console.log('🔍 Buscando dados completos do aluno:', aluno.codigo);
+      
       // Buscar dados completos do aluno
       const alunoCompletoData = await fetchAlunoCompleto(aluno.codigo);
+      console.log('📊 Dados completos do aluno recebidos:', alunoCompletoData);
       setAlunoCompleto(alunoCompletoData);
       
       // Buscar tipo de serviço específico da turma
@@ -172,7 +209,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
         );
         if (confirmacaoAtiva) {
           codigoAnoLectivo = confirmacaoAtiva.codigo_Ano_lectivo;
-          console.log('Usando ano letivo do aluno:', codigoAnoLectivo);
+          console.log('📅 Usando ano letivo do aluno:', codigoAnoLectivo);
         }
       }
       
@@ -184,7 +221,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
             const testData = await fetchMesesPendentes(aluno.codigo, ano.codigo);
             if (testData.mesesPendentes.length > 0 || testData.mesesPagos.length > 0) {
               codigoAnoLectivo = ano.codigo;
-              console.log('Encontrado ano com dados:', ano.designacao);
+              console.log('📅 Encontrado ano com dados:', ano.designacao);
               break;
             }
           } catch (error) {
@@ -197,6 +234,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           codigoAnoLectivo = anosLectivos[anosLectivos.length - 1].codigo;
         }
       }
+      
       if (codigoAnoLectivo) {
         try {
           const mesesData = await fetchMesesPendentes(aluno.codigo, codigoAnoLectivo);
@@ -215,12 +253,13 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
             }));
           }
         } catch (error) {
-          console.error('Erro ao buscar meses pendentes:', error);
+          console.error('❌ Erro ao buscar meses pendentes:', error);
           // Não impedir a seleção do aluno por causa disso
         }
       }
     } catch (error) {
-      console.error('Erro ao buscar dados completos do aluno:', error);
+      console.error('❌ Erro ao buscar dados completos do aluno:', error);
+      // Mesmo com erro, permitir continuar com dados básicos
     }
   };
 
@@ -717,18 +756,91 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
               {/* Aluno Selecionado */}
               {selectedAluno && (
                 <Card className="border-green-200 bg-green-50">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-green-800">{selectedAluno.nome}</div>
-                        <div className="text-sm text-green-600">
-                          {selectedAluno.n_documento_identificacao} • {selectedAluno.email}
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      {/* Header do Aluno */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-green-800">{selectedAluno.nome}</div>
+                          <div className="text-sm text-green-600">
+                            {selectedAluno.n_documento_identificacao} • {selectedAluno.email}
+                          </div>
                         </div>
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          <User className="w-3 h-3 mr-1" />
+                          Selecionado
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
-                        <User className="w-3 h-3 mr-1" />
-                        Selecionado
-                      </Badge>
+
+                      {/* Dados Acadêmicos Compactos */}
+                      {alunoCompleto && (() => {
+                        const dadosAcademicos = extractAcademicData(alunoCompleto);
+                        return (
+                          <div className="border-t border-green-200 pt-2">
+                            <div className="text-xs space-y-1">
+                              {/* Linha 1: Curso e Classe */}
+                              <div className="flex justify-between">
+                                <span className="text-green-600">
+                                  <strong>Curso:</strong> {dadosAcademicos.curso}
+                                </span>
+                                <span className="text-green-600">
+                                  <strong>Classe:</strong> {dadosAcademicos.classe}
+                                </span>
+                              </div>
+                              
+                              {/* Linha 2: Turma e Período */}
+                              <div className="flex justify-between">
+                                <span className="text-green-600">
+                                  <strong>Turma:</strong> {dadosAcademicos.turma}
+                                </span>
+                                {dadosAcademicos.periodo !== 'Não informado' && (
+                                  <span className="text-green-600">
+                                    <strong>Período:</strong> {dadosAcademicos.periodo}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Linha 3: Dados Pessoais */}
+                              <div className="flex justify-between pt-1 border-t border-green-100">
+                                {alunoCompleto?.dataNascimento && (
+                                  <span className="text-green-600">
+                                    <strong>Nascimento:</strong> {new Date(alunoCompleto.dataNascimento).toLocaleDateString('pt-AO')}
+                                  </span>
+                                )}
+                                <div className="flex gap-3">
+                                  {alunoCompleto?.sexo && (
+                                    <span className="text-green-600">
+                                      <strong>Sexo:</strong> {alunoCompleto.sexo}
+                                    </span>
+                                  )}
+                                  {alunoCompleto?.telefone && (
+                                    <span className="text-green-600">
+                                      <strong>Tel:</strong> {alunoCompleto.telefone}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Linha 4: Encarregado (se houver) */}
+                              {alunoCompleto?.tb_encarregados?.[0]?.nome && (
+                                <div className="text-green-600">
+                                  <strong>Encarregado:</strong> {alunoCompleto.tb_encarregados[0].nome}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Loading dos dados completos */}
+                      {selectedAluno && !alunoCompleto && (
+                        <div className="border-t border-green-200 pt-2">
+                          <div className="flex items-center justify-center py-1">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-500 mr-2"></div>
+                            <span className="text-xs text-green-600">Carregando dados...</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
