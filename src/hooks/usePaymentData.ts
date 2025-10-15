@@ -1,10 +1,22 @@
 import { useState, useCallback, useEffect } from 'react';
 import api from '@/utils/api.utils';
 
+export interface IAnoLectivo {
+  codigo: number;
+  designacao: string;
+  mesInicial: string;
+  mesFinal: string;
+  anoInicial: string;
+  anoFinal: string;
+}
+
 export interface ITipoServico {
   codigo: number;
   designacao: string;
   preco: number;
+  anoLetivo?: string; // Ano letivo extraído da string
+  anoInicial?: number; // Ano inicial extraído
+  anoFinal?: number; // Ano final extraído
 }
 
 export interface IFormaPagamento {
@@ -19,13 +31,176 @@ export interface IAluno {
   email: string;
   telefone: string;
   dadosAcademicos?: {
-    curso: string;
     classe: string;
     turma: string;
   };
 }
 
-// Hook para tipos de serviço
+// Função para extrair ano letivo da string do tipo de serviço
+export const extractAnoLetivoFromString = (designacao: string): { anoLetivo?: string; anoInicial?: number; anoFinal?: number } => {
+  // Padrões para diferentes formatos de ano letivo
+  const patterns = [
+    /(\d{4}\/\d{4})/g,           // 2024/2025
+    /(\d{4}-\d{4})/g,           // 2024-2025
+    /(\d{2}\/\d{2})/g,          // 22/23
+    /(\d{4}\/\d{2})/g,          // 2024/25
+  ];
+
+  for (const pattern of patterns) {
+    const match = designacao.match(pattern);
+    if (match) {
+      const anoLetivo = match[0];
+      let anoInicial: number;
+      let anoFinal: number;
+
+      if (anoLetivo.includes('/')) {
+        const [inicio, fim] = anoLetivo.split('/');
+        if (inicio.length === 2) {
+          // Formato 22/23 - assumir 20xx
+          anoInicial = 2000 + parseInt(inicio);
+          anoFinal = 2000 + parseInt(fim);
+        } else if (fim.length === 2) {
+          // Formato 2024/25
+          anoInicial = parseInt(inicio);
+          anoFinal = parseInt(inicio.substring(0, 2) + fim);
+        } else {
+          // Formato 2024/2025
+          anoInicial = parseInt(inicio);
+          anoFinal = parseInt(fim);
+        }
+      } else {
+        // Formato com hífen 2024-2025
+        const [inicio, fim] = anoLetivo.split('-');
+        anoInicial = parseInt(inicio);
+        anoFinal = parseInt(fim);
+      }
+
+      return {
+        anoLetivo,
+        anoInicial,
+        anoFinal
+      };
+    }
+  }
+
+  return {};
+};
+
+// Função para verificar se um tipo de serviço corresponde a um ano letivo
+export const matchesAnoLetivo = (tipoServico: ITipoServico, anoLectivoSelecionado: IAnoLectivo): boolean => {
+  const { anoInicial: tipoAnoInicial, anoFinal: tipoAnoFinal } = tipoServico;
+  
+  if (!tipoAnoInicial || !tipoAnoFinal) {
+    // Se não tem ano na string, é considerado compatível (serviço genérico)
+    return true;
+  }
+
+  const anoLectivoInicial = parseInt(anoLectivoSelecionado.anoInicial);
+  const anoLectivoFinal = parseInt(anoLectivoSelecionado.anoFinal);
+
+  return tipoAnoInicial === anoLectivoInicial && tipoAnoFinal === anoLectivoFinal;
+};
+
+// Função para encontrar o ano letivo mais atual
+export const findMostRecentAnoLetivo = (anosLectivos: IAnoLectivo[]): IAnoLectivo | null => {
+  if (anosLectivos.length === 0) return null;
+  
+  return anosLectivos.reduce((latest, current) => {
+    const latestYear = parseInt(latest.anoInicial);
+    const currentYear = parseInt(current.anoInicial);
+    return currentYear > latestYear ? current : latest;
+  });
+};
+
+// Função para encontrar automaticamente o melhor tipo de serviço para um aluno e ano letivo
+export const findBestTipoServicoForAluno = (
+  tiposServico: ITipoServico[], 
+  anoLectivoSelecionado: IAnoLectivo | null,
+  tipoServicoTurma?: ITipoServico | null
+): ITipoServico | null => {
+  if (tiposServico.length === 0) return null;
+
+  // 1. Primeiro, tentar encontrar tipos específicos para o ano letivo selecionado
+  if (anoLectivoSelecionado) {
+    const tiposEspecificos = tiposServico.filter(tipo => 
+      matchesAnoLetivo(tipo, anoLectivoSelecionado)
+    );
+
+    if (tiposEspecificos.length > 0) {
+      // Priorizar propinas (que geralmente contêm "PROPINA" no nome)
+      const propinas = tiposEspecificos.filter(tipo => 
+        tipo.designacao.toUpperCase().includes('PROPINA')
+      );
+      
+      if (propinas.length > 0) {
+        // Retornar a propina com maior preço (geralmente mais específica/atual)
+        return propinas.reduce((best, current) => 
+          current.preco > best.preco ? current : best
+        );
+      }
+      
+      // Se não há propinas, retornar o primeiro tipo específico
+      return tiposEspecificos[0];
+    }
+  }
+
+  // 2. Se não encontrou tipos específicos, usar o tipo de serviço da turma
+  if (tipoServicoTurma) {
+    return tipoServicoTurma;
+  }
+
+  // 3. Como último recurso, buscar o tipo mais atual disponível
+  const tiposComAno = tiposServico.filter(tipo => tipo.anoInicial && tipo.anoFinal);
+  if (tiposComAno.length > 0) {
+    // Encontrar o tipo com ano mais recente
+    const tipoMaisAtual = tiposComAno.reduce((latest, current) => {
+      const latestYear = latest.anoInicial || 0;
+      const currentYear = current.anoInicial || 0;
+      return currentYear > latestYear ? current : latest;
+    });
+    return tipoMaisAtual;
+  }
+
+  // 4. Se nada mais funcionar, retornar tipos genéricos (sem ano)
+  const tiposGenericos = tiposServico.filter(tipo => !tipo.anoInicial && !tipo.anoFinal);
+  if (tiposGenericos.length > 0) {
+    // Priorizar propinas genéricas
+    const propinasGenericas = tiposGenericos.filter(tipo => 
+      tipo.designacao.toUpperCase().includes('PROPINA')
+    );
+    return propinasGenericas.length > 0 ? propinasGenericas[0] : tiposGenericos[0];
+  }
+
+  return null;
+};
+
+export interface ITipoServico {
+  codigo: number;
+  designacao: string;
+  preco: number;
+  anoLetivo?: string; // Ano letivo extraído da string
+  anoInicial?: number; // Ano inicial extraído
+  anoFinal?: number; // Ano final extraído
+}
+
+export interface IFormaPagamento {
+  codigo: number;
+  designacao: string;
+}
+
+export interface IAluno {
+  codigo: number;
+  nome: string;
+  n_documento_identificacao: string;
+  email: string;
+  telefone: string;
+  dadosAcademicos?: {
+    classe: string;
+    turma: string;
+  };
+}
+
+// Hook para buscar tipos de serviço
 export const useTiposServico = () => {
   const [tiposServico, setTiposServico] = useState<ITipoServico[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +213,15 @@ export const useTiposServico = () => {
     try {
       const response = await api.get('/api/payment-management/tipos-servico');
       if (response.data.success) {
-        setTiposServico(response.data.data);
+        // Processar tipos de serviço para extrair informações de ano letivo
+        const processedTiposServico = response.data.data.map((tipo: ITipoServico) => {
+          const anoInfo = extractAnoLetivoFromString(tipo.designacao);
+          return {
+            ...tipo,
+            ...anoInfo
+          };
+        });
+        setTiposServico(processedTiposServico);
       } else {
         throw new Error(response.data.message || 'Erro ao buscar tipos de serviço');
       }
@@ -62,7 +245,46 @@ export const useTiposServico = () => {
     fetchTiposServico();
   }, []);
 
-  return { tiposServico, loading, error, refetch: fetchTiposServico };
+  return {
+    tiposServico,
+    loading,
+    error,
+    fetchTiposServico
+  };
+};
+
+// Hook para filtrar tipos de serviço por ano letivo
+export const useTiposServicoFiltrados = (anoLectivoSelecionado: IAnoLectivo | null) => {
+  const { tiposServico, loading, error, fetchTiposServico } = useTiposServico();
+  const [tiposServicoFiltrados, setTiposServicoFiltrados] = useState<ITipoServico[]>([]);
+
+  useEffect(() => {
+    if (!anoLectivoSelecionado) {
+      // Se não há ano letivo selecionado, mostrar todos
+      setTiposServicoFiltrados(tiposServico);
+      return;
+    }
+
+    // Filtrar tipos de serviço que correspondem ao ano letivo selecionado
+    const tiposFiltrados = tiposServico.filter((tipo: ITipoServico) => {
+      return matchesAnoLetivo(tipo, anoLectivoSelecionado);
+    });
+
+    // Se não encontrou tipos específicos para o ano, incluir tipos genéricos (sem ano na string)
+    const tiposGenericos = tiposServico.filter((tipo: ITipoServico) => !tipo.anoInicial && !tipo.anoFinal);
+    
+    // Combinar tipos específicos com genéricos, priorizando específicos
+    const tiposFinais = tiposFiltrados.length > 0 ? tiposFiltrados : [...tiposFiltrados, ...tiposGenericos];
+    
+    setTiposServicoFiltrados(tiposFinais);
+  }, [tiposServico, anoLectivoSelecionado]);
+
+  return {
+    tiposServico: tiposServicoFiltrados,
+    loading,
+    error,
+    fetchTiposServico
+  };
 };
 
 // Hook para formas de pagamento
@@ -170,15 +392,6 @@ export const ANOS_OPTIONS = Array.from({ length: 10 }, (_, i) => {
   const year = new Date().getFullYear() + i - 5;
   return { value: year, label: year.toString() };
 });
-
-export interface IAnoLectivo {
-  codigo: number;
-  designacao: string;
-  mesInicial: string;
-  mesFinal: string;
-  anoInicial: string;
-  anoFinal: string;
-}
 
 // Hook para buscar dados completos do aluno
 export const useAlunoCompleto = () => {
@@ -363,14 +576,17 @@ export const useAnosLectivos = () => {
       const response = await api.get('/api/payment-management/anos-lectivos');
       if (response.data.success) {
         setAnosLectivos(response.data.data);
-        return response.data.data;
       } else {
         throw new Error(response.data.message || 'Erro ao buscar anos letivos');
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar anos letivos';
       setError(errorMessage);
-      throw new Error(errorMessage);
+      // Dados mockados como fallback
+      setAnosLectivos([
+        { codigo: 1, designacao: '2024/2025', anoInicial: '2024', anoFinal: '2025', mesInicial: 'SETEMBRO', mesFinal: 'JULHO' },
+        { codigo: 2, designacao: '2025/2026', anoInicial: '2025', anoFinal: '2026', mesInicial: 'SETEMBRO', mesFinal: 'JULHO' }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -384,7 +600,49 @@ export const useAnosLectivos = () => {
     anosLectivos,
     loading,
     error,
-    refetch: fetchAnosLectivos
+    fetchAnosLectivos
+  };
+};
+
+// Hook para buscar propina específica da classe do aluno no ano letivo
+export const usePropinaClasse = () => {
+  const [propinaClasse, setPropinaClasse] = useState<ITipoServico | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPropinaClasse = async (alunoId: number, anoLectivoId: number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get(`/api/payment-management/aluno/${alunoId}/propina-classe/${anoLectivoId}`);
+      if (response.data.success) {
+        setPropinaClasse(response.data.data);
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Erro ao buscar propina da classe');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar propina da classe';
+      setError(errorMessage);
+      setPropinaClasse(null);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearPropinaClasse = () => {
+    setPropinaClasse(null);
+    setError(null);
+  };
+
+  return {
+    propinaClasse,
+    loading,
+    error,
+    fetchPropinaClasse,
+    clearPropinaClasse
   };
 };
 

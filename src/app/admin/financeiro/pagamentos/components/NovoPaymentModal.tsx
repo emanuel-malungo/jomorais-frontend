@@ -42,11 +42,16 @@ import {
   useTipoServicoTurmaAluno,
   useMesesPendentesAluno,
   useAnosLectivos,
+  usePropinaClasse,
   useValidateBordero,
+  findMostRecentAnoLetivo,
+  findBestTipoServicoForAluno,
   MESES_OPTIONS,
-  ANOS_OPTIONS
+  ANOS_OPTIONS,
+  type IAnoLectivo
 } from '@/hooks/usePaymentData';
 import { useDebounce } from '@/hooks';
+import { useFuncionarios } from '@/hooks/useFuncionarios';
 import FaturaTermica from '@/components/FaturaTermica';
 
 interface NovoPaymentModalProps {
@@ -126,6 +131,9 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   // Estados para depósito bancário
   const [isDeposito, setIsDeposito] = useState(false);
   const [borderoError, setBorderoError] = useState<string>('');
+  
+  // Estado para ano letivo selecionado
+  const [anoLectivoSelecionado, setAnoLectivoSelecionado] = useState<IAnoLectivo | null>(null);
 
   // Debounce para busca de alunos
   const debouncedAlunoSearch = useDebounce(alunoSearch, 500);
@@ -139,6 +147,9 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const { mesesPendentes, mensagem, fetchMesesPendentes, loading: mesesLoading } = useMesesPendentesAluno();
   const { anosLectivos, loading: anosLoading } = useAnosLectivos();
   const { validateBordero, loading: borderoValidating } = useValidateBordero();
+  const { propinaClasse, fetchPropinaClasse, loading: propinaLoading } = usePropinaClasse();
+  const { tiposServico, loading: tiposServicoLoading } = useTiposServico();
+  const { getCurrentUser } = useFuncionarios();
 
   // Buscar alunos quando o termo de busca muda
   useEffect(() => {
@@ -151,14 +162,26 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     }
   }, [debouncedAlunoSearch]);
 
+  // Definir ano letivo mais atual como padrão
+  useEffect(() => {
+    if (anosLectivos.length > 0 && !anoLectivoSelecionado) {
+      const anoMaisAtual = findMostRecentAnoLetivo(anosLectivos);
+      if (anoMaisAtual) {
+        setAnoLectivoSelecionado(anoMaisAtual);
+        setFormData(prev => ({ ...prev, ano: anoMaisAtual.codigo }));
+      }
+    }
+  }, [anosLectivos, anoLectivoSelecionado]);
+
   // Resetar formulário quando modal abre/fecha
   useEffect(() => {
     if (open) {
+      const anoMaisAtual = findMostRecentAnoLetivo(anosLectivos);
       setFormData({
         codigo_Aluno: null,
         codigo_Tipo_Servico: null,
         mesesSelecionados: [],
-        ano: new Date().getFullYear(),
+        ano: anoMaisAtual?.codigo || new Date().getFullYear(),
         preco: '',
         observacao: '',
         codigo_FormaPagamento: null,
@@ -170,9 +193,10 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       setShowAlunoResults(false);
       setIsDeposito(false);
       setBorderoError('');
+      setAnoLectivoSelecionado(anoMaisAtual);
       clearAlunos();
     }
-  }, [open]);
+  }, [open, anosLectivos]);
 
   // Handlers
   const handleInputChange = (field: keyof FormData, value: any) => {
@@ -283,15 +307,40 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   };
 
   // Atualizar preço quando tipo de serviço da turma é carregado
+  // Seleção automática do melhor tipo de serviço baseado no ano letivo
   useEffect(() => {
-    if (tipoServicoTurma) {
+    if (!selectedAluno || !anoLectivoSelecionado || tiposServico.length === 0) return;
+
+    console.log('🔍 Buscando melhor tipo de serviço automaticamente...');
+    console.log('Ano letivo selecionado:', anoLectivoSelecionado.designacao);
+    console.log('Tipos de serviço disponíveis:', tiposServico.length);
+
+    // Buscar automaticamente o melhor tipo de serviço
+    const melhorTipoServico = findBestTipoServicoForAluno(
+      tiposServico,
+      anoLectivoSelecionado,
+      tipoServicoTurma
+    );
+
+    if (melhorTipoServico) {
+      console.log('✅ Tipo de serviço selecionado automaticamente:', melhorTipoServico.designacao);
+      console.log('💰 Preço:', melhorTipoServico.preco);
+      
       setFormData(prev => ({
         ...prev,
-        codigo_Tipo_Servico: tipoServicoTurma.codigo,
-        preco: tipoServicoTurma.preco ? tipoServicoTurma.preco.toString() : prev.preco
+        codigo_Tipo_Servico: melhorTipoServico.codigo,
+        preco: melhorTipoServico.preco.toString()
+      }));
+    } else {
+      console.log('❌ Nenhum tipo de serviço adequado encontrado');
+      // Limpar seleção se não encontrar nada adequado
+      setFormData(prev => ({
+        ...prev,
+        codigo_Tipo_Servico: null,
+        preco: ''
       }));
     }
-  }, [tipoServicoTurma]);
+  }, [selectedAluno, anoLectivoSelecionado, tiposServico, tipoServicoTurma]);
 
   // Handler para mudança de forma de pagamento
   const handleFormaPagamentoChange = (formaPagamentoId: string) => {
@@ -347,9 +396,25 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     if (!formData.codigo_Aluno) return 'Selecione um aluno';
     if (!formData.codigo_Tipo_Servico) return 'Tipo de serviço não encontrado para esta turma';
     if (!formData.mesesSelecionados.length) return 'Selecione pelo menos um mês';
-    if (!formData.ano) return 'Informe o ano';
+    if (!formData.ano) return 'Informe o ano letivo';
     if (!formData.preco || parseFloat(formData.preco) <= 0) return 'Informe um valor válido';
     if (!formData.codigo_FormaPagamento) return 'Selecione a forma de pagamento';
+    
+    // Validação automática: verificar se o sistema conseguiu selecionar um tipo de serviço
+    if (!formData.codigo_Tipo_Servico) {
+      return 'Sistema não conseguiu determinar o tipo de serviço adequado para este aluno e ano letivo';
+    }
+    
+    // Validação de valor: deve haver um preço válido
+    const tipoSelecionado = tiposServico.find(tipo => tipo.codigo === formData.codigo_Tipo_Servico);
+    if (!tipoSelecionado) {
+      return 'Tipo de serviço selecionado não é válido';
+    }
+    
+    // Validação de valor fixo: preço deve corresponder ao tipo selecionado
+    if (parseFloat(formData.preco) !== tipoSelecionado.preco) {
+      return 'O valor não corresponde ao tipo de serviço selecionado automaticamente';
+    }
     
     // Validações específicas para depósito
     if (isDeposito) {
@@ -389,6 +454,19 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           }
         }
 
+        // Obter ID do usuário logado
+        let codigoUtilizador = 1; // Padrão
+        try {
+          const userData = localStorage.getItem('user');
+          if (userData) {
+            const user = JSON.parse(userData);
+            // Tentar diferentes campos para o ID do usuário
+            codigoUtilizador = user.id || user.codigo || 1;
+          }
+        } catch (error) {
+          console.error('Erro ao obter ID do usuário logado:', error);
+        }
+
         const paymentData = {
           codigo_Aluno: formData.codigo_Aluno!,
           codigo_Tipo_Servico: formData.codigo_Tipo_Servico!,
@@ -397,6 +475,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           preco: parseFloat(formData.preco),
           observacao: formData.observacao,
           codigo_FormaPagamento: formData.codigo_FormaPagamento!,
+          codigo_Utilizador: codigoUtilizador, // ID do funcionário que está fazendo o pagamento
           ...(isDeposito && {
             tipoConta: formData.tipoConta,
             numeroBordero: formData.numeroBordero
@@ -694,6 +773,24 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
             <DialogDescription>
               Registre um novo pagamento de propina ou outros serviços
             </DialogDescription>
+            
+            {/* Informações do Funcionário Logado */}
+            {(() => {
+              const currentUser = getCurrentUser();
+              return currentUser ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">
+                      Funcionário: {currentUser.nome} (@{currentUser.user})
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Este pagamento será registrado em seu nome
+                  </p>
+                </div>
+              ) : null;
+            })()}
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -846,36 +943,46 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 </Card>
               )}
             </div>
-            {/* Tipo de Serviço da Turma */}
-            {selectedAluno && (
+            {/* Tipo de Serviço Selecionado Automaticamente */}
+            {selectedAluno && anoLectivoSelecionado && (
               <div className="space-y-2">
-                <Label htmlFor="tipo-servico">Tipo de Serviço (Propina da Turma) *</Label>
-                {tipoServicoLoading ? (
+                <Label htmlFor="tipo-servico">Tipo de Serviço (Seleção Automática) *</Label>
+                <div className="text-xs text-blue-600 mb-2">
+                  📅 Ano letivo: <strong>{anoLectivoSelecionado.designacao}</strong> • 🤖 Seleção automática ativada
+                </div>
+                
+                {tiposServicoLoading ? (
                   <div className="p-3 border rounded-md bg-gray-50">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="text-center text-sm text-gray-500 mt-2">Carregando tipo de serviço...</p>
+                    <p className="text-center text-sm text-gray-500 mt-2">Buscando melhor tipo de serviço...</p>
                   </div>
-                ) : tipoServicoTurma ? (
-                  <Card className="border-blue-200 bg-blue-50">
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-blue-800">{tipoServicoTurma.designacao}</div>
-                          <div className="text-sm text-blue-600">
-                            Preço: {tipoServicoTurma.preco?.toLocaleString('pt-AO')} Kz
+                ) : formData.codigo_Tipo_Servico ? (
+                  (() => {
+                    const tipoSelecionado = tiposServico.find(tipo => tipo.codigo === formData.codigo_Tipo_Servico);
+                    return tipoSelecionado ? (
+                      <Card className="border-green-200 bg-green-50">
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-green-800">{tipoSelecionado.designacao}</div>
+                              <div className="text-sm text-green-600">
+                                Preço: {tipoSelecionado.preco?.toLocaleString('pt-AO')} Kz
+                                {tipoSelecionado.anoLetivo && ` • ${tipoSelecionado.anoLetivo}`}
+                              </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                              <CreditCard className="w-3 h-3 mr-1" />
+                              Auto-selecionado
+                            </Badge>
                           </div>
-                        </div>
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                          <CreditCard className="w-3 h-3 mr-1" />
-                          Propina
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
+                        </CardContent>
+                      </Card>
+                    ) : null;
+                  })()
                 ) : (
-                  <div className="p-3 border rounded-md bg-red-50 border-red-200">
-                    <p className="text-red-600 text-sm">
-                      Tipo de serviço de propina não encontrado para esta turma.
+                  <div className="p-3 border rounded-md bg-yellow-50 border-yellow-200">
+                    <p className="text-yellow-700 text-sm">
+                      🔍 Buscando tipo de serviço adequado para este ano letivo...
                     </p>
                   </div>
                 )}
@@ -892,11 +999,22 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                       value={formData.ano?.toString() || ""}
                       onValueChange={(value) => {
                         const codigoAnoLectivo = parseInt(value);
+                        const anoLectivoSelecionado = anosLectivos.find(ano => ano.codigo === codigoAnoLectivo);
+                        
                         handleInputChange('ano', codigoAnoLectivo);
+                        setAnoLectivoSelecionado(anoLectivoSelecionado || null);
+                        
                         // Recarregar meses pendentes para o novo ano letivo
                         if (selectedAluno) {
                           fetchMesesPendentes(selectedAluno.codigo, codigoAnoLectivo);
+                          // Buscar propina específica da classe para este ano letivo
+                          fetchPropinaClasse(selectedAluno.codigo, codigoAnoLectivo).catch(() => {
+                            // Se não encontrar propina específica, usar tipo de serviço da turma
+                            console.log('Propina específica não encontrada, usando tipo de serviço da turma');
+                          });
                         }
+                        
+                        // A seleção do tipo de serviço será feita automaticamente pelo useEffect
                       }}
                     >
                       <SelectTrigger>
@@ -1028,16 +1146,32 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
             {/* Valor */}
             <div className="space-y-2">
               <Label htmlFor="preco">Valor por Mês (Kz) *</Label>
-              <Input
-                id="preco"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={formData.preco}
-                onChange={(e) => handleInputChange('preco', e.target.value)}
-                disabled={!tipoServicoTurma}
-              />
+              <div className="relative">
+                <Input
+                  id="preco"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={formData.preco}
+                  onChange={(e) => handleInputChange('preco', e.target.value)}
+                  disabled={!tipoServicoTurma}
+                  readOnly={!!(propinaClasse || tipoServicoTurma)}
+                  className={`${(propinaClasse || tipoServicoTurma) ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                />
+                {(propinaClasse || tipoServicoTurma) && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                      Valor Fixo
+                    </Badge>
+                  </div>
+                )}
+              </div>
+              {(propinaClasse || tipoServicoTurma) && (
+                <p className="text-xs text-blue-600">
+                  💡 Valor definido automaticamente pelo sistema para {propinaClasse ? 'este ano letivo' : 'esta turma'}
+                </p>
+              )}
               {formData.mesesSelecionados.length > 0 && formData.preco && (
                 <div className="text-sm text-gray-600">
                   <strong>Total a pagar:</strong> {(parseFloat(formData.preco) * formData.mesesSelecionados.length).toLocaleString('pt-AO')} Kz

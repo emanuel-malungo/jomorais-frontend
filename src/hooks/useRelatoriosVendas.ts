@@ -7,6 +7,7 @@ export interface RelatorioVendasFuncionario {
   funcionarioUser: string;
   totalVendas: number;
   quantidadePagamentos: number;
+  percentualDoTotal?: string; // Percentual das vendas em relação ao total geral
   pagamentos: Array<{
     codigo: number;
     aluno: string;
