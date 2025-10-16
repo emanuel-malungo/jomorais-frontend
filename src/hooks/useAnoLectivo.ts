@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import anoLectivoService from "@/services/anoLectivo.service"
-import { IAnoLectivo, IAnoLectivoInput, IAnoLectivoListResponse } from "@/types/anoLectivo.types"
+import { IAnoLectivo, IAnoLectivoInput } from "@/types/anoLectivo.types"
 
 // Hook para listar anos letivos
 export const useAnosLectivos = () => {

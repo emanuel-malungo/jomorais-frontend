@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,19 +46,8 @@ import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
-// Opções para filtros
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "1", label: "Ativa" },
-  { value: "0", label: "Inativa" },
-];
-
-const academicYearOptions = [
-  { value: "all", label: "Todos os Anos" },
-  { value: "2024", label: "2024" },
-  { value: "2023", label: "2023" },
-  { value: "2025", label: "2025" },
-];
+import { useStatus } from '@/hooks/useStatusControl';
+import { useAnosLectivos } from '@/hooks/useAnoLectivo';
 
 
 export default function ConfirmationsListPage() {
@@ -67,6 +56,43 @@ export default function ConfirmationsListPage() {
   const [yearFilter, setYearFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+
+  const { status } = useStatus(1, 100, "");
+  const { anosLectivos, fetchAnosLectivos } = useAnosLectivos();
+
+  // Buscar anos letivos ao montar o componente
+  useEffect(() => {
+    fetchAnosLectivos(1, 100, "");
+  }, [fetchAnosLectivos]);
+
+
+  const statusOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Status" }];
+    if (status && status.length > 0) {
+      status.forEach((s) => {
+        options.push({
+          value: s.codigo.toString(),
+          label: s.designacao
+        });
+      });
+    }
+    return options;
+  }, [status]);
+
+  const academicYearOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Anos" }];
+    if (anosLectivos && anosLectivos.length > 0) {
+      anosLectivos.forEach((ano) => {
+        options.push({
+          value: ano.codigo.toString(),
+          label: ano.designacao
+        });
+      });
+    }
+    return options;
+  }, [anosLectivos]);
+
+
 
   // Hook para buscar confirmações da API
   const {
