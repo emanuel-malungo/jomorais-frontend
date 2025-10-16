@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  FileText,
   Search,
   Filter,
   Plus,
@@ -58,23 +57,20 @@ import {
   ArrowRightLeft,
   CheckCircle,
   Clock,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
   Activity,
   Loader2,
-  MapPin,
 } from 'lucide-react';
-import { useTransfers, useDeleteTransfer } from '@/hooks/useTransfer';
 
-// Status options para filtros
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "Aprovada", label: "Aprovada" },
-  { value: "Pendente", label: "Pendente" },
-  { value: "Rejeitada", label: "Rejeitada" },
-];
+import { WelcomeHeader } from '@/components/dashboard';
+import StatCard from '@/components/layout/StatCard';
+import FilterSearchCard from '@/components/layout/FilterSearchCard';
+
+import { useTransfers, useDeleteTransfer } from '@/hooks/useTransfer';
+import { useStatus } from '@/hooks/useStatusControl';
+
 
 // Mapeamento dos motivos de transferência
 const TRANSFER_MOTIVOS = [
@@ -110,6 +106,21 @@ export default function TransfersListPage() {
   const [itemToDelete, setItemToDelete] = useState<{ id: number; nome: string } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  const { status } = useStatus(1, 100, "");
+
+  const statusOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Status" }];
+    if (status && status.length > 0) {
+      status.forEach((s) => {
+        options.push({
+          value: s.codigo.toString(),
+          label: s.designacao
+        });
+      });
+    }
+    return options;
+  }, [status]);
+
   // Hooks da API
   const { transfers, pagination, loading, error, refetch } = useTransfers(currentPage, itemsPerPage, searchTerm);
   const { deleteTransfer, loading: deleteLoading } = useDeleteTransfer();
@@ -122,7 +133,7 @@ export default function TransfersListPage() {
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
-    
+
     try {
       setDeletingId(itemToDelete.id);
       await deleteTransfer(itemToDelete.id);
@@ -153,25 +164,6 @@ export default function TransfersListPage() {
     const transfer = transfers.find(t => t.codigo === transferId);
     if (transfer) {
       handleDeleteClick(transfer);
-    }
-  };
-
-  const formatDate = (dateString: string | object) => {
-    if (!dateString || typeof dateString === 'object') {
-      return 'Pendente';
-    }
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return 'Data inválida';
-      }
-      return date.toLocaleDateString('pt-AO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch {
-      return 'Data inválida';
     }
   };
 
@@ -223,194 +215,85 @@ export default function TransfersListPage() {
     }
   };
 
+  function setCourseFilter(value: string): void {
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <Container>
-      {/* Header seguindo padrão do Dashboard */}
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
-        <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
-                  <ArrowRightLeft className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-gray-900">
-                    Transferências
-                  </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">Gestão de Transferências de Alunos</p>
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm max-w-2xl">
-                Gerencie todas as transferências de alunos. Visualize informações detalhadas,
-                acompanhe status e mantenha os registros sempre atualizados.
-              </p>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exportar Dados
-              </Button>
 
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Importar Dados
-              </Button>
-
-              <Button
-                onClick={() => window.location.href = '/admin/student-management/transfers/add'}
-                className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Nova Transferência
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Decorative elements */}
-        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#FFC506]/5 rounded-full"></div>
-        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
-      </div>
+      <WelcomeHeader
+        title="Gestão de Transferências de Alunos"
+        description="Gerencie todas as transferências de alunos. Visualize informações detalhadas, acompanhe status e mantenha os registros sempre atualizados."
+        titleBtnRight='Nova Transferência'
+        iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+        onClickBtnRight={() => window.location.href = '/admin/student-management/transfers/add'}
+      />
 
       {/* Stats Cards seguindo padrão do Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        {/* Card Total de Transferências */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
-              <ArrowRightLeft className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+5.2%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Transferências</p>
-            <p className="text-3xl font-bold text-gray-900">{pagination?.totalItems || 0}</p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
 
-        {/* Card Pendentes */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#FFC107] shadow-sm">
-              <Clock className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-amber-500" />
-              <span className="font-bold text-xs text-amber-600">Pendentes</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Pendentes</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Pendente').length}
-            </p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+        <StatCard
+          title="Total de Transferências"
+          value={(pagination?.totalItems || 0).toString()}
+          change="Total"
+          changeType="up"
+          icon={ArrowRightLeft}
+          color="text-[#182F59]"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
+        />
 
-        {/* Card Concluídas */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
-              <CheckCircle className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">Concluídas</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-emerald-600">Concluídas</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Concluída').length}
-            </p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+        <StatCard
+          title="Pendentes"
+          value={transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Pendente').length.toString()}
+          change="Pendentes"
+          changeType="neutral"
+          icon={Clock}
+          color="text-[#FFD002]"
+          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
+          accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
+        />
 
-        {/* Card Agendadas */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm">
-              <Calendar className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-blue-500" />
-              <span className="font-bold text-xs text-blue-600">Agendadas</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-blue-600">Agendadas</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Agendada').length}
-            </p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+        <StatCard
+          title="Concluídas"
+          value={transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Concluída').length.toString()}
+          change="Concluídas"
+          changeType="up"
+          icon={CheckCircle}
+          color="text-emerald-600"
+          bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
+          accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
+        />
+
+        <StatCard
+          title="Agendadas"
+          value={transfers.filter(t => getTransferStatus(t.dataTransferencia).status === 'Agendada').length.toString()}
+          change="Agendadas"
+          changeType="neutral"
+          icon={Calendar}
+          color="text-blue-600"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-blue-500 to-blue-600"
+        />
       </div>
 
-      {/* Filtros e Busca */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filtros e Busca</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar por aluno, escola destino ou motivo..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="md:w-48">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <FilterSearchCard
+        title="Filtros e Busca"
+        searchPlaceholder="Buscar por aluno, escola destino ou motivo..."
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={[
+          {
+            label: "Status",
+            value: searchTerm,
+            onChange: setSearchTerm,
+            options: statusOptions,
+            width: "w-48"
+          }
+        ]}
+      />
 
       {/* Tabela de Transferências */}
       <Card>
@@ -420,9 +303,6 @@ export default function TransfersListPage() {
               <Users className="h-5 w-5" />
               <span>Lista de Transferências</span>
             </div>
-            <Badge variant="outline" className="text-sm">
-              {pagination?.totalItems || 0} transferências encontradas
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -456,73 +336,73 @@ export default function TransfersListPage() {
                 </TableHeader>
                 <TableBody>
                   {transfers.map((transfer) => (
-                  <TableRow key={transfer.codigo}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-gray-500" />
+                    <TableRow key={transfer.codigo}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <Users className="h-5 w-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{transfer.tb_alunos.nome}</p>
+                            <p className="text-sm text-gray-500">
+                              {calculateAge(transfer.tb_alunos.dataNascimento)} anos • {transfer.tb_alunos.sexo}
+                            </p>
+                          </div>
                         </div>
+                      </TableCell>
+                      <TableCell>
                         <div>
-                          <p className="font-medium text-gray-900">{transfer.tb_alunos.nome}</p>
-                          <p className="text-sm text-gray-500">
-                            {calculateAge(transfer.tb_alunos.dataNascimento)} anos • {transfer.tb_alunos.sexo}
-                          </p>
+                          <p className="font-medium text-gray-900">{getEscolaNome(transfer.codigoEscola)}</p>
+                          <p className="text-sm text-gray-500">Código: {transfer.codigoEscola}</p>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900">{getEscolaNome(transfer.codigoEscola)}</p>
-                        <p className="text-sm text-gray-500">Código: {transfer.codigoEscola}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900">{getMotivoDesignacao(transfer.codigoMotivo)}</p>
-                        <p className="text-sm text-gray-500">Código: {transfer.codigoMotivo}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm text-gray-600 max-w-xs truncate" title={transfer.obs || ''}>
-                        {transfer.obs || 'Sem observações'}
-                      </p>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewTransfer(transfer.codigo)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditTransfer(transfer.codigo)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteTransfer(transfer.codigo)}
-                            className="text-red-600"
-                            disabled={deletingId === transfer.codigo}
-                          >
-                            {deletingId === transfer.codigo ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="mr-2 h-4 w-4" />
-                            )}
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-gray-900">{getMotivoDesignacao(transfer.codigoMotivo)}</p>
+                          <p className="text-sm text-gray-500">Código: {transfer.codigoMotivo}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm text-gray-600 max-w-xs truncate" title={transfer.obs || ''}>
+                          {transfer.obs || 'Sem observações'}
+                        </p>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleViewTransfer(transfer.codigo)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditTransfer(transfer.codigo)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteTransfer(transfer.codigo)}
+                              className="text-red-600"
+                              disabled={deletingId === transfer.codigo}
+                            >
+                              {deletingId === transfer.codigo ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="mr-2 h-4 w-4" />
+                              )}
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -551,9 +431,9 @@ export default function TransfersListPage() {
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
+
                     const pages = [];
-                    
+
                     // Primeira página
                     if (adjustedStartPage > 1) {
                       pages.push(
@@ -570,7 +450,7 @@ export default function TransfersListPage() {
                         pages.push(<span key="ellipsis1" className="px-2">...</span>);
                       }
                     }
-                    
+
                     // Páginas do meio
                     for (let i = adjustedStartPage; i <= endPage; i++) {
                       pages.push(
@@ -586,7 +466,7 @@ export default function TransfersListPage() {
                         </Button>
                       );
                     }
-                    
+
                     // Última página
                     if (endPage < totalPages) {
                       if (endPage < totalPages - 1) {
@@ -603,7 +483,7 @@ export default function TransfersListPage() {
                         </Button>
                       );
                     }
-                    
+
                     return pages;
                   })()}
                 </div>
@@ -642,8 +522,8 @@ export default function TransfersListPage() {
             <Button variant="outline" onClick={handleCancelDelete} disabled={deleteLoading}>
               Cancelar
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleConfirmDelete}
               disabled={deleteLoading}
             >
