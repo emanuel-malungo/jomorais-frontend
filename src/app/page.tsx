@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import icon from "../assets/images/icon.png";
-import { User, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { User, Lock, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,190 +13,175 @@ import useAuth from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 
 interface AuthFormData {
-  user: string;
-  passe: string;
+	user: string;
+	passe: string;
 }
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
-  const { login, isAuthenticated, loading, isInitialized } = useAuth();
 
-  const {
-	control,
-	handleSubmit,
-	formState: { errors, isSubmitting }
-  } = useForm<AuthFormData>({
-	resolver: yupResolver(legacyAuthSchema),
-	defaultValues: {
-	  user: '',
-	  passe: ''
-	}
-  });
+	const router = useRouter();
+	const [showPassword, setShowPassword] = useState(false);
+	const { login, isAuthenticated, loading, isInitialized } = useAuth();
 
-  // Redirecionar se já estiver autenticado
-  useEffect(() => {
-    if (isInitialized && isAuthenticated && !loading) {
-      // Verificar se já estamos no admin para evitar redirecionamento desnecessário
-      if (window.location.pathname !== '/admin') {
-        console.log('[LoginPage] Usuário já autenticado, redirecionando para /admin');
-        router.push('/admin');
-      }
-    }
-  }, [isAuthenticated, loading, isInitialized, router]);
+	const {
+		control,
+		handleSubmit,
+		formState: { errors, isSubmitting }
+	} = useForm<AuthFormData>({
+		resolver: yupResolver(legacyAuthSchema),
+		defaultValues: {
+			user: '',
+			passe: ''
+		}
+	});
 
-  const onSubmit = async (data: AuthFormData) => {
-	// Evitar múltiplas tentativas enquanto uma já está em andamento
-	if (isSubmitting || loading) return;
-	
-	try {
-	  await login(data.user, data.passe);
-	  // O redirecionamento é feito automaticamente pelo contexto
-	  // As mensagens de sucesso/erro são mostradas pelo contexto via toast
-	} catch (error: any) {
-	  console.error('Erro na autenticação:', error);
-	  // A mensagem de erro já é mostrada pelo contexto
-	}
-  };
+	useEffect(() => {
+		if (isInitialized && isAuthenticated && !loading) {
+			router.push('/admin');
+		}
+	}, [isAuthenticated, loading, isInitialized, router]);
 
-  return (
-	<div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+	const onSubmit = async (data: AuthFormData) => {
+		if (isSubmitting || loading) return;
+		await login(data.user, data.passe);
+	};
 
-	  <div className="relative w-full max-w-md">
+	return (
+		<div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
 
-		{/* Login form */}
-		<div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-		  <div className="relative z-10">
-		  {/* Logo and welcome section */}
-		  <div className="text-center mb-8">
-			<div className="mb-6 bg-gradient-to-br from-[#FFD700]/20 via-[#FFC107]/15 to-[#FFD700]/10 rounded-2xl p-4 w-24 h-24 mx-auto border-2 border-[#FFD700]/30 items-center flex justify-center shadow-lg ring-1 ring-[#FFD700]/20">
-			  <Image
-				src={icon}
-				alt="JOMORAIS Logo"
-				width={60}
-				height={55}
-				className="mx-auto"
-			  />
-			</div>
-			<h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
-			  Acessa a tua conta
-			</h1>
-			<p className="text-gray-600 text-base">
-			  Use suas credenciais do sistema para acessar a plataforma.
-			</p>
-			
-		  </div>
+			<div className="relative w-full max-w-md">
 
-		  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-			{/* Username input */}
-			<div className="space-y-2">
-			  <div className="relative">
-				<User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-				<Controller
-				  name="user"
-				  control={control}
-				  render={({ field }) => (
-					<Input
-					  {...field}
-					  id="user"
-					  type="text"
-					  placeholder="Digite seu username"
-					  className={`pl-10 h-12 border-gray-200 focus:border-[#2d5016] focus:ring-[#2d5016]/20 ${
-						errors.user ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
-					  }`}
-					/>
-				  )}
-				/>
-			  </div>
-			  {errors.user && (
-				<p className="text-red-500 text-sm mt-1">{errors.user.message}</p>
-			  )}
-			</div>
+				{/* Login form */}
+				<div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
+					<div className="relative z-10">
+						{/* Logo and welcome section */}
+						<div className="text-center mb-8">
+							<div className="mb-6 bg-gradient-to-br from-[#FFD700]/20 via-[#FFC107]/15 to-[#FFD700]/10 rounded-2xl p-4 w-24 h-24 mx-auto border-2 border-[#FFD700]/30 items-center flex justify-center shadow-lg ring-1 ring-[#FFD700]/20">
+								<Image
+									src={icon}
+									alt="JOMORAIS Logo"
+									width={60}
+									height={55}
+									className="mx-auto"
+								/>
+							</div>
+							<h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
+								Acessa a tua conta
+							</h1>
+							<p className="text-gray-600 text-base">
+								Use suas credenciais do sistema para acessar a plataforma.
+							</p>
 
-			{/* Password input */}
-			<div className="space-y-2">
-			  <div className="relative">
-				<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-				<Controller
-				  name="passe"
-				  control={control}
-				  render={({ field }) => (
-					<Input
-					  {...field}
-					  id="passe"
-					  type={showPassword ? "text" : "password"}
-					  placeholder="Digite tua senha"
-					  className={`pl-10 pr-10 h-12 border-gray-200 focus:border-[#2d5016] focus:ring-[#2d5016]/20 ${
-						errors.passe ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
-					  }`}
-					/>
-				  )}
-				/>
-				<button
-				  type="button"
-				  onClick={() => setShowPassword(!showPassword)}
-				  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-				>
-				  {showPassword ? (
-					<Eye className="h-5 w-5" />
-				  ) : (
-					<EyeOff className="h-5 w-5" />
-				  )}
-				</button>
-			  </div>
-			  {errors.passe && (
-				<p className="text-red-500 text-sm mt-1">{errors.passe.message}</p>
-			  )}
-			</div>
+						</div>
 
-			{/* Remember me and forgot password */}
-			<div className="flex items-center justify-between">
-			  <label className="flex items-center space-x-2 cursor-pointer">
-				<input
-				  type="checkbox"
-				  className="w-4 h-4 text-[#2d5016] border-gray-300 rounded focus:ring-[#2d5016] focus:ring-2"
-				/>
-				<span className="text-sm text-gray-600">Remember me</span>
-			  </label>
-			  <button
-				type="button"
-				className="text-sm text-[#2d5016] hover:text-[#3d6b1f] font-medium transition-colors"
-			  >
-				Esqueci minha senha?
-			  </button>
-			</div>
+						<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+							{/* Username input */}
+							<div className="space-y-2">
+								<div className="relative">
+									<User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+									<Controller
+										name="user"
+										control={control}
+										render={({ field }) => (
+											<Input
+												{...field}
+												id="user"
+												type="text"
+												placeholder="Digite seu username"
+												className={`pl-10 h-12 border-gray-200 focus:border-[#2d5016] focus:ring-[#2d5016]/20 ${errors.user ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
+													}`}
+											/>
+										)}
+									/>
+								</div>
+								{errors.user && (
+									<p className="text-red-500 text-sm mt-1">{errors.user.message}</p>
+								)}
+							</div>
 
-			{/* Login button */}
-			<Button
-			  type="submit"
-			  disabled={isSubmitting || loading}
-			  className="w-full h-12 mb-8 bg-gradient-to-r from-[#2d5016] to-[#3d6b1f] hover:from-[#3d6b1f] hover:to-[#2d5016] text-white font-semibold rounded-xl shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-			>
-			  {isSubmitting ? (
-				<div className="flex items-center space-x-2">
-				  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-				  <span>Entrando...</span>
+							{/* Password input */}
+							<div className="space-y-2">
+								<div className="relative">
+									<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+									<Controller
+										name="passe"
+										control={control}
+										render={({ field }) => (
+											<Input
+												{...field}
+												id="passe"
+												type={showPassword ? "text" : "password"}
+												placeholder="Digite tua senha"
+												className={`pl-10 pr-10 h-12 border-gray-200 focus:border-[#2d5016] focus:ring-[#2d5016]/20 ${errors.passe ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
+													}`}
+											/>
+										)}
+									/>
+									<button
+										type="button"
+										onClick={() => setShowPassword(!showPassword)}
+										className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+									>
+										{showPassword ? (
+											<Eye className="h-5 w-5" />
+										) : (
+											<EyeOff className="h-5 w-5" />
+										)}
+									</button>
+								</div>
+								{errors.passe && (
+									<p className="text-red-500 text-sm mt-1">{errors.passe.message}</p>
+								)}
+							</div>
+
+							{/* Remember me and forgot password */}
+							<div className="flex items-center justify-between">
+								<label className="flex items-center space-x-2 cursor-pointer">
+									<input
+										type="checkbox"
+										className="w-4 h-4 text-[#2d5016] border-gray-300 rounded focus:ring-[#2d5016] focus:ring-2"
+									/>
+									<span className="text-sm text-gray-600">Remember me</span>
+								</label>
+								<button
+									type="button"
+									className="text-sm text-[#2d5016] hover:text-[#3d6b1f] font-medium transition-colors"
+								>
+									Esqueci minha senha?
+								</button>
+							</div>
+
+							{/* Login button */}
+							<Button
+								type="submit"
+								disabled={isSubmitting || loading}
+								className="w-full h-12 mb-8 bg-gradient-to-r from-[#2d5016] to-[#3d6b1f] hover:from-[#3d6b1f] hover:to-[#2d5016] text-white font-semibold rounded-xl shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{isSubmitting ? (
+									<div className="flex items-center space-x-2">
+										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+										<span>Entrando...</span>
+									</div>
+								) : 'Entrar'}
+							</Button>
+
+						</form>
+					</div>
 				</div>
-			  ) : 'Entrar'}
-			</Button>
 
-		  </form>
-		  </div>
+				{/* Help section */}
+				<div className="text-center mt-6">
+					<p className="text-gray-600 text-sm">
+						Problemas para acessar?{" "}
+						<Button
+							variant="link"
+							className="text-[#2d5016] hover:text-[#3d6b1f] font-medium p-0 h-auto underline-offset-4 transition-colors cursor-pointer"
+						>
+							Entre em contato
+						</Button>
+					</p>
+				</div>
+			</div>
 		</div>
-
-		{/* Help section */}
-		<div className="text-center mt-6">
-		  <p className="text-gray-600 text-sm">
-			Problemas para acessar?{" "}
-			<Button
-			  variant="link"
-			  className="text-[#2d5016] hover:text-[#3d6b1f] font-medium p-0 h-auto underline-offset-4 transition-colors cursor-pointer"
-			>
-			   Entre em contato
-			</Button>
-		  </p>
-		</div>
-	  </div>
-	</div>
-  );
+	);
 }

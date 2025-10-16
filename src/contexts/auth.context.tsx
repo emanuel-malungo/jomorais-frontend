@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const checkAuth = async () => {
       try {
         setLoading(true);
-        
+
         // Primeiro verifica se há token armazenado
         if (!authService.hasValidToken()) {
           setIsAuthenticated(false);
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Se há token, tenta buscar dados do usuário
         const response: AuthResponse<LegacyUser> = await authService.getCurrentUser();
-        
+
         if (response.success && response.data) {
           setIsAuthenticated(true);
           setUser(response.data);
@@ -73,20 +73,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     try {
       setLoading(true);
-      
-      const response: AuthResponse<LoginResponse> = await authService.login({ 
-        user: username, 
-        passe: password 
+
+      const response: AuthResponse<LoginResponse> = await authService.login({
+        user: username,
+        passe: password
       });
-      
-      
+
+
       if (response.success && response.data) {
         const userData = response.data.user as LegacyUser;
-        
+
         // Atualizar estado
         setIsAuthenticated(true);
         setUser(userData);
-        
+
         // Redirecionar imediatamente
         router.push("/admin");
       } else {
@@ -96,13 +96,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsAuthenticated(false);
       setUser(null);
       authService.clearSession();
-      
+
       // Mostrar mensagem de erro
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Erro ao fazer login. Verifique suas credenciais.";
+      const errorMessage = error.response?.data?.message ||
+        error.message ||
+        "Erro ao fazer login. Verifique suas credenciais.";
       toast.error(errorMessage);
-      
+
       throw error;
     } finally {
       setLoading(false);
@@ -113,15 +113,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await authService.logout();
-      
+
       if (response.success) {
         toast.success(response.message || "Logout realizado com sucesso!");
       }
     } catch (error: any) {
       // Mostrar mensagem de aviso, mas não bloquear o logout
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Erro ao fazer logout no servidor, mas você foi desconectado localmente.";
+      const errorMessage = error.response?.data?.message ||
+        error.message ||
+        "Erro ao fazer logout no servidor, mas você foi desconectado localmente.";
       toast.warning(errorMessage);
     } finally {
       setIsAuthenticated(false);
@@ -134,9 +134,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshUser = async () => {
     try {
       if (!isAuthenticated) return;
-      
+
       const response: AuthResponse<LegacyUser> = await authService.getCurrentUser();
-      
+
       if (response.success && response.data) {
         setUser(response.data);
       }
@@ -147,14 +147,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      user, 
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      user,
       loading,
-      isInitialized, 
-      login, 
-      logout, 
-      refreshUser 
+      isInitialized,
+      login,
+      logout,
+      refreshUser
     }}>
       {children}
     </AuthContext.Provider>
