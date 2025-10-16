@@ -65,7 +65,6 @@ export default function ConfirmationsListPage() {
     fetchAnosLectivos(1, 100, "");
   }, [fetchAnosLectivos]);
 
-
   const statusOptions = useMemo(() => {
     const options = [{ value: "all", label: "Todos os Status" }];
     if (status && status.length > 0) {
