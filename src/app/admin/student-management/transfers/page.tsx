@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -27,31 +25,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Search,
-  Filter,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
-  Trash2,
-  Download,
-  Upload,
   Users,
   Calendar,
   ArrowRightLeft,
@@ -59,8 +38,6 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  Activity,
   Loader2,
 } from 'lucide-react';
 
@@ -68,8 +45,9 @@ import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
-import { useTransfers, useDeleteTransfer } from '@/hooks/useTransfer';
+import { useTransfers } from '@/hooks/useTransfer';
 import { useStatus } from '@/hooks/useStatusControl';
+import { ITransfer } from '@/types/transfer.types';
 
 
 // Mapeamento dos motivos de transferência
@@ -99,12 +77,8 @@ const ESCOLAS_DESTINO = [
 
 export default function TransfersListPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number; nome: string } | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const { status } = useStatus(1, 100, "");
 
@@ -123,49 +97,8 @@ export default function TransfersListPage() {
 
   // Hooks da API
   const { transfers, pagination, loading, error, refetch } = useTransfers(currentPage, itemsPerPage, searchTerm);
-  const { deleteTransfer, loading: deleteLoading } = useDeleteTransfer();
 
-  // Funções de manipulação
-  const handleDeleteClick = (transfer: any) => {
-    setItemToDelete({ id: transfer.codigo, nome: transfer.tb_alunos.nome });
-    setShowDeleteModal(true);
-  };
 
-  const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
-
-    try {
-      setDeletingId(itemToDelete.id);
-      await deleteTransfer(itemToDelete.id);
-      await refetch(); // Recarrega a lista
-      setShowDeleteModal(false);
-      setItemToDelete(null);
-    } catch (error) {
-      console.error('Erro ao excluir transferência:', error);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
-    setItemToDelete(null);
-  };
-
-  const handleViewTransfer = (transferId: number) => {
-    window.location.href = `/admin/student-management/transfers/details/${transferId}`;
-  };
-
-  const handleEditTransfer = (transferId: number) => {
-    window.location.href = `/admin/student-management/transfers/edit/${transferId}`;
-  };
-
-  const handleDeleteTransfer = (transferId: number) => {
-    const transfer = transfers.find(t => t.codigo === transferId);
-    if (transfer) {
-      handleDeleteClick(transfer);
-    }
-  };
 
   const calculateAge = (birthDate: string | object | null) => {
     if (!birthDate || typeof birthDate === 'object') {
@@ -185,14 +118,28 @@ export default function TransfersListPage() {
     }
   };
 
-  const getMotivoDesignacao = (codigoMotivo: number) => {
-    const motivo = TRANSFER_MOTIVOS.find(m => m.codigo === codigoMotivo);
-    return motivo?.designacao || `Motivo ${codigoMotivo}`;
+  const getMotivoDesignacao = (transfer: ITransfer) => {
+    // Usar mapeamento estático (tabela não existe no banco)
+    const motivo = TRANSFER_MOTIVOS.find(m => m.codigo === transfer.codigoMotivo);
+    return motivo?.designacao || `Motivo ${transfer.codigoMotivo}`;
   };
 
-  const getEscolaNome = (codigoEscola: number) => {
-    const escola = ESCOLAS_DESTINO.find(e => e.codigo === codigoEscola);
-    return escola?.nome || `Escola ${codigoEscola}`;
+  const getEscolaNome = (transfer: ITransfer) => {
+    // Usar mapeamento estático (tabela não existe no banco)
+    const escola = ESCOLAS_DESTINO.find(e => e.codigo === transfer.codigoEscola);
+    return escola?.nome || `Escola ${transfer.codigoEscola}`;
+  };
+
+  const getEscolaInfo = (transfer: ITransfer) => {
+    // Retornar informações completas da escola do mapeamento estático
+    const escola = ESCOLAS_DESTINO.find(e => e.codigo === transfer.codigoEscola);
+    if (escola) {
+      return {
+        nome: escola.nome,
+        provincia: escola.provincia
+      };
+    }
+    return null;
   };
 
   const getTransferStatus = (dataTransferencia: string | object) => {
@@ -215,9 +162,7 @@ export default function TransfersListPage() {
     }
   };
 
-  function setCourseFilter(value: string): void {
-    throw new Error('Function not implemented.');
-  }
+
 
   return (
     <Container>
@@ -352,14 +297,20 @@ export default function TransfersListPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium text-gray-900">{getEscolaNome(transfer.codigoEscola)}</p>
-                          <p className="text-sm text-gray-500">Código: {transfer.codigoEscola}</p>
+                          <p className="font-medium text-gray-900">{getEscolaNome(transfer)}</p>
+                          {(() => {
+                            const escolaInfo = getEscolaInfo(transfer);
+                            return escolaInfo?.provincia ? (
+                              <p className="text-xs text-gray-500">{escolaInfo.provincia}</p>
+                            ) : (
+                              <p className="text-sm text-gray-500">Código: {transfer.codigoEscola}</p>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium text-gray-900">{getMotivoDesignacao(transfer.codigoMotivo)}</p>
-                          <p className="text-sm text-gray-500">Código: {transfer.codigoMotivo}</p>
+                          <p className="font-medium text-gray-900">{getMotivoDesignacao(transfer)}</p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -377,27 +328,12 @@ export default function TransfersListPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleViewTransfer(transfer.codigo)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Visualizar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditTransfer(transfer.codigo)}>
+                            <DropdownMenuItem onClick={() => window.location.href = `/admin/student-management/transfers/edit/${transfer.codigo}`}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteTransfer(transfer.codigo)}
-                              className="text-red-600"
-                              disabled={deletingId === transfer.codigo}
-                            >
-                              {deletingId === transfer.codigo ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="mr-2 h-4 w-4" />
-                              )}
-                              Excluir
-                            </DropdownMenuItem>
+
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -501,44 +437,6 @@ export default function TransfersListPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Modal de Confirmação de Exclusão */}
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="h-5 w-5 text-red-600" />
-              </div>
-              <span>Confirmar Exclusão</span>
-            </DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir a transferência do aluno <strong>{itemToDelete?.nome}</strong>?
-              <br />
-              <span className="text-red-600 font-medium">Esta ação não pode ser desfeita.</span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancelDelete} disabled={deleteLoading}>
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteLoading}
-            >
-              {deleteLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Excluindo...
-                </>
-              ) : (
-                'Excluir'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Container>
   );
 }

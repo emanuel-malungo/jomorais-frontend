@@ -14,6 +14,7 @@ export function useTransfers(page = 1, limit = 10, search = "") {
             setLoading(true)
             setError(null)
             const { data, pagination } = await TransferService.getTransfers(page, limit, search)
+            console.log(data)
             setTransfers(data)
             setPagination(pagination)
         } catch (err: any) {

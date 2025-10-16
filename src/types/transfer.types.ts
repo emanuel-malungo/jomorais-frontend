@@ -35,8 +35,8 @@ export interface IStudent {
 
 export interface ISchool {
   codigo: number
-  nome: string
-  endereco?: string
+  designacao: string
+  morada?: string
   telefone?: string
 }
 
@@ -62,9 +62,9 @@ export interface ITransfer {
   obs?: string | null
   dataActualizacao?: string | object | null // API retorna {} às vezes
   tb_alunos: IStudent
-  tb_escolas?: ISchool
-  tb_motivos?: IMotivo
-  tb_utilizadores?: IUser
+  tb_utilizadores?: IUser | null
+  // Nota: tb_escolas e tb_motivo_transferencia não existem no schema do banco
+  // Os dados dessas entidades devem ser buscados através dos códigos usando mapeamentos estáticos
 }
 
 export interface IPagination {
