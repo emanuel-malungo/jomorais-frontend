@@ -7,7 +7,6 @@ import {
   LogOut, 
   Menu,
   Shield,
-  Settings,
 } from 'lucide-react'
 
 // Mock user data - replace with actual user data
@@ -26,7 +25,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, onLogout }) => {
   return (
-    <header className="bg-gradient-to-r from-white via-gray-50/80 to-white backdrop-blur-md border-b border-gray-200/60 h-20 px-6 flex items-center justify-between shadow-sm">
+    <header className="bg-gradient-to-r from-white via-gray-50/80 to-white backdrop-blur-md border-b border-gray-200 h-20 px-6 flex items-center justify-between ">
       {/* Left Section - Search and Menu */}
       <div className="flex items-center space-x-4">
         {/* Mobile Menu Button */}

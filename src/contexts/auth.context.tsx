@@ -88,7 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userData);
 
         // Redirecionar imediatamente
-        router.push("/admin");
+        router.replace("/admin");
       } else {
         throw new Error(response.message || "Erro no login");
       }

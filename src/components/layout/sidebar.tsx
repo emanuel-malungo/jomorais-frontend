@@ -23,14 +23,10 @@ import {
   Settings,
   BarChart3,
   School,
-  MapPin,
   Wallet,
-  Shield,
   Sparkles,
   LogOut,
-  Monitor,
   Building,
-  Globe,
   UserCog,
   TrendingUp,
 } from "lucide-react"
@@ -120,22 +116,21 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
   const pathname = usePathname()
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
-  // Função isActive precisa ser definida antes do useEffect
-  const isActive = (href: string) => {
-    
-    if (pathname === href) return true;
-    
-    // Para evitar conflitos, verificamos se o pathname começa com href + "/"
-    // mas não é apenas uma substring de uma rota maior
-    if (href === "/admin") {
-      return pathname === "/admin";
-    }
-    
-    return pathname.startsWith(href + "/");
-  }
-
   // Auto-expandir menu que contém a página ativa
   useEffect(() => {
+    const isActive = (href: string) => {
+      
+      if (pathname === href) return true;
+      
+      // Para evitar conflitos, verificamos se o pathname começa com href + "/"
+      // mas não é apenas uma substring de uma rota maior
+      if (href === "/admin") {
+        return pathname === "/admin";
+      }
+      
+      return pathname.startsWith(href + "/");
+    }
+
     const newExpanded = new Set<string>()
     
     menuItems.forEach((item) => {
@@ -152,6 +147,20 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
     setExpandedItems(newExpanded)
   }, [pathname])
 
+  // Função isActive para uso no render
+  const isActive = (href: string) => {
+    
+    if (pathname === href) return true;
+    
+    // Para evitar conflitos, verificamos se o pathname começa com href + "/"
+    // mas não é apenas uma substring de uma rota maior
+    if (href === "/admin") {
+      return pathname === "/admin";
+    }
+    
+    return pathname.startsWith(href + "/");
+  }
+
   const toggleExpanded = (title: string) => {
     const newExpanded = new Set(expandedItems)
     if (newExpanded.has(title)) {
@@ -160,10 +169,6 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
       newExpanded.add(title)
     }
     setExpandedItems(newExpanded)
-  }
-
-  const hasActiveChild = (children?: MenuItem[]) => {
-    return children?.some(child => child.href && isActive(child.href)) || false
   }
 
   const SidebarContent = () => (
@@ -242,7 +247,6 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
 
               // Item com submenu
               const isExpanded = expandedItems.has(item.title)
-              const hasActive = hasActiveChild(item.children)
               const shouldShowParentActive = false // Pai nunca fica ativo quando há filhos ativos
 
               return (
