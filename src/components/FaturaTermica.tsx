@@ -167,6 +167,7 @@ export default function FaturaTermica({ dadosFatura }: FaturaTermicaProps) {
         </head>
         <body>
           <div class="header">
+            <img src="/icon.png" alt="Logo" style="width: 40px; height: auto; margin-bottom: 5px;" />
             <h2>COMPLEXO ESCOLAR PRIVADO JOMORAIS</h2>
             <p>NIF: 5101165107</p>
             <p>Bairro 1º de Maio, Zongoio - Cabinda</p>
@@ -263,6 +264,7 @@ export default function FaturaTermica({ dadosFatura }: FaturaTermicaProps) {
       >
         {/* Cabeçalho */}
         <div className="text-center text-sm border-b border-black pb-2 mb-2">
+          <img src=".../public/icon.png" alt="Logo" style={{ width: "40px", height: "auto", marginBottom: "5px" }} />
           <h2 className="font-bold text-base mb-1">COMPLEXO ESCOLAR PRIVADO JOMORAIS</h2>
           <p className="text-xs">NIF: 5101165107</p>
           <p className="text-xs">Bairro 1º de Maio, Zongoio - Cabinda</p>

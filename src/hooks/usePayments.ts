@@ -398,6 +398,7 @@ export const useGenerateInvoicePDF = () => {
             </head>
             <body>
               <div class="header">
+               <img src="/icon.png" alt="Logo" style="width: 40px; height: auto; margin-bottom: 5px;" />
                 <h2>COMPLEXO ESCOLAR PRIVADO JOMORAIS</h2>
                 <p>NIF: 5101165107</p>
                 <p>Bairro 1º de Maio, Zongoio - Cabinda</p>

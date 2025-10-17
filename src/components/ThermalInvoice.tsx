@@ -114,6 +114,7 @@ export default function ThermalInvoice({
       >
         {/* Cabeçalho */}
         <div className="text-center text-sm border-b border-dashed border-gray-400 pb-2 mb-2">
+           <img src=".../public/icon.png" alt="Logo" style={{ width: "40px", height: "auto", marginBottom: "5px" }} />
           <h2 className="font-bold text-base">COMPLEXO ESCOLAR PRIVADO JOMORAIS</h2>
           <p>NIF: 5101165107</p>
           <p>Bairro 1º de Maio, Zongoio - Cabinda</p>
