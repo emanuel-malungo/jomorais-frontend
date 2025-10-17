@@ -12,8 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { WelcomeHeader } from '@/components/dashboard';
+import StatCard from '@/components/layout/StatCard';
+import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -38,33 +40,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   BookOpen,
-  Search,
-  Filter,
   Plus,
   MoreHorizontal,
   Eye,
   Edit,
   Trash2,
   Download,
-  Upload,
-  Users,
   GraduationCap,
   Clock,
-  Calendar,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  Activity,
   Award,
-  School,
 } from 'lucide-react';
 
 // Dados removidos - agora usando API real
@@ -161,212 +148,91 @@ export default function TeacherDisciplinesPage() {
 
   return (
     <Container>
-      {/* Header seguindo padrão do Dashboard */}
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
-        <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
-                  <BookOpen className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-gray-900">
-                    Disciplinas do Docente
-                  </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">Atribuições de Disciplinas</p>
-                </div>
-              </div>
-              <p className="text-gray-600 text-sm max-w-2xl">
-                Gerencie as atribuições de disciplinas aos professores. Visualize horários, 
-                cargas horárias e organize a distribuição das disciplinas por docente.
-              </p>
-            </div>
+      {/* Header usando WelcomeHeader */}
+      <WelcomeHeader
+        title="Disciplinas do Docente"
+        description="Gerencie as atribuições de disciplinas aos professores. Visualize horários, cargas horárias e organize a distribuição das disciplinas por docente."
+        iconMain={<BookOpen className="h-8 w-8 text-white" />}
+   
+        onClickBtnLeft={() => console.log("Exportar")}
+        titleBtnRight="Nova Atribuição"
+        iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+        onClickBtnRight={() => window.location.href = '/admin/teacher-management/discpline-teacher/add'}
+      />
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exportar Horários
-              </Button>
-
-              <Button
-                variant="outline"
-                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Importar Dados
-              </Button>
-
-              <Button
-                onClick={() => window.location.href = '/admin/teacher-management/discpline-teacher/add'}
-                className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Nova Atribuição
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Decorative elements */}
-        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#FFC506]/5 rounded-full"></div>
-        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
-      </div>
-
-      {/* Stats Cards seguindo padrão do Dashboard */}
+      {/* Stats Cards usando StatCard */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        {/* Card Total de Atribuições */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
-              <BookOpen className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+8.3%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#182F59]">Total de Atribuições</p>
-            <p className="text-3xl font-bold text-gray-900">{totalAtribuicoes}</p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+        <StatCard
+          icon={BookOpen}
+          title="Total de Atribuições"
+          value={totalAtribuicoes.toString()}
+          change="+8.3%"
+          changeType="up"
+          color="text-[#182F59]"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
+        />
 
-        {/* Card Professores Ativos */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
-              <GraduationCap className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-blue-500" />
-              <span className="font-bold text-xs text-blue-600">Ativos</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-emerald-600">Professores Ativos</p>
-            <p className="text-3xl font-bold text-gray-900">{professoresUnicos}</p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+        <StatCard
+          icon={GraduationCap}
+          title="Professores Ativos"
+          value={professoresUnicos.toString()}
+          change="Ativos"
+          changeType="neutral"
+          color="text-emerald-600"
+          bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
+          accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
+        />
 
-        {/* Card Carga Horária Total */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#FFC107] shadow-sm">
-              <Clock className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+5.2%</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Cursos Únicos</p>
-            <p className="text-3xl font-bold text-gray-900">{cursosUnicos}</p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+        <StatCard
+          icon={Clock}
+          title="Cursos Únicos"
+          value={cursosUnicos.toString()}
+          change="+5.2%"
+          changeType="up"
+          color="text-[#FFD002]"
+          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
+          accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
+        />
 
-        {/* Card Atribuições Ativas */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
-              <Award className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-blue-500" />
-              <span className="font-bold text-xs text-blue-600">Ativas</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-purple-600">Disciplinas Únicas</p>
-            <p className="text-3xl font-bold text-gray-900">{disciplinasUnicas}</p>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -translate-y-10 translate-x-10"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
-        </div>
+        <StatCard
+          icon={Award}
+          title="Disciplinas Únicas"
+          value={disciplinasUnicas.toString()}
+          change="Ativas"
+          changeType="neutral"
+          color="text-purple-600"
+          bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
+          accentColor="bg-gradient-to-br from-purple-500 to-purple-600"
+        />
       </div>
 
-      {/* Filtros e Busca */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filtros e Busca</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Buscar por professor, disciplina, turma ou sala..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <Select value={professorFilter} onValueChange={setProfessorFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Professor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {professorOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={periodoFilter} onValueChange={setPeriodoFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
-                  {periodoOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filtros e Busca usando FilterSearchCard */}
+      <FilterSearchCard
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por professor, disciplina, turma ou sala..."
+        filters={[
+          {
+            label: "Professor",
+            value: professorFilter,
+            onChange: setProfessorFilter,
+            options: professorOptions,
+          },
+          {
+            label: "Período",
+            value: periodoFilter,
+            onChange: setPeriodoFilter,
+            options: periodoOptions,
+          },
+          {
+            label: "Status",
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: statusOptions,
+          },
+        ]}
+      />
 
       {/* Tabela de Atribuições */}
       <Card>
