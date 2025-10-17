@@ -3,9 +3,38 @@ import { ThermalInvoiceData } from '@/components/ThermalInvoice';
 
 export class ThermalInvoiceService {
   /**
+   * Adiciona o logo ao cabeçalho do PDF térmico
+   */
+  private static async addLogo(doc: jsPDF, pageWidth: number, yPosition: number): Promise<number> {
+    try {
+      const logoUrl = '/icon.png';
+      const response = await fetch(logoUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      await new Promise((resolve) => {
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          // Logo menor para fatura térmica (25px = ~9mm)
+          const logoWidth = 9;
+          const logoHeight = 9;
+          doc.addImage(base64data, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
+          resolve(null);
+        };
+        reader.readAsDataURL(blob);
+      });
+      
+      return yPosition + 14; // Retornar nova posição Y (logo + margem maior)
+    } catch (error) {
+      console.warn('Erro ao carregar logo:', error);
+      return yPosition; // Continuar sem o logo
+    }
+  }
+  
+  /**
    * Gera PDF da fatura térmica
    */
-  static generateThermalPDF(data: ThermalInvoiceData): void {
+  static async generateThermalPDF(data: ThermalInvoiceData): Promise<void> {
     try {
       // Configurar PDF para formato de impressora térmica (80mm)
       const doc = new jsPDF({
@@ -17,6 +46,9 @@ export class ThermalInvoiceService {
       const pageWidth = 80;
       const margin = 3;
       let yPosition = 5;
+      
+      // Adicionar logo
+      yPosition = await this.addLogo(doc, pageWidth, yPosition);
 
       // Configurar fonte monoespaçada
       doc.setFont('courier', 'normal');

@@ -592,7 +592,32 @@ class ReportsService {
   private async addHeader(doc: any, pageWidth: number, startY: number, reportType: string): Promise<void> {
     let yPosition = startY;
     
-    // Título do instituto centralizado (sem logo)
+    // Logo centralizado
+    try {
+      const logoUrl = '/icon.png';
+      const response = await fetch(logoUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      await new Promise((resolve) => {
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          // Adicionar logo centralizado (40px = ~14mm)
+          const logoWidth = 14;
+          const logoHeight = 14; // Manter proporção
+          doc.addImage(base64data, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
+          resolve(null);
+        };
+        reader.readAsDataURL(blob);
+      });
+      
+      yPosition += 22; // Espaço para o logo + margem maior
+    } catch (error) {
+      console.warn('Erro ao carregar logo:', error);
+      // Continuar sem o logo
+    }
+    
+    // Título do instituto centralizado
     doc.setFontSize(18);
     doc.setTextColor(249, 205, 29); // Amarelo JOMORAIS
     doc.text('INSTITUTO MÉDIO POLITÉCNICO JOMORAIS', pageWidth / 2, yPosition, { align: 'center' });
@@ -654,7 +679,6 @@ class ReportsService {
     // Título da seção
     doc.setFontSize(16);
     doc.setTextColor(24, 47, 89); // Azul JOMORAIS
-    doc.text('LISTA COMPLETA DE ALUNOS', 20, yPosition);
     yPosition += 15;
 
     // Cabeçalho da tabela

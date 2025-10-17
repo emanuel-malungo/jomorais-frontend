@@ -34,38 +34,74 @@ export interface InvoiceData {
 
 export class InvoiceService {
   /**
+   * Adiciona o logo ao cabeçalho do PDF
+   */
+  private static async addLogo(doc: jsPDF, pageWidth: number, yPosition: number): Promise<number> {
+    try {
+      const logoUrl = '/icon.png';
+      const response = await fetch(logoUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      await new Promise((resolve) => {
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          // Adicionar logo centralizado (40px = ~14mm)
+          const logoWidth = 14;
+          const logoHeight = 14;
+          doc.addImage(base64data, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
+          resolve(null);
+        };
+        reader.readAsDataURL(blob);
+      });
+      
+      return yPosition + 22; // Retornar nova posição Y (logo + margem maior)
+    } catch (error) {
+      console.warn('Erro ao carregar logo:', error);
+      return yPosition; // Continuar sem o logo
+    }
+  }
+  
+  /**
    * Gera PDF da fatura de pagamento
    */
-  static generateInvoicePDF(data: InvoiceData): void {
+  static async generateInvoicePDF(data: InvoiceData): Promise<void> {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.width;
       const margin = 20;
+      
+      // Adicionar logo
+      let yPosition = await this.addLogo(doc, pageWidth, 15);
 
       // Cabeçalho da instituição
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text(data.instituicao.nome, pageWidth / 2, 25, { align: 'center' });
+      doc.text(data.instituicao.nome, pageWidth / 2, yPosition, { align: 'center' });
       
+      yPosition += 7;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(data.instituicao.endereco, pageWidth / 2, 32, { align: 'center' });
-      doc.text(`Tel: ${data.instituicao.telefone} | Email: ${data.instituicao.email}`, pageWidth / 2, 38, { align: 'center' });
+      doc.text(data.instituicao.endereco, pageWidth / 2, yPosition, { align: 'center' });
+      
+      yPosition += 6;
+      doc.text(`Tel: ${data.instituicao.telefone} | Email: ${data.instituicao.email}`, pageWidth / 2, yPosition, { align: 'center' });
 
       // Linha separadora
+      yPosition += 7;
       doc.setLineWidth(0.5);
-      doc.line(margin, 45, pageWidth - margin, 45);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
 
       // Título da fatura
+      yPosition += 10;
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('FATURA DE PAGAMENTO', pageWidth / 2, 55, { align: 'center' });
+      doc.text('FATURA DE PAGAMENTO', pageWidth / 2, yPosition, { align: 'center' });
 
       // Informações da fatura
+      yPosition += 15;
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      
-      let yPosition = 70;
       
       // Dados da fatura
       const faturaInfo = [

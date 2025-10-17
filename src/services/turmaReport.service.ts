@@ -35,6 +35,35 @@ export interface TurmaReportData {
 export class TurmaReportService {
   
   /**
+   * Adiciona o logo ao cabeçalho do PDF
+   */
+  private static async addLogo(doc: jsPDF, pageWidth: number, yPosition: number): Promise<number> {
+    try {
+      const logoUrl = '/icon.png';
+      const response = await fetch(logoUrl);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      await new Promise((resolve) => {
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          // Adicionar logo centralizado (40px = ~14mm)
+          const logoWidth = 14;
+          const logoHeight = 14; // Manter proporção
+          doc.addImage(base64data, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
+          resolve(null);
+        };
+        reader.readAsDataURL(blob);
+      });
+      
+      return yPosition + 22; // Retornar nova posição Y (logo + margem maior)
+    } catch (error) {
+      console.warn('Erro ao carregar logo:', error);
+      return yPosition; // Continuar sem o logo
+    }
+  }
+  
+  /**
    * Calcula a idade baseada na data de nascimento
    */
   private static calculateAge(birthDate: string): number {
@@ -109,15 +138,20 @@ export class TurmaReportService {
     const pageWidth = doc.internal.pageSize.width;
     const margin = 20;
     
+    // Adicionar logo
+    let yPosition = await this.addLogo(doc, pageWidth, 15);
+    
     // Cabeçalho da escola/instituição
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('INSTITUTO MÉDIO POLITÉCNICO JO MORAIS', pageWidth / 2, 25, { align: 'center' });
+    doc.text('INSTITUTO MÉDIO POLITÉCNICO JO MORAIS', pageWidth / 2, yPosition, { align: 'center' });
     
+    yPosition += 10;
     doc.setFontSize(14);
-    doc.text('LISTA NOMINAL DE ALUNOS', pageWidth / 2, 35, { align: 'center' });
+    doc.text('LISTA NOMINAL DE ALUNOS', pageWidth / 2, yPosition, { align: 'center' });
     
     // Informações da turma
+    yPosition += 10;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     
@@ -128,8 +162,6 @@ export class TurmaReportService {
       `Sala: ${turma.tb_salas?.designacao || 'N/A'}`,
       `Período: ${turma.tb_periodos?.designacao || 'N/A'}`
     ];
-    
-    let yPosition = 50;
     turmaInfo.forEach(info => {
       doc.text(info, margin, yPosition);
       yPosition += 8;
@@ -223,15 +255,20 @@ export class TurmaReportService {
             doc.addPage();
           }
           
+          // Adicionar logo
+          let yPos = await this.addLogo(doc, pageWidth, 15);
+          
           // Cabeçalho da escola/instituição
           doc.setFontSize(16);
           doc.setFont('helvetica', 'bold');
-          doc.text('INSTITUTO MÉDIO POLITÉCNICO JO MORAIS', pageWidth / 2, 25, { align: 'center' });
+          doc.text('INSTITUTO MÉDIO POLITÉCNICO JO MORAIS', pageWidth / 2, yPos, { align: 'center' });
           
+          yPos += 10;
           doc.setFontSize(14);
-          doc.text('LISTA NOMINAL DE ALUNOS', pageWidth / 2, 35, { align: 'center' });
+          doc.text('LISTA NOMINAL DE ALUNOS', pageWidth / 2, yPos, { align: 'center' });
           
           // Informações da turma
+          yPos += 10;
           doc.setFontSize(12);
           doc.setFont('helvetica', 'normal');
           
@@ -243,7 +280,7 @@ export class TurmaReportService {
             `Período: ${turmaData.turma.tb_periodos?.designacao || 'N/A'}`
           ];
           
-          let yPosition = 50;
+          let yPosition = yPos;
           turmaInfo.forEach(info => {
             doc.text(info, margin, yPosition);
             yPosition += 8;
