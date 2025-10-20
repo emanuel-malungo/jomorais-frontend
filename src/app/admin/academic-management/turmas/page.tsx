@@ -48,10 +48,8 @@ import {
   Plus,
   MoreHorizontal,
   Edit,
-  Trash2,
   Users,
   Printer,
-  GraduationCap,
   ChevronLeft,
   ChevronRight,
   Archive,
@@ -62,7 +60,7 @@ import {
   FileText,
   UserX,
 } from 'lucide-react';
-import { useTurmaManager, useArchiveTurma } from '@/hooks';
+import { useTurmaManagerPaginated, useArchiveTurma } from '@/hooks';
 import { TurmaReportService } from '@/services/turmaReport.service';
 import api from '@/utils/api.utils';
 
@@ -73,13 +71,16 @@ import { useCourses } from '@/hooks/useCourse';
 export default function TurmasPage() {
   const {
     turmas,
+    pagination,
     stats,
     isLoading,
     error,
     searchTerm,
+    currentPage,
     handleSearch,
+    handlePageChange,
     refetch
-  } = useTurmaManager();
+  } = useTurmaManagerPaginated();
 
   const { archiveTurma, isLoading: archivingTurma } = useArchiveTurma();
 
@@ -136,21 +137,6 @@ export default function TurmasPage() {
     return options;
   }, [periodos]);
 
-  // Estados para paginação local (já que useTurmaManager carrega todas as turmas)
-  const [currentPage, setCurrentPage] = useState(1);
-  const limit = 10; // Itens por página
-
-  // Função para mudança de página
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  // Reset da página quando filtros mudam
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [periodoFilter, cursoFilter, statusFilter, searchTerm]);
-
-
   // Estados para o modal de relatórios
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedTurma, setSelectedTurma] = useState<any>(null);
@@ -160,9 +146,7 @@ export default function TurmasPage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [loadingAnosLectivos, setLoadingAnosLectivos] = useState(false);
 
-  // Os dados são carregados automaticamente pelo hook useTurmaManager
-
-  // Aplicar filtros locais aos dados da API
+  // Filtrar turmas no frontend (enquanto backend não suporta filtros adicionais)
   const filteredTurmas = useMemo(() => {
     let filtered = turmas;
 
@@ -227,7 +211,6 @@ export default function TurmasPage() {
   const generateAllTurmasPDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      console.log('Gerando PDF para todas as turmas do ano letivo:', selectedAnoLectivo);
 
       if (!selectedAnoLectivo) {
         throw new Error('Ano letivo é obrigatório');
@@ -253,21 +236,16 @@ export default function TurmasPage() {
     }
   };
 
-  // Implementar paginação local já que todas as turmas são carregadas
-  const startIndex = (currentPage - 1) * limit;
-  const endIndex = startIndex + limit;
-  const currentTurmas = filteredTurmas.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(filteredTurmas.length / limit);
+  // Usar dados da paginação do servidor combinados com filtros locais
+  const totalPages = pagination.totalPages;
+  const currentTurmas = filteredTurmas; // Aplicar filtros locais aos dados paginados
 
 
   const handleEditTurma = (turmaId: number) => {
     window.location.href = `/admin/academic-management/turmas/edit/${turmaId}`;
   };
 
-  const handleDeleteTurma = (turmaId: number) => {
-    console.log("Excluir turma:", turmaId);
-    // Implementar confirmação e exclusão
-  };
+
 
   // Função para arquivar turma
   const handleArchiveTurma = async (turmaId: number) => {
@@ -304,10 +282,6 @@ export default function TurmasPage() {
       }
     }
   };
-
-  // Em produção, dados de matrícula viriam de endpoint específico
-  const totalMatriculados = 0; // Placeholder
-  const totalCapacidade = turmas.reduce((sum, turma) => sum + (turma.max_Alunos || 0), 0);
 
   // Estados de loading e error
   if (isLoading) {
@@ -375,8 +349,8 @@ export default function TurmasPage() {
 
         <StatCard
           icon={Users}
-          title="Tuarmas Ativas"
-          value={totalMatriculados.toString()}
+          title="Turmas Ativas"
+          value={stats.active.toString()}
           change="+4.2%"
           changeType="up"
           color="text-emerald-600"
@@ -386,9 +360,9 @@ export default function TurmasPage() {
 
     
 
-          <StatCard
+        <StatCard
           title="Turmas Inativas"
-          // value={turmas.filter(s => s.codigo_Status !== 1).length.toString()}
+          value={stats.inactive.toString()}
           change="Inativos"
           changeType="down"
           icon={UserX}
@@ -399,10 +373,10 @@ export default function TurmasPage() {
 
         <StatCard
           title="Página Atual"
-          // value={`${currentPage}/${serverPagination.totalPages || 1}`}
+          value={`${currentPage}/${totalPages || 1}`}
           change="Paginação"
           changeType="neutral"
-          icon={UserX}
+          icon={Clock}
           color="text-purple-600"
           bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
           accentColor="bg-gradient-to-br from-purple-500 to-purple-600"
@@ -579,15 +553,6 @@ export default function TurmasPage() {
                               Reativar
                             </DropdownMenuItem>
                           )}
-
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteTurma(turma.codigo)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -601,7 +566,7 @@ export default function TurmasPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, filteredTurmas.length)} de {filteredTurmas.length} turmas
+                Mostrando {((currentPage - 1) * pagination.itemsPerPage) + 1} a {Math.min(currentPage * pagination.itemsPerPage, pagination.totalItems)} de {pagination.totalItems} turmas
               </div>
               <div className="flex items-center space-x-2">
                 <Button

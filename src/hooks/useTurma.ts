@@ -275,3 +275,69 @@ export const useTurmaManager = () => {
     setSelectedTurma
   }
 }
+
+// Hook personalizado para gerenciar turmas com paginação do servidor
+export const useTurmaManagerPaginated = () => {
+  const [currentPage, setCurrentPage] = useState(1)
+  const [limit] = useState(10)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [selectedTurma, setSelectedTurma] = useState<ITurma | null>(null)
+
+  const { turmas, pagination, isLoading, error, fetchTurmas } = useTurmas()
+
+  // Debounce do search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+      setCurrentPage(1) // Reset para página 1 ao buscar
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // Effect para carregar dados quando parâmetros mudarem
+  useEffect(() => {
+    fetchTurmas(currentPage, limit, debouncedSearch)
+  }, [currentPage, limit, debouncedSearch, fetchTurmas])
+
+  const handleSearch = useCallback((term: string) => {
+    setSearchTerm(term)
+  }, [])
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+  }, [])
+
+  const refetch = useCallback(() => {
+    fetchTurmas(currentPage, limit, debouncedSearch)
+  }, [fetchTurmas, currentPage, limit, debouncedSearch])
+
+  // Estatísticas baseadas na paginação
+  const stats = {
+    total: pagination?.totalItems || 0,
+    active: turmas?.filter((t: ITurma) => t.status === "Ativo").length || 0,
+    inactive: turmas?.filter((t: ITurma) => t.status === "Inativo").length || 0,
+  }
+
+  return {
+    // Dados
+    turmas: turmas || [],
+    pagination: pagination || { totalItems: 0, currentPage: 1, itemsPerPage: 10, totalPages: 1 },
+    stats,
+    isLoading,
+    error,
+    
+    // Estado local
+    searchTerm,
+    currentPage,
+    limit,
+    selectedTurma,
+    
+    // Funções
+    handleSearch,
+    handlePageChange,
+    refetch,
+    setSelectedTurma
+  }
+}
