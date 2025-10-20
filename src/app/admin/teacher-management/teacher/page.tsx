@@ -148,24 +148,6 @@ export default function ListTeacherPage() {
         onClickBtnRight={() => window.location.href = '/admin/teacher-management/teacher/add'}
       />
 
-      {/* Estados de Loading e Erro */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center">
-            <div className="text-red-500 mr-2">⚠️</div>
-            <div>
-              <span className="text-red-700 font-medium">Erro ao carregar docentes:</span>
-              <p className="text-red-600 text-sm mt-1">{error}</p>
-              <button
-                onClick={refetch}
-                className="text-red-600 underline text-sm mt-2 hover:text-red-800"
-              >
-                Tentar novamente
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Stats Cards usando componente StatCard */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
