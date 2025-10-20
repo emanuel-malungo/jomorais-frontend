@@ -118,85 +118,71 @@ const contemAbreviacao = (designacao: string, abreviacao: string): boolean => {
   return regex.test(designacao) || designacao.toUpperCase().includes(abreviacao.toUpperCase().replace('.', ''));
 };
 
-// Lista de abreviações para todos os cursos
-const ABREVIACOES_CURSOS = {
-  'ANALISES CLINICAS': ['A.C', 'AC', 'ANALISES', 'ANÁLISES', 'ANALÍSES CLÍNICAS', 'ANALISES CLINICAS', 'ANALÍSES', 'CLÍNICAS'],
-  'ENFERMAGEM GERAL': ['E.G', 'EG', 'ENFERMAGEM', 'ENFERMAGEM GERAL'],
-  'FARMACIA': ['F.M', 'FM', 'FARMACIA', 'FARMÁCIA'],
-  'CIENCIAS ECONOMICAS JURIDICAS': ['C.E.J', 'CEJ', 'ECONOMICAS', 'JURIDICAS'],
-  'CIENCIAS FISICAS BIOLOGICAS': ['C.F.B', 'CFB', 'FISICAS', 'BIOLOGICAS']
+// Função auxiliar para detectar se uma propina é de Análises Clínicas
+const ePropinaAnalisesClinicas = (designacao: string): boolean => {
+  const designacaoUpper = designacao.toUpperCase();
+  return designacaoUpper.includes('ANALISES') ||
+         designacaoUpper.includes('ANÁLISES') ||
+         designacaoUpper.includes('A.C') ||
+         contemAbreviacao(designacaoUpper, 'AC') ||
+         (designacaoUpper.includes('AC') && !designacaoUpper.includes('ENFERMAGEM') && !designacaoUpper.includes('FARMAC'));
 };
 
-// Função para detectar curso na string do tipo de serviço
-const detectarCursoNaTipoServico = (designacao: string, cursoAluno: string): boolean => {
-  const designacaoUpper = designacao.toUpperCase();
-  const abreviacoes = ABREVIACOES_CURSOS[cursoAluno as keyof typeof ABREVIACOES_CURSOS];
-  
-  if (!abreviacoes) return false;
-  
-  console.log(`🔍 Verificando curso "${cursoAluno}" em "${designacaoUpper}"`);
-  console.log(`📝 Abreviações: ${abreviacoes.join(', ')}`);
-  
-  // Analisa letra por letra e sentido semântico
-  for (const abrev of abreviacoes) {
-    if (designacaoUpper.includes(abrev)) {
-      console.log(`✅ Encontrou: ${abrev}`);
-      return true;
+// Função para calcular score de compatibilidade
+const calcularScoreCompatibilidade = (tipo: ITipoServico, cursoAluno: string, classeAluno: string, anoLetivo: string): number => {
+  const designacao = tipo.designacao.toUpperCase();
+  let score = 0;
+
+  // Score por ano letivo (mais importante)
+  if (anoLetivo && designacao.includes(anoLetivo)) {
+    score += 100;
+  }
+
+  // Score por classe exata (muito importante)
+  if (classeAluno && designacao.includes(classeAluno)) {
+    score += 80;
+  }
+
+  // Score por curso (muito importante)
+  if (cursoAluno === 'ANALISES CLINICAS') {
+    if (designacao.includes('ANALISES') || designacao.includes('ANÁLISES')) score += 70;
+    if (contemAbreviacao(designacao, 'A.C')) score += 70;
+    if (contemAbreviacao(designacao, 'AC') && !designacao.includes('FARMAC') && !designacao.includes('ENFERMAGEM')) score += 60;
+  } else if (cursoAluno === 'ENFERMAGEM GERAL') {
+    if (designacao.includes('ENFERMAGEM')) score += 70;
+    if (contemAbreviacao(designacao, 'E.G') || contemAbreviacao(designacao, 'EG')) score += 60;
+  } else if (cursoAluno === 'FARMACIA') {
+    if (designacao.includes('FARMÁCIA') || designacao.includes('FARMACIA')) score += 70;
+    if (contemAbreviacao(designacao, 'F.M') || contemAbreviacao(designacao, 'FM')) score += 60;
+  }
+
+  // Score por ser propina
+  if (designacao.includes('PROPINA')) {
+    score += 50;
+  }
+
+  // Penalizar cursos incompatíveis (muito importante)
+  if (cursoAluno === 'ENFERMAGEM GERAL') {
+    if (ePropinaAnalisesClinicas(designacao)) score -= 200;
+    if (designacao.includes('FARMÁCIA') || designacao.includes('FARMACIA')) score -= 200;
+  } else if (cursoAluno === 'ANALISES CLINICAS') {
+    if (designacao.includes('ENFERMAGEM')) score -= 200;
+    if (designacao.includes('FARMÁCIA') || designacao.includes('FARMACIA')) score -= 200;
+  } else if (cursoAluno === 'FARMACIA') {
+    if (designacao.includes('ENFERMAGEM')) score -= 200;
+    if (ePropinaAnalisesClinicas(designacao)) score -= 200;
+  }
+
+  // Penalizar classes incompatíveis (muito importante)
+  const classeNaDesignacao = designacao.match(/(\d+)ª/);
+  if (classeNaDesignacao && classeAluno) {
+    const classeDoTipo = classeNaDesignacao[1] + 'ª';
+    if (classeDoTipo !== classeAluno) {
+      score -= 150; // Penalização severa por classe errada
     }
   }
-  
-  console.log(`❌ Nenhuma abreviação encontrada`);
-  return false;
-};
 
-// Função para extrair número da classe da string
-const extrairNumeroClasse = (texto: string): string | null => {
-  console.log('🔍 [CLASSE] Extraindo classe de:', texto);
-  const match = texto.match(/(\d+)ª/);
-  const resultado = match ? match[1] + 'ª' : null;
-  console.log('✅ [CLASSE] Resultado:', resultado, 'Match completo:', match);
-  return resultado;
-};
-
-// Função para extrair ano letivo da string
-const extrairAnoLetivo = (texto: string): string | null => {
-  console.log('🔍 Extraindo ano letivo de:', texto);
-  
-  // Procura padrões como 2024/2025, 2024-2025, 2024 / 2025
-  const match = texto.match(/(\d{4})\s*[\/\-]\s*(\d{4})/);
-  let resultado = null;
-  
-  if (match) {
-    // Normalizar sempre para formato 2024/2025
-    resultado = `${match[1]}/${match[2]}`;
-  }
-  
-  console.log('📅 Ano letivo extraído:', resultado);
-  return resultado;
-};
-
-// Função para mapear COMPLETO da turma (curso, classe, ano)
-export const mapearTurmaCompleta = (turma: string) => {
-  console.log('🔍 MAPEANDO TURMA COMPLETA:', turma);
-  
-  // Extrair ano letivo
-  const anoLetivo = extrairAnoLetivo(turma);
-  console.log('📅 Ano letivo encontrado na turma:', anoLetivo);
-  
-  // Extrair classe
-  const classe = extrairNumeroClasse(turma);
-  console.log('🎓 Classe encontrada na turma:', classe);
-  
-  // Extrair curso
-  const curso = mapearCursoPorTurma(turma);
-  console.log('📚 Curso encontrado na turma:', curso);
-  
-  return {
-    curso,
-    classe,
-    anoLetivo,
-    turmaOriginal: turma
-  };
+  return score;
 };
 
 // Função para mapear curso baseado na turma
@@ -265,193 +251,391 @@ export const extrairClasseDaTurma = (turma: string): string => {
   return classe;
 };
 
-// Função SIMPLES para encontrar tipo de serviço
+// Função para encontrar automaticamente o melhor tipo de serviço para um aluno e ano letivo
 export const findBestTipoServicoForAluno = (
   tiposServico: ITipoServico[], 
   anoLectivoSelecionado: IAnoLectivo | null,
   dadosAluno?: any,
   tipoServicoTurma?: ITipoServico | null
 ): ITipoServico | null => {
-  if (!dadosAluno?.dadosAcademicos?.turma) return null;
+  if (tiposServico.length === 0) return null;
 
-  const turma = dadosAluno.dadosAcademicos.turma;
+  // Extrair informações do aluno se disponíveis
+  let cursoAluno = '';
+  let classeAluno = '';
+  let anoLetivoString = '';
   
-  // Extrair dados da turma
-  const curso = mapearCursoPorTurma(turma);
-  const classe = extrairNumeroClasse(turma);
-  const anoTurma = extrairAnoLetivo(turma);
-  
-  console.log('🔍 [BUSCA] Dados extraídos da turma:', {
-    turmaOriginal: turma,
-    curso: curso,
-    classeExtraida: classe,
-    anoTurma: anoTurma
+  if (dadosAluno?.dadosAcademicos?.turma) {
+    cursoAluno = mapearCursoPorTurma(dadosAluno.dadosAcademicos.turma);
+    classeAluno = extrairClasseDaTurma(dadosAluno.dadosAcademicos.turma);
+  } else if (dadosAluno?.dadosAcademicos?.classe) {
+    classeAluno = dadosAluno.dadosAcademicos.classe;
+  }
+
+  if (anoLectivoSelecionado) {
+    anoLetivoString = `${anoLectivoSelecionado.anoInicial}/${anoLectivoSelecionado.anoFinal}`;
+  }
+
+  console.log('🎯 SELEÇÃO INTELIGENTE DE TIPO DE SERVIÇO');
+  console.log(`👤 Aluno: Curso=${cursoAluno}, Classe=${classeAluno}, Ano=${anoLetivoString}`);
+
+  // Calcular score para todos os tipos
+  const tiposComScore = tiposServico.map(tipo => ({
+    tipo,
+    score: calcularScoreCompatibilidade(tipo, cursoAluno, classeAluno, anoLetivoString)
+  }));
+
+  // Ordenar por score (maior primeiro)
+  tiposComScore.sort((a, b) => b.score - a.score);
+
+  // Log dos top 5 candidatos
+  console.log('🏆 TOP 5 CANDIDATOS:');
+  tiposComScore.slice(0, 5).forEach((item, index) => {
+    console.log(`${index + 1}. "${item.tipo.designacao}" - Score: ${item.score} - Preço: ${item.tipo.preco} Kz`);
   });
 
-  // Log específico para casos de Enfermagem
-  if (turma.includes('Enfermagem') || turma.includes('ENFERMAGEM')) {
-    console.log('🏥 [ENFERMAGEM] CASO ESPECÍFICO:', {
-      turma: turma,
-      classeExtraida: classe,
-      curso: curso
-    });
+  // Filtrar apenas tipos com score positivo (compatíveis)
+  const tiposCompativeis = tiposComScore.filter(item => item.score > 0);
+
+  if (tiposCompativeis.length > 0) {
+    const melhorTipo = tiposCompativeis[0].tipo;
+    console.log(`✅ SELECIONADO: "${melhorTipo.designacao}" - Score: ${tiposCompativeis[0].score}`);
+    return melhorTipo;
   }
 
-  // Log específico para Catarina Ana
-  if (turma.includes('10ª A.C-B-VESP')) {
-    console.log('👩‍⚕️ [CATARINA ANA] CASO ESPECÍFICO:', {
-      turmaOriginal: turma,
-      classeExtraida: classe,
-      cursoMapeado: curso,
-      debugRegex: turma.match(/(\d+)ª/)
-    });
+  // Se nenhum tipo compatível, usar o tipo de serviço da turma como fallback
+  if (tipoServicoTurma) {
+    console.log('⚠️ FALLBACK: Usando tipo de serviço da turma');
+    return tipoServicoTurma;
   }
-  
-  // Definir ano para buscar
-  const anoBuscar = anoLectivoSelecionado ? 
-    `${anoLectivoSelecionado.anoInicial}/${anoLectivoSelecionado.anoFinal}` : 
-    anoTurma;
 
-  console.log(`Buscar: ${curso} ${classe} ${anoBuscar || 'SEM ANO'}`);
-  
-  // Log específico para Enfermagem - mostrar todos os tipos disponíveis
-  if (curso === 'ENFERMAGEM GERAL') {
-    console.log('🏥 [ENFERMAGEM] Tipos de serviço disponíveis:');
-    tiposServico.forEach(tipo => {
-      if (tipo.designacao.toUpperCase().includes('ENFERMAGEM')) {
-        console.log(`  - ${tipo.designacao} (Preço: ${tipo.preco})`);
+  // Último recurso: tipo com melhor score mesmo que negativo
+  if (tiposComScore.length > 0) {
+    const ultimoRecurso = tiposComScore[0].tipo;
+    console.log(`🚨 ÚLTIMO RECURSO: "${ultimoRecurso.designacao}" - Score: ${tiposComScore[0].score}`);
+    return ultimoRecurso;
+  }
+
+  return null;
+};
+
+export const useConfirmacaoMaisRecente = () => {
+            contemCurso = contemAbreviacao(designacao, 'A.C') ||
+                         contemAbreviacao(designacao, 'AC') ||
+                         (designacao.includes('AC') && !designacao.includes('FARMAC')) ||
+                         designacao.includes('ANALISES') ||
+                         designacao.includes('ANÁLISES');
+            
+          } else if (cursoAluno === 'ENFERMAGEM GERAL') {
+            contemCurso = designacao.includes('ENFERMAGEM GERAL') ||
+                         designacao.includes('ENFERMAGEM') ||
+                         contemAbreviacao(designacao, 'E.G') || 
+                         contemAbreviacao(designacao, 'EG');
+          } else if (cursoAluno === 'FARMACIA') {
+            contemCurso = contemAbreviacao(designacao, 'F.M') || 
+                         contemAbreviacao(designacao, 'FM') ||
+                         designacao.includes('FARMAC') || // FARMACIA ou FARMACEUTICA
+                         designacao.includes('FARMÁCIA');
+          } else if (cursoAluno === 'CIENCIAS ECONOMICAS JURIDICAS') {
+            contemCurso = contemAbreviacao(designacao, 'C.E.J') || 
+                         contemAbreviacao(designacao, 'CEJ') ||
+                         designacao.includes('ECONOMICAS') ||
+                         designacao.includes('JURIDICAS');
+          } else if (cursoAluno === 'CIENCIAS FISICAS BIOLOGICAS') {
+            contemCurso = contemAbreviacao(designacao, 'C.F.B') || 
+                         contemAbreviacao(designacao, 'CFB') ||
+                         designacao.includes('FISICAS') ||
+                         designacao.includes('BIOLOGICAS');
+          } else {
+            // Fallback: buscar pelo nome completo do curso
+            contemCurso = designacao.includes(cursoAluno.toUpperCase());
+          }
+          
+          const contemClasse = designacao.includes(classeAluno);
+          const ePropina = designacao.includes('PROPINA');
+          
+          return contemCurso && contemClasse && ePropina;
+        });
+        
+        
+        if (tiposFiltrados.length > 0) {
+          // Validação extra: se há múltiplas opções, priorizar a mais específica para o curso
+          let melhorTipo;
+          
+          if (tiposFiltrados.length > 1) {
+            console.log('🔍 Múltiplas opções encontradas, priorizando mais específica...');
+            
+            // Para Análises Clínicas, priorizar tipos que contenham A.C
+            if (cursoAluno === 'ANALISES CLINICAS') {
+              const tiposAC = tiposFiltrados.filter(tipo => 
+                tipo.designacao.toUpperCase().includes('A.C')
+              );
+              if (tiposAC.length > 0) {
+                melhorTipo = tiposAC.reduce((best, current) => 
+                  current.preco > best.preco ? current : best
+                );
+              }
+            }
+            
+            // Se não encontrou tipo específico, usar o de maior preço
+            if (!melhorTipo) {
+              melhorTipo = tiposFiltrados.reduce((best, current) => 
+                current.preco > best.preco ? current : best
+              );
+            }
+          } else {
+            melhorTipo = tiposFiltrados[0];
+          }
+          
+          return melhorTipo;
+        }
       }
-    });
-  }
-  
-  // Buscar tipo de serviço - VALIDAR TUDO ANTES DE RETORNAR
-  const candidatos = [];
-  
-  for (const tipo of tiposServico) {
-    const nome = tipo.designacao.toUpperCase();
-    
-    // 1. Deve ser PROPINA
-    if (!nome.includes('PROPINA')) continue;
-    
-    // 2. Verificar CURSO
-    const temCurso = detectarCursoNaTipoServico(nome, curso);
-    
-    // 3. Verificar CLASSE
-    const classeNoTipo = extrairNumeroClasse(nome);
-    const temClasse = classeNoTipo === classe;
-    
-    if (nome.includes('ENFERMAGEM')) {
-      console.log(`🎓 [CLASSE] Comparando: "${classeNoTipo}" === "${classe}" = ${temClasse} (${nome})`);
-    }
-    
-    // 4. Verificar ANO LETIVO
-    const anoNoTipo = extrairAnoLetivo(nome);
-    let temAno = false;
-    
-    if (anoBuscar) {
-      // Se há ano para buscar, deve coincidir exatamente
-      temAno = anoNoTipo === anoBuscar;
-    } else {
-      // Se não há ano para buscar, só aceitar genéricos (sem ano)
-      temAno = !anoNoTipo;
-    }
-    
-    console.log(`📋 ${nome}: Curso=${temCurso}, Classe=${temClasse}, Ano=${temAno} (${anoNoTipo} vs ${anoBuscar})`);
-    
-    // SÓ ADICIONA SE TUDO ESTIVER CORRETO
-    if (temCurso && temClasse && temAno) {
-      candidatos.push(tipo);
-    }
-  }
-  
-  // Retornar o melhor candidato (maior preço)
-  if (candidatos.length > 0) {
-    const melhor = candidatos.reduce((best, current) => 
-      current.preco > best.preco ? current : best
-    );
-    console.log(`✅ Selecionado: ${melhor.designacao}`);
-    return melhor;
-  }
-  
-  // FALLBACK: Se não encontrou com ano específico, buscar sem ano (genéricos)
-  if (anoBuscar) {
-    console.log('🔄 Não encontrou com ano específico, buscando genéricos...');
-    
-    const genericosCandidatos = [];
-    const genericosCursoClasse = []; // Prioridade 1: mesmo curso e classe
-    const genericosCurso = [];       // Prioridade 2: mesmo curso, classe diferente
-    
-    for (const tipo of tiposServico) {
-      const nome = tipo.designacao.toUpperCase();
       
-      if (!nome.includes('PROPINA')) continue;
-      
-      const temCurso = detectarCursoNaTipoServico(nome, curso);
-      const classeNoTipo = extrairNumeroClasse(nome);
-      const temClasse = classeNoTipo === classe;
-      
-      if (nome.includes('ENFERMAGEM') || nome.includes('ANALISES') || nome.includes('ANALÍSES')) {
-        console.log(`🎓 [GENÉRICO-CLASSE] Comparando: "${classeNoTipo}" === "${classe}" = ${temClasse} (${nome})`);
+      // Se não encontrou por curso/classe específico, buscar propinas genéricas do curso (TODOS os tipos, não só do ano letivo)
+      if (cursoAluno && classeAluno) {
+        const propinasGenericasCurso = tiposServico.filter(tipo => {
+          const designacao = tipo.designacao.toUpperCase();
+          let contemCurso = false;
+          
+          if (cursoAluno === 'ANALISES CLINICAS') {
+            contemCurso = designacao.includes('ANALÍSES CLÍNICAS') || 
+                         designacao.includes('ANALISES CLINICAS') ||
+                         contemAbreviacao(designacao, 'A.C') ||
+                         contemAbreviacao(designacao, 'AC');
+          } else if (cursoAluno === 'ENFERMAGEM GERAL') {
+            contemCurso = designacao.includes('ENFERMAGEM GERAL') ||
+                         designacao.includes('ENFERMAGEM') ||
+                         contemAbreviacao(designacao, 'E.G') ||
+                         contemAbreviacao(designacao, 'EG');
+          } else if (cursoAluno === 'FARMACIA') {
+            contemCurso = designacao.includes('FARMÁCIA') || 
+                         designacao.includes('FARMACIA') ||
+                         contemAbreviacao(designacao, 'F.M') ||
+                         contemAbreviacao(designacao, 'FM');
+          } else if (cursoAluno === 'CIENCIAS ECONOMICAS JURIDICAS') {
+            contemCurso = designacao.includes('ECONOMICAS') ||
+                         designacao.includes('JURIDICAS') ||
+                         contemAbreviacao(designacao, 'C.E.J') ||
+                         contemAbreviacao(designacao, 'CEJ');
+          } else if (cursoAluno === 'CIENCIAS FISICAS BIOLOGICAS') {
+            contemCurso = designacao.includes('FISICAS') ||
+                         designacao.includes('BIOLOGICAS') ||
+                         contemAbreviacao(designacao, 'C.F.B') ||
+                         contemAbreviacao(designacao, 'CFB');
+          }
+          
+          const contemClasse = designacao.includes(classeAluno);
+          const ePropina = designacao.includes('PROPINA');
+          
+          return contemCurso && contemClasse && ePropina;
+        });
+        
+        if (propinasGenericasCurso.length > 0) {
+          const melhorTipo = propinasGenericasCurso.reduce((best, current) => 
+            current.preco > best.preco ? current : best
+          );
+          return melhorTipo;
+        }
       }
       
-      // Deve ser genérico (sem ano)
-      const anoNoTipo = extrairAnoLetivo(nome);
-      const eGenerico = !anoNoTipo;
-      
-      console.log(`📋 GENÉRICO ${nome}: Curso=${temCurso}, Classe=${temClasse}, Genérico=${eGenerico}`);
-      
-      if (eGenerico) {
-        // Log específico para Analíses Clínicas 10ª
-        if (nome.includes('ANALÍSES CLÍNICAS 10ª')) {
-          console.log(`🔬 [ANALISES 10ª] ENCONTRADO: ${nome}`);
-          console.log(`🔬 [ANALISES 10ª] Curso=${temCurso}, Classe=${temClasse}, Genérico=${eGenerico}`);
-          console.log(`🔬 [ANALISES 10ª] Curso esperado: "${curso}", Classe esperada: "${classe}"`);
+      // Se não encontrou por curso/classe, buscar por classe apenas (mas ainda tentando evitar cursos diferentes)
+      if (classeAluno) {
+        const tiposPorClasse = tiposEspecificos.filter(tipo => {
+          const designacao = tipo.designacao.toUpperCase();
+          const contemClasse = designacao.includes(classeAluno);
+          const ePropina = designacao.includes('PROPINA');
+          
+          // Evitar cursos claramente diferentes baseado no curso do aluno
+          let cursoCompativel = true;
+          
+          if (cursoAluno === 'ENFERMAGEM GERAL') {
+            cursoCompativel = !designacao.includes('FARMÁCIA') && 
+                             !designacao.includes('FARMACIA') && 
+                             !ePropinaAnalisesClinicas(designacao);
+          } else if (cursoAluno === 'ANALISES CLINICAS') {
+            cursoCompativel = !designacao.includes('FARMÁCIA') && 
+                             !designacao.includes('FARMACIA') && 
+                             !designacao.includes('ENFERMAGEM');
+          } else if (cursoAluno === 'FARMACIA') {
+            cursoCompativel = !designacao.includes('ENFERMAGEM') && 
+                             !designacao.includes('ANALISES') && 
+                             !designacao.includes('ANÁLISES') && 
+                             !designacao.includes('A.C') && 
+                             !designacao.includes('AC');
+          } else {
+            // Para outros cursos, evitar os principais conhecidos
+            cursoCompativel = !designacao.includes('FARMÁCIA') && 
+                             !designacao.includes('FARMACIA') && 
+                             !designacao.includes('ENFERMAGEM') && 
+                             !designacao.includes('ANALISES') && 
+                             !designacao.includes('ANÁLISES');
+          }
+          
+          return contemClasse && ePropina && cursoCompativel;
+        });
+        
+        if (tiposPorClasse.length > 0) {
+          const melhorTipo = tiposPorClasse.reduce((best, current) => 
+            current.preco > best.preco ? current : best
+          );
+          return melhorTipo;
         }
         
-        if (temCurso && temClasse) {
-          // PRIORIDADE 1: Mesmo curso E mesma classe
-          genericosCursoClasse.push(tipo);
-          console.log(`🎯 [PRIORIDADE 1] Curso+Classe: ${nome}`);
-        } else if (temCurso) {
-          // PRIORIDADE 2: Mesmo curso, classe diferente
-          genericosCurso.push(tipo);
-          console.log(`🎯 [PRIORIDADE 2] Só Curso: ${nome}`);
-        } else {
-          // PRIORIDADE 3: Outros genéricos
-          genericosCandidatos.push(tipo);
+        // Se ainda não encontrou, buscar qualquer propina da classe (último recurso)
+        const qualquerTipoPorClasse = tiposEspecificos.filter(tipo => {
+          const designacao = tipo.designacao.toUpperCase();
+          return designacao.includes(classeAluno) && designacao.includes('PROPINA');
+        });
+        
+        if (qualquerTipoPorClasse.length > 0) {
+          const melhorTipo = qualquerTipoPorClasse.reduce((best, current) => 
+            current.preco > best.preco ? current : best
+          );
+          return melhorTipo;
         }
       }
-    }
-    
-    // Selecionar por ordem de prioridade
-    let candidatosFinais: ITipoServico[] = [];
-    let tipoSelecionado = '';
-    
-    if (genericosCursoClasse.length > 0) {
-      candidatosFinais = genericosCursoClasse;
-      tipoSelecionado = 'CURSO+CLASSE';
-      console.log(`✅ [SELEÇÃO] Usando PRIORIDADE 1 (Curso+Classe): ${candidatosFinais.length} candidatos`);
-    } else if (genericosCurso.length > 0) {
-      candidatosFinais = genericosCurso;
-      tipoSelecionado = 'SÓ CURSO';
-      console.log(`✅ [SELEÇÃO] Usando PRIORIDADE 2 (Só Curso): ${candidatosFinais.length} candidatos`);
-    } else if (genericosCandidatos.length > 0) {
-      candidatosFinais = genericosCandidatos;
-      tipoSelecionado = 'OUTROS';
-      console.log(`✅ [SELEÇÃO] Usando PRIORIDADE 3 (Outros): ${candidatosFinais.length} candidatos`);
-    }
-    
-    if (candidatosFinais.length > 0) {
-      // Entre os candidatos da mesma prioridade, escolher o de maior preço
-      const melhor = candidatosFinais.reduce((best, current) => 
-        current.preco > best.preco ? current : best
-      );
-      console.log(`✅ Selecionado GENÉRICO (${tipoSelecionado}): ${melhor.designacao} - ${melhor.preco} Kz`);
-      return melhor;
+      
+      // Fallback: propinas gerais do ano letivo (evitando cursos incompatíveis)
+      let propinas = tiposEspecificos.filter(tipo => {
+        const designacao = tipo.designacao.toUpperCase();
+        const ePropina = designacao.includes('PROPINA');
+        
+        // Se temos informação do curso, evitar cursos incompatíveis
+        if (cursoAluno === 'ANALISES CLINICAS') {
+          const naoEFarmacia = !designacao.includes('FARMÁCIA') && !designacao.includes('FARMACIA');
+          const naoEEnfermagem = !designacao.includes('ENFERMAGEM');
+          return ePropina && naoEFarmacia && naoEEnfermagem;
+        } else if (cursoAluno === 'ENFERMAGEM GERAL') {
+          const naoEFarmacia = !designacao.includes('FARMÁCIA') && !designacao.includes('FARMACIA');
+          const naoEAnalises = !ePropinaAnalisesClinicas(designacao);
+          return ePropina && naoEFarmacia && naoEAnalises;
+        } else if (cursoAluno === 'FARMACIA') {
+          const naoEEnfermagem = !designacao.includes('ENFERMAGEM');
+          const naoEAnalises = !designacao.includes('ANALISES') && !designacao.includes('ANÁLISES') && !designacao.includes('A.C') && !designacao.includes('AC');
+          return ePropina && naoEEnfermagem && naoEAnalises;
+        }
+        
+        return ePropina;
+      });
+      
+      // Se não encontrou nada com filtros, buscar qualquer propina
+      if (propinas.length === 0) {
+        propinas = tiposEspecificos.filter(tipo => 
+          tipo.designacao.toUpperCase().includes('PROPINA')
+        );
+      }
+      
+      if (propinas.length > 0) {
+        const melhorTipo = propinas.reduce((best, current) => 
+          current.preco > best.preco ? current : best
+        );
+        return melhorTipo;
+      }
+      
+      // Se não há propinas, retornar o primeiro tipo específico
+      return tiposEspecificos[0];
     }
   }
-  
-  console.log('❌ Não encontrado');
+
+  // 2. Se não encontrou tipos específicos, usar o tipo de serviço da turma
+  if (tipoServicoTurma) {
+    return tipoServicoTurma;
+  }
+
+  // 3. CONDIÇÃO EXTREMA: Se o ano letivo não foi detectado na turma, buscar propina genérica da classe
+  if (classeAluno) {
+    const propinasGenericasClasse = tiposServico.filter(tipo => {
+      const designacao = tipo.designacao.toUpperCase();
+      const contemClasse = designacao.includes(classeAluno);
+      const ePropina = designacao.includes('PROPINA');
+      
+      // Se temos informação do curso, priorizar o curso correto
+      if (cursoAluno === 'ANALISES CLINICAS') {
+        const contemCurso = designacao.includes('ANALÍSES CLÍNICAS') || 
+                           designacao.includes('ANALISES CLINICAS') ||
+                           contemAbreviacao(designacao, 'A.C') ||
+                           contemAbreviacao(designacao, 'AC');
+        return contemClasse && ePropina && contemCurso;
+      } else if (cursoAluno === 'ENFERMAGEM GERAL') {
+        const contemCurso = designacao.includes('ENFERMAGEM');
+        return contemClasse && ePropina && contemCurso;
+      } else if (cursoAluno === 'FARMACIA') {
+        const contemCurso = designacao.includes('FARMÁCIA') || designacao.includes('FARMACIA');
+        return contemClasse && ePropina && contemCurso;
+      }
+      
+      // Se não temos curso específico, buscar qualquer propina da classe (evitando cursos incompatíveis)
+      let cursoCompativel = true;
+      
+      if (cursoAluno === 'ENFERMAGEM GERAL') {
+        cursoCompativel = !designacao.includes('FARMÁCIA') && 
+                         !designacao.includes('FARMACIA') && 
+                         !ePropinaAnalisesClinicas(designacao);
+      } else if (cursoAluno === 'ANALISES CLINICAS') {
+        cursoCompativel = !designacao.includes('FARMÁCIA') && 
+                         !designacao.includes('FARMACIA') && 
+                         !designacao.includes('ENFERMAGEM');
+      } else if (cursoAluno === 'FARMACIA') {
+        cursoCompativel = !designacao.includes('ENFERMAGEM') && 
+                         !designacao.includes('ANALISES') && 
+                         !designacao.includes('ANÁLISES') && 
+                         !designacao.includes('A.C') && 
+                         !designacao.includes('AC');
+      } else {
+        // Para outros cursos, evitar os principais conhecidos
+        cursoCompativel = !designacao.includes('FARMÁCIA') && 
+                         !designacao.includes('FARMACIA') && 
+                         !designacao.includes('ENFERMAGEM') && 
+                         !designacao.includes('ANALISES') && 
+                         !designacao.includes('ANÁLISES');
+      }
+      
+      return contemClasse && ePropina && cursoCompativel;
+    });
+    
+    if (propinasGenericasClasse.length > 0) {
+      const melhorTipo = propinasGenericasClasse.reduce((best, current) => 
+        current.preco > best.preco ? current : best
+      );
+      return melhorTipo;
+    }
+    
+    // Se não encontrou com curso específico, buscar qualquer propina da classe
+    const qualquerPropinaClasse = tiposServico.filter(tipo => {
+      const designacao = tipo.designacao.toUpperCase();
+      return designacao.includes(classeAluno) && designacao.includes('PROPINA');
+    });
+    
+    if (qualquerPropinaClasse.length > 0) {
+      const melhorTipo = qualquerPropinaClasse.reduce((best, current) => 
+        current.preco > best.preco ? current : best
+      );
+      return melhorTipo;
+    }
+  }
+
+  // 4. Como último recurso, buscar o tipo mais atual disponível
+  const tiposComAno = tiposServico.filter(tipo => tipo.anoInicial && tipo.anoFinal);
+  if (tiposComAno.length > 0) {
+    // Encontrar o tipo com ano mais recente
+    const tipoMaisAtual = tiposComAno.reduce((latest, current) => {
+      const latestYear = latest.anoInicial || 0;
+      const currentYear = current.anoInicial || 0;
+      return currentYear > latestYear ? current : latest;
+    });
+    return tipoMaisAtual;
+  }
+
+  // 4. Se nada mais funcionar, retornar tipos genéricos (sem ano)
+  const tiposGenericos = tiposServico.filter(tipo => !tipo.anoInicial && !tipo.anoFinal);
+  if (tiposGenericos.length > 0) {
+    // Priorizar propinas genéricas
+    const propinasGenericas = tiposGenericos.filter(tipo => 
+      tipo.designacao.toUpperCase().includes('PROPINA')
+    );
+    return propinasGenericas.length > 0 ? propinasGenericas[0] : tiposGenericos[0];
+  }
+
   return null;
 };
 

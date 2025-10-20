@@ -63,7 +63,7 @@ export default function ConfirmationsListPage() {
   // Buscar anos letivos ao montar o componente
   useEffect(() => {
     fetchAnosLectivos(1, 100, "");
-  }, [fetchAnosLectivos]);
+  }, []); // Remover dependência para evitar loop
 
   const statusOptions = useMemo(() => {
     const options = [{ value: "all", label: "Todos os Status" }];
@@ -138,12 +138,12 @@ export default function ConfirmationsListPage() {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, fetchConfirmations]);
+  }, [searchTerm]); // Remover fetchConfirmations da dependência
 
   // Recarregar quando mudar a página
   useEffect(() => {
     fetchConfirmations();
-  }, [currentPage, fetchConfirmations]);
+  }, [currentPage]); // Remover fetchConfirmations da dependência
 
   // Usar paginação da API quando disponível, senão usar paginação local
   const totalPages = pagination?.totalPages || Math.ceil(filteredConfirmations.length / itemsPerPage);

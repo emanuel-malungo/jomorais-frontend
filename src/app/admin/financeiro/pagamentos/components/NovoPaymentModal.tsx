@@ -39,17 +39,37 @@ import {
   useFormasPagamento, 
   useAlunosSearch,
   useAlunoCompleto,
+  findBestTipoServicoForAluno, 
+  findMostRecentAnoLetivo, 
+  mapearCursoPorTurma, 
+  extrairClasseDaTurma,
   useTipoServicoTurmaAluno,
   useMesesPendentesAluno,
   useAnosLectivos,
-  usePropinaClasse,
   useValidateBordero,
-  findMostRecentAnoLetivo,
-  findBestTipoServicoForAluno,
-  MESES_OPTIONS,
-  ANOS_OPTIONS,
+  usePropinaClasse,
+  useConfirmacaoMaisRecente,
   type IAnoLectivo
 } from '@/hooks/usePaymentData';
+
+// Função para extrair ano letivo da string (copiada do usePaymentData)
+const extrairAnoLetivo = (texto: string): string | null => {
+  console.log('🔍 [EXTRAÇÃO] Extraindo ano letivo de:', texto);
+  
+  const match = texto.match(/(\d{4})\s*[\/\-]\s*(\d{4})/);
+  let resultado = null;
+  
+  if (match) {
+    resultado = `${match[1]}/${match[2]}`;
+    console.log('✅ [EXTRAÇÃO] Match encontrado:', match);
+    console.log('✅ [EXTRAÇÃO] Resultado:', resultado);
+  } else {
+    console.log('❌ [EXTRAÇÃO] Nenhum match encontrado');
+  }
+  
+  return resultado;
+};
+
 import { useDebounce } from '@/hooks';
 import { useFuncionarios } from '@/hooks/useFuncionarios';
 import FaturaTermica from '@/components/FaturaTermica';
@@ -72,36 +92,48 @@ interface FormData {
 }
 
 const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) => {
-  // Função auxiliar para extrair dados acadêmicos do aluno
+  // Função auxiliar para extrair dados acadêmicos priorizando confirmação mais recente
   const extractAcademicData = (alunoCompleto: any) => {
-    if (!alunoCompleto) return {};
-
-    // Tentar diferentes estruturas de dados
-    const confirmacao = alunoCompleto?.tb_matriculas?.tb_confirmacoes?.[0];
-    const turma = confirmacao?.tb_turmas;
+    // Priorizar dados da confirmação mais recente se disponível
+    if (confirmacao?.turma) {
+      const cursoMapeado = mapearCursoPorTurma(confirmacao.turma.designacao);
+      const classeExtraida = extrairClasseDaTurma(confirmacao.turma.designacao);
+      
+      return {
+        curso: cursoMapeado || 'Curso não especificado',
+        classe: classeExtraida || confirmacao.turma.tb_classes?.designacao || 'Classe não especificada',
+        turma: confirmacao.turma.designacao,
+        periodo: confirmacao.turma.tb_periodos?.designacao || 'Não informado',
+        anoLetivo: confirmacao.anoLetivo?.designacao || 'Não informado',
+        isFromConfirmacao: true,
+        sala: confirmacao.turma.tb_salas?.designacao || alunoCompleto?.sala || null
+      };
+    }
+    
+    // Fallback: tentar extrair dados da estrutura de matrícula/confirmação
+    const matricula = alunoCompleto?.tb_matriculas;
+    const confirmacaoFallback = matricula?.tb_confirmacoes?.[0]; // Primeira confirmação
+    const turma = confirmacaoFallback?.tb_turmas;
     
     return {
       curso: turma?.tb_cursos?.designacao || 
              alunoCompleto?.dadosAcademicos?.curso || 
              alunoCompleto?.curso || 
-             'Não informado',
+             'Curso não especificado',
       classe: turma?.tb_classes?.designacao || 
               alunoCompleto?.dadosAcademicos?.classe || 
               alunoCompleto?.classe || 
-              'Não informado',
+              'Classe não especificada',
       turma: turma?.designacao || 
              alunoCompleto?.dadosAcademicos?.turma || 
              alunoCompleto?.turma || 
-             'Não informado',
+             'Turma não especificada',
       periodo: turma?.tb_periodos?.designacao || 
                alunoCompleto?.periodo || 
                'Não informado',
-      sala: turma?.tb_salas?.designacao || 
-            alunoCompleto?.sala || 
-            null,
-      anoLetivo: confirmacao?.tb_ano_lectivo?.designacao || 
-                 alunoCompleto?.anoLetivo || 
-                 null
+      anoLetivo: confirmacaoFallback?.tb_anos_lectivos?.designacao || 'Não informado',
+      isFromConfirmacao: false,
+      sala: turma?.tb_salas?.designacao || alunoCompleto?.sala || null
     };
   };
 
@@ -149,6 +181,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const { validateBordero, loading: borderoValidating } = useValidateBordero();
   const { propinaClasse, fetchPropinaClasse, loading: propinaLoading } = usePropinaClasse();
   const { tiposServico, loading: tiposServicoLoading } = useTiposServico();
+  const { confirmacao, fetchConfirmacaoMaisRecente, loading: confirmacaoLoading } = useConfirmacaoMaisRecente();
   const { getCurrentUser } = useFuncionarios();
 
   // Buscar alunos quando o termo de busca muda
@@ -219,7 +252,72 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       console.log('📊 Dados completos do aluno recebidos:', alunoCompletoData);
       setAlunoCompleto(alunoCompletoData);
       
-      // Buscar tipo de serviço específico da turma
+      // Buscar confirmação mais recente do aluno
+      const confirmacaoRecente = await fetchConfirmacaoMaisRecente(aluno.codigo);
+      
+      if (confirmacaoRecente) {
+        console.log('✅ Confirmação mais recente encontrada:', confirmacaoRecente);
+        
+        // Extrair dados da confirmação mais recente (estrutura flexível)
+        const anoLetivoConfirmacao = confirmacaoRecente.anoLetivo || 
+                                    confirmacaoRecente.tb_anos_lectivos ||
+                                    null;
+        
+        const turmaConfirmacao = confirmacaoRecente.turma || 
+                                confirmacaoRecente.tb_turmas ||
+                                null;
+        
+        console.log('📊 Dados extraídos da confirmação:', {
+          anoLetivo: anoLetivoConfirmacao,
+          turma: turmaConfirmacao
+        });
+        
+        // Atualizar ano letivo baseado na confirmação mais recente
+        const codigoAno = anoLetivoConfirmacao?.codigo || confirmacaoRecente.codigo_Ano_lectivo;
+        
+        if (codigoAno) {
+          const anoLectivoEncontrado = anosLectivos.find(ano => ano.codigo === codigoAno);
+          
+          if (anoLectivoEncontrado) {
+            console.log('🔄 FORÇANDO atualização do ano letivo...');
+            setAnoLectivoSelecionado(anoLectivoEncontrado);
+            setFormData(prev => ({ ...prev, ano: anoLectivoEncontrado.codigo }));
+            console.log('📅 Ano letivo ATUALIZADO para:', anoLectivoEncontrado.designacao);
+            console.log('📅 Código do ano:', anoLectivoEncontrado.codigo);
+          } else {
+            console.log('⚠️ Ano letivo da confirmação não encontrado na lista:', codigoAno);
+            console.log('📋 Anos disponíveis:', anosLectivos.map(a => `${a.codigo}: ${a.designacao}`));
+          }
+        } else {
+          console.log('⚠️ Código do ano letivo não encontrado na confirmação');
+        }
+        
+        // Extrair informações da turma da confirmação
+        if (turmaConfirmacao?.designacao) {
+          const cursoMapeado = mapearCursoPorTurma(turmaConfirmacao.designacao);
+          const classeExtraida = extrairClasseDaTurma(turmaConfirmacao.designacao);
+          console.log('📚 Curso da confirmação:', cursoMapeado);
+          console.log('🎓 Classe da confirmação:', classeExtraida);
+          console.log('🏫 Turma da confirmação:', turmaConfirmacao.designacao);
+          
+          // Atualizar dados acadêmicos do aluno com informações da confirmação
+          setAlunoCompleto((prev: any) => ({
+            ...prev,
+            dadosAcademicos: {
+              ...prev?.dadosAcademicos,
+              curso: cursoMapeado,
+              classe: classeExtraida,
+              turma: turmaConfirmacao.designacao,
+              isFromConfirmacao: true,
+              anoLetivo: anoLetivoConfirmacao?.designacao || 'Não informado'
+            }
+          }));
+        } else {
+          console.log('⚠️ Turma não encontrada na confirmação mais recente');
+        }
+      }
+      
+      // Buscar tipo de serviço específico da turma (fallback)
       await fetchTipoServicoTurma(aluno.codigo);
       
       // Buscar meses pendentes - usar o ano do aluno se disponível
@@ -306,33 +404,171 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     clearAlunos();
   };
 
+  // Definir ano letivo baseado na turma do aluno
+  useEffect(() => {
+    console.log('🔥 [FLUXO 1] INICIANDO DETECÇÃO DE ANO DA TURMA');
+    console.log('📋 Condições:', {
+      selectedAluno: !!selectedAluno,
+      selectedAlunoCodigo: selectedAluno?.codigo,
+      confirmacao: !!confirmacao,
+      turmaNome: confirmacao?.turma?.designacao,
+      anosLectivosLength: anosLectivos.length,
+      confirmacaoCompleta: confirmacao
+    });
+
+    // Verificar diferentes estruturas da confirmação
+    const turmaString = confirmacao?.turma?.designacao || 
+                       confirmacao?.tb_turmas?.designacao || 
+                       confirmacao?.turma;
+
+    if (!selectedAluno || !turmaString || anosLectivos.length === 0) {
+      console.log('❌ [FLUXO 1] Condições não atendidas - saindo:', {
+        selectedAluno: !!selectedAluno,
+        confirmacao: !!confirmacao,
+        turmaString: turmaString,
+        anosLectivos: anosLectivos.length,
+        estruturaConfirmacao: confirmacao ? Object.keys(confirmacao) : 'null'
+      });
+      return;
+    }
+    console.log('🔍 [FLUXO 1] Extraindo ano da turma:', turmaString);
+    
+    const anoLetivoTurma = extrairAnoLetivo(turmaString);
+    
+    console.log('🎯 [FLUXO 1] RESULTADO DA EXTRAÇÃO:', {
+      turma: turmaString,
+      anoExtraido: anoLetivoTurma,
+      anoAtualSelect: anoLectivoSelecionado?.designacao,
+      anoAtualSelectCodigo: anoLectivoSelecionado?.codigo
+    });
+
+    if (anoLetivoTurma) {
+      console.log('🔍 [FLUXO 1] Procurando ano na lista de anos letivos...');
+      console.log('📋 Anos disponíveis:', anosLectivos.map(ano => ({
+        codigo: ano.codigo,
+        designacao: ano.designacao,
+        formato: `${ano.anoInicial}/${ano.anoFinal}`
+      })));
+
+      // Procurar o ano letivo correspondente na lista
+      const anoEncontrado = anosLectivos.find(ano => {
+        const anoFormatado = `${ano.anoInicial}/${ano.anoFinal}`;
+        const match = anoFormatado === anoLetivoTurma;
+        console.log(`🔍 Comparando: ${anoFormatado} === ${anoLetivoTurma} = ${match}`);
+        return match;
+      });
+
+      console.log('🎯 [FLUXO 1] Ano encontrado:', anoEncontrado);
+
+      if (anoEncontrado && anoEncontrado.codigo !== anoLectivoSelecionado?.codigo) {
+        console.log('🔄 [FLUXO 1] ATUALIZANDO SELECT para ano da turma:', anoEncontrado.designacao);
+        setAnoLectivoSelecionado(anoEncontrado);
+      } else if (anoEncontrado) {
+        console.log('✅ [FLUXO 1] Ano já está selecionado corretamente');
+      } else {
+        console.log('❌ [FLUXO 1] Ano não encontrado na lista');
+      }
+    } else {
+      console.log('❌ [FLUXO 1] Não foi possível extrair ano da turma');
+    }
+  }, [selectedAluno?.codigo, confirmacao?.turma?.designacao, confirmacao?.tb_turmas?.designacao, confirmacao?.turma, anosLectivos.length, confirmacao?.codigo]);
+
   // Atualizar preço quando tipo de serviço da turma é carregado
   // Seleção automática do melhor tipo de serviço baseado no ano letivo
   useEffect(() => {
-    if (!selectedAluno || !anoLectivoSelecionado || tiposServico.length === 0) return;
+    console.log('🔥 [FLUXO 2] INICIANDO BUSCA DE TIPO DE SERVIÇO');
+    console.log('📋 [FLUXO 2] Dependências:', {
+      selectedAluno: selectedAluno?.codigo,
+      anoLetivo: anoLectivoSelecionado?.codigo,
+      anoLetivoDesignacao: anoLectivoSelecionado?.designacao,
+      tiposServicoLength: tiposServico.length,
+      tipoServicoTurma: tipoServicoTurma?.codigo,
+      confirmacao: confirmacao?.id
+    });
 
-    console.log('🔍 Buscando melhor tipo de serviço automaticamente...');
-    console.log('Ano letivo selecionado:', anoLectivoSelecionado.designacao);
-    console.log('Tipos de serviço disponíveis:', tiposServico.length);
+    if (!selectedAluno || !anoLectivoSelecionado || tiposServico.length === 0) {
+      console.log('❌ [FLUXO 2] Condições não atendidas:', {
+        selectedAluno: !!selectedAluno,
+        anoLectivoSelecionado: !!anoLectivoSelecionado,
+        tiposServicoLength: tiposServico.length
+      });
+      return;
+    }
 
-    // Buscar automaticamente o melhor tipo de serviço
+    console.log('🔍 [FLUXO 2] Buscando melhor tipo de serviço automaticamente...');
+    console.log('📅 [FLUXO 2] Ano letivo FINAL para busca:', anoLectivoSelecionado.designacao);
+    console.log('📊 [FLUXO 2] Tipos de serviço disponíveis:', tiposServico.length);
+
+    // Buscar automaticamente o melhor tipo de serviço usando dados da confirmação
+    console.log('📋 [FLUXO 2] Preparando dados para seleção...');
+    
+    // Usar diferentes estruturas da confirmação
+    const turmaStringFluxo2 = confirmacao?.turma?.designacao || 
+                              confirmacao?.tb_turmas?.designacao || 
+                              confirmacao?.turma;
+
+    const dadosParaSelecao = confirmacao && turmaStringFluxo2 ? {
+      dadosAcademicos: {
+        curso: mapearCursoPorTurma(turmaStringFluxo2),
+        classe: extrairClasseDaTurma(turmaStringFluxo2),
+        turma: turmaStringFluxo2
+      }
+    } : alunoCompleto;
+
+    console.log('📊 [FLUXO 2] Dados preparados:', {
+      usandoConfirmacao: !!confirmacao,
+      turmaStringFluxo2,
+      dadosParaSelecao,
+      anoLectivoSelecionado: {
+        codigo: anoLectivoSelecionado.codigo,
+        designacao: anoLectivoSelecionado.designacao,
+        anoInicial: anoLectivoSelecionado.anoInicial,
+        anoFinal: anoLectivoSelecionado.anoFinal
+      }
+    });
+
+    // Log específico dos dados acadêmicos extraídos
+    if (dadosParaSelecao?.dadosAcademicos) {
+      console.log('🎓 [FLUXO 2] Dados acadêmicos extraídos:', {
+        curso: dadosParaSelecao.dadosAcademicos.curso,
+        classe: dadosParaSelecao.dadosAcademicos.classe,
+        turma: dadosParaSelecao.dadosAcademicos.turma
+      });
+    }
+
+    console.log('🔍 [FLUXO 2] Chamando findBestTipoServicoForAluno...');
     const melhorTipoServico = findBestTipoServicoForAluno(
       tiposServico,
       anoLectivoSelecionado,
+      dadosParaSelecao,
       tipoServicoTurma
     );
 
+    console.log('🎯 [FLUXO 2] Resultado da busca:', melhorTipoServico);
+
     if (melhorTipoServico) {
-      console.log('✅ Tipo de serviço selecionado automaticamente:', melhorTipoServico.designacao);
-      console.log('💰 Preço:', melhorTipoServico.preco);
+      console.log('✅ [FLUXO 2] Tipo de serviço selecionado automaticamente:', melhorTipoServico.designacao);
+      console.log('💰 [FLUXO 2] Preço:', melhorTipoServico.preco);
+      console.log('🔑 [FLUXO 2] Código:', melhorTipoServico.codigo);
+      console.log('📋 [FLUXO 2] Objeto completo:', melhorTipoServico);
       
-      setFormData(prev => ({
-        ...prev,
-        codigo_Tipo_Servico: melhorTipoServico.codigo,
-        preco: melhorTipoServico.preco.toString()
-      }));
+      if (melhorTipoServico.codigo) {
+        console.log('🔄 [FLUXO 2] Atualizando FormData...');
+        setFormData(prev => {
+          const newData = {
+            ...prev,
+            codigo_Tipo_Servico: melhorTipoServico.codigo,
+            preco: melhorTipoServico.preco.toString()
+          };
+          console.log('📋 [FLUXO 2] FormData atualizado:', newData);
+          return newData;
+        });
+        console.log('✅ [FLUXO 2] FormData atualizado com código:', melhorTipoServico.codigo);
+      } else {
+        console.log('❌ [FLUXO 2] Código do tipo de serviço está vazio!');
+      }
     } else {
-      console.log('❌ Nenhum tipo de serviço adequado encontrado');
+      console.log('❌ [FLUXO 2] Nenhum tipo de serviço adequado encontrado');
       // Limpar seleção se não encontrar nada adequado
       setFormData(prev => ({
         ...prev,
@@ -340,7 +576,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
         preco: ''
       }));
     }
-  }, [selectedAluno, anoLectivoSelecionado, tiposServico, tipoServicoTurma]);
+  }, [selectedAluno?.codigo, anoLectivoSelecionado?.codigo, tiposServico.length, tipoServicoTurma?.codigo, confirmacao?.codigo, confirmacao?.turma?.designacao, confirmacao?.tb_turmas?.designacao, confirmacao?.turma]);
 
   // Handler para mudança de forma de pagamento
   const handleFormaPagamentoChange = (formaPagamentoId: string) => {
@@ -348,7 +584,8 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     const isDepositoForm = formaPagamento?.designacao?.toLowerCase().includes('depósito') || 
                           formaPagamento?.designacao?.toLowerCase().includes('deposito') ||
                           formaPagamento?.designacao?.toLowerCase().includes('transferência') ||
-                          formaPagamento?.designacao?.toLowerCase().includes('transferencia');
+                          formaPagamento?.designacao?.toLowerCase().includes('transferencia') ||
+                          formaPagamento?.designacao?.toLowerCase().includes('multicaixa');
     
     setIsDeposito(isDepositoForm || false);
     setFormData(prev => ({
@@ -416,11 +653,11 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       return 'O valor não corresponde ao tipo de serviço selecionado automaticamente';
     }
     
-    // Validações específicas para depósito
+    // Validações específicas para depósito/multicaixa
     if (isDeposito) {
-      if (!formData.tipoConta) return 'Selecione o tipo de conta para depósito';
-      if (!formData.numeroBordero) return 'Informe o número do borderô';
-      if (!/^\d{9}$/.test(formData.numeroBordero)) return 'Número do borderô deve conter exatamente 9 dígitos';
+      if (!formData.tipoConta) return 'Selecione o banco/conta';
+      if (!formData.numeroBordero) return 'Informe o número do borderô/referência';
+      if (!/^\d{9}$/.test(formData.numeroBordero)) return 'Número do borderô/referência deve conter exatamente 9 dígitos';
     }
     
     return null;
@@ -567,9 +804,13 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           ],
           mesesPagos: mesesPagos.join(', '),
           formaPagamento: createdPayment.formaPagamento?.designacao || 'DINHEIRO',
-          // Só mostrar dados bancários se for realmente depósito
-          contaBancaria: (createdPayment.formaPagamento?.designacao === 'DEPOSITO' || createdPayment.formaPagamento?.designacao === 'DEPÓSITO') ? createdPayment.contaMovimentada : null,
-          numeroBordero: (createdPayment.formaPagamento?.designacao === 'DEPOSITO' || createdPayment.formaPagamento?.designacao === 'DEPÓSITO') ? createdPayment.numeroBordero : null,
+          // Só mostrar dados bancários se for depósito ou multicaixa
+          contaBancaria: (createdPayment.formaPagamento?.designacao?.toLowerCase().includes('deposito') || 
+                         createdPayment.formaPagamento?.designacao?.toLowerCase().includes('depósito') ||
+                         createdPayment.formaPagamento?.designacao?.toLowerCase().includes('multicaixa')) ? createdPayment.contaMovimentada : null,
+          numeroBordero: (createdPayment.formaPagamento?.designacao?.toLowerCase().includes('deposito') || 
+                         createdPayment.formaPagamento?.designacao?.toLowerCase().includes('depósito') ||
+                         createdPayment.formaPagamento?.designacao?.toLowerCase().includes('multicaixa')) ? createdPayment.numeroBordero : null,
           subtotal: valorTotal,
           iva: 0.00,
           desconto: 0.00,
@@ -876,6 +1117,18 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                         return (
                           <div className="border-t border-green-200 pt-2">
                             <div className="text-xs space-y-1">
+                              {/* Indicador de fonte dos dados */}
+                              {dadosAcademicos.isFromConfirmacao && (
+                                <div className="flex items-center gap-1 mb-1">
+                                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                                    ✅ Confirmação Mais Recente
+                                  </Badge>
+                                  <span className="text-xs text-blue-600">
+                                    {dadosAcademicos.anoLetivo}
+                                  </span>
+                                </div>
+                              )}
+                              
                               {/* Linha 1: Curso e Classe */}
                               <div className="flex justify-between">
                                 <span className="text-green-600">
@@ -1023,7 +1276,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                       </SelectTrigger>
                       <SelectContent>
                         {anosLoading ? (
-                          <SelectItem value="" disabled>Carregando...</SelectItem>
+                          <SelectItem value="loading" disabled>Carregando...</SelectItem>
                         ) : anosLectivos.length > 0 ? (
                           anosLectivos.map((ano) => (
                             <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
@@ -1031,11 +1284,15 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                             </SelectItem>
                           ))
                         ) : (
-                          ANOS_OPTIONS.map((ano) => (
-                            <SelectItem key={ano.value} value={ano.value.toString()}>
-                              {ano.label}
-                            </SelectItem>
-                          ))
+                          // Fallback para anos padrão se não houver anos letivos
+                          Array.from({length: 5}, (_, i) => {
+                            const year = new Date().getFullYear() - 2 + i;
+                            return (
+                              <SelectItem key={year} value={year.toString()}>
+                                {year}
+                              </SelectItem>
+                            );
+                          })
                         )}
                       </SelectContent>
                     </Select>
@@ -1194,7 +1451,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 </SelectTrigger>
                 <SelectContent>
                   {formasLoading ? (
-                    <SelectItem value="" disabled>Carregando...</SelectItem>
+                    <SelectItem value="loading" disabled>Carregando...</SelectItem>
                   ) : (
                     formasPagamento.map((forma) => (
                       <SelectItem key={forma.codigo} value={forma.codigo.toString()}>
@@ -1227,12 +1484,12 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
               </div>
             )}
 
-            {/* Seção de Depósito Bancário */}
+            {/* Seção de Depósito Bancário / Multicaixa */}
             {isDeposito && (
               <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h4 className="font-medium text-blue-800 flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                  Informações do Depósito Bancário
+                  Informações Bancárias
                 </h4>
                 
                 {/* Tipo de Conta */}
@@ -1256,13 +1513,13 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                   </Select>
                 </div>
 
-                {/* Número do Borderô */}
+                {/* Número do Borderô/Referência */}
                 <div className="space-y-2">
-                  <Label htmlFor="numero-bordero">Número do Borderô *</Label>
+                  <Label htmlFor="numero-bordero">Número do Borderô/Referência *</Label>
                   <Input
                     id="numero-bordero"
                     type="text"
-                    placeholder="Digite exatamente 9 dígitos"
+                    placeholder="Digite o número de referência (9 dígitos)"
                     value={formData.numeroBordero}
                     onChange={(e) => handleBorderoChange(e.target.value)}
                     maxLength={9}
@@ -1425,9 +1682,13 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                       ],
                       mesesPagos: mesesPagos.join(', '),
                       formaPagamento: createdPayment.formaPagamento?.designacao || 'DINHEIRO',
-                      // Só mostrar dados bancários se for realmente depósito
-                      contaBancaria: (createdPayment.formaPagamento?.designacao === 'DEPOSITO' || createdPayment.formaPagamento?.designacao === 'DEPÓSITO') ? createdPayment.contaMovimentada : null,
-                      numeroBordero: (createdPayment.formaPagamento?.designacao === 'DEPOSITO' || createdPayment.formaPagamento?.designacao === 'DEPÓSITO') ? createdPayment.numeroBordero : null,
+                      // Só mostrar dados bancários se for depósito ou multicaixa
+                      contaBancaria: (createdPayment.formaPagamento?.designacao?.toLowerCase().includes('deposito') || 
+                                     createdPayment.formaPagamento?.designacao?.toLowerCase().includes('depósito') ||
+                                     createdPayment.formaPagamento?.designacao?.toLowerCase().includes('multicaixa')) ? createdPayment.contaMovimentada : null,
+                      numeroBordero: (createdPayment.formaPagamento?.designacao?.toLowerCase().includes('deposito') || 
+                                     createdPayment.formaPagamento?.designacao?.toLowerCase().includes('depósito') ||
+                                     createdPayment.formaPagamento?.designacao?.toLowerCase().includes('multicaixa')) ? createdPayment.numeroBordero : null,
                       subtotal: valorTotal,
                       iva: 0.00,
                       desconto: 0.00,

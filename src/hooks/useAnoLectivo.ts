@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import anoLectivoService from "@/services/anoLectivo.service"
 import { IAnoLectivo, IAnoLectivoInput } from "@/types/anoLectivo.types"
 
@@ -9,7 +9,7 @@ export const useAnosLectivos = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchAnosLectivos = async (page = 1, limit = 10, search = "") => {
+  const fetchAnosLectivos = useCallback(async (page = 1, limit = 10, search = "") => {
     try {
       setIsLoading(true)
       setError(null)
@@ -22,7 +22,7 @@ export const useAnosLectivos = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   return {
     anosLectivos,
