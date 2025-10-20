@@ -19,14 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  School,
-  ArrowLeft,
-  Save,
-  X,
-  Loader2,
-  GraduationCap,
-} from 'lucide-react';
+import { School, ArrowLeft, Save, X, Loader2, GraduationCap } from 'lucide-react';
 import { useTurma, useUpdateTurma } from '@/hooks/useTurma';
 import { useClasses } from '@/hooks/useClass';
 import { useCourses } from '@/hooks/useCourse';
@@ -248,7 +241,7 @@ export default function EditTurmaPage() {
       {/* Formulário */}
       <div className="space-y-8">
         <form id="turma-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          
+
           {/* Informações Básicas */}
           <Card>
             <CardHeader>

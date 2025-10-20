@@ -56,26 +56,15 @@ import {
 } from '@/components/ui/dialog';
 import {
   FileText,
-  Search,
-  Filter,
   Plus,
   MoreHorizontal,
   Eye,
   Edit,
   Trash2,
-  Download,
-  Upload,
-  Users,
-  BookOpen,
-  GraduationCap,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
   Activity,
   Award,
   Calendar,
   Settings,
-  BarChart3,
   Loader2,
 } from 'lucide-react';
 
@@ -352,8 +341,6 @@ export default function NotesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Designação</TableHead>
-                      <TableHead>Período</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -362,16 +349,6 @@ export default function NotesPage() {
                       <TableRow key={trimestre.codigo}>
                         <TableCell className="font-medium">
                           {trimestre.designacao || `Trimestre ${trimestre.codigo}`}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {trimestre.dataInicio ? new Date(trimestre.dataInicio).getFullYear() : 'N/A'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className="bg-green-100 text-green-800">
-                            Ativo
-                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
