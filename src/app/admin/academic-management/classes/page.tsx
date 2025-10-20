@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -20,7 +19,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import { DropdownMenu, DropdownMenuContent,
+import {
+  DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -28,14 +28,13 @@ import { DropdownMenu, DropdownMenuContent,
 import {
   GraduationCap, Plus,
   MoreHorizontal, Edit,
-  Trash2, Download,
+  Download,
   BookOpen, ChevronLeft,
   ChevronRight, CheckCircle, XCircle,
 } from 'lucide-react';
 
-import { useClassManager, useDeleteClass } from '@/hooks/useClass';
+import { useClassManager } from '@/hooks/useClass';
 import { ClassModal } from '@/components/classes/classes-modal';
-import { ConfirmDeleteModal } from '@/components/classes/confirm-delete-modal';
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
@@ -52,45 +51,14 @@ export default function ClassesPage() {
     limit,
     selectedClass,
     isModalOpen,
-    isDeleteModalOpen,
     handleSearch,
     handlePageChange,
     handleLimitChange,
     openCreateModal,
     openEditModal,
     closeModal,
-    openDeleteModal,
-    closeDeleteModal,
     refetch,
   } = useClassManager();
-
-  // Paginação local para garantir que sempre funcione
-  const localPagination = useMemo(() => {
-    const totalItems = classes?.length || 0;
-    const totalPages = Math.ceil(totalItems / limit);
-    return {
-      currentPage,
-      totalPages,
-      totalItems,
-      itemsPerPage: limit,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1
-    };
-  }, [classes?.length, currentPage, limit]);
-
-  const { deleteClass, isLoading: deleting, error: deleteError } = useDeleteClass();
-
-  const handleDeleteConfirm = async () => {
-    if (selectedClass) {
-      try {
-        await deleteClass(selectedClass.codigo);
-        closeDeleteModal();
-        refetch();
-      } catch (error) {
-        console.error('Erro ao deletar classe:', error);
-      }
-    }
-  };
 
   const handleModalSuccess = () => {
     refetch();
@@ -100,10 +68,9 @@ export default function ClassesPage() {
     <Container>
       {/* Header usando WelcomeHeader */}
       <WelcomeHeader
-        title="Classes"
+        title="Gestão de Classes"
         description="Gerencie todas as classes do sistema educacional. Organize por níveis de ensino, visualize informações detalhadas e mantenha a estrutura curricular sempre atualizada."
         iconMain={<GraduationCap className="h-8 w-8 text-white" />}
-        titleBtnLeft="Exportar Dados"
         iconBtnLeft={<Download className="w-5 h-5 mr-2" />}
         titleBtnRight="Nova Classe"
         iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
@@ -187,9 +154,6 @@ export default function ClassesPage() {
               <GraduationCap className="h-5 w-5" />
               <span>Lista de Classes</span>
             </div>
-            <Badge variant="outline" className="text-sm">
-              {localPagination.totalItems} classes encontradas
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -261,7 +225,7 @@ export default function ClassesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           variant={classe.status === 1 ? "default" : "secondary"}
                           className={classe.status === 1 ? "bg-emerald-100 text-emerald-800" : ""}
                         >
@@ -283,13 +247,6 @@ export default function ClassesPage() {
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => openDeleteModal(classe)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -301,10 +258,10 @@ export default function ClassesPage() {
           </div>
 
           {/* Paginação */}
-          {localPagination.totalPages > 1 && (
+          {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, localPagination.totalItems)} de {localPagination.totalItems} classes
+                Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, pagination.totalItems)} de {pagination.totalItems} classes
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -320,11 +277,11 @@ export default function ClassesPage() {
                   {(() => {
                     const maxPagesToShow = 5;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-                    const endPage = Math.min(localPagination.totalPages, startPage + maxPagesToShow - 1);
+                    const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
+
                     const pages = [];
-                    
+
                     // Primeira página
                     if (adjustedStartPage > 1) {
                       pages.push(
@@ -341,7 +298,7 @@ export default function ClassesPage() {
                         pages.push(<span key="ellipsis1" className="px-2">...</span>);
                       }
                     }
-                    
+
                     // Páginas do meio
                     for (let i = adjustedStartPage; i <= endPage; i++) {
                       pages.push(
@@ -356,32 +313,32 @@ export default function ClassesPage() {
                         </Button>
                       );
                     }
-                    
+
                     // Última página
-                    if (endPage < localPagination.totalPages) {
-                      if (endPage < localPagination.totalPages - 1) {
+                    if (endPage < pagination.totalPages) {
+                      if (endPage < pagination.totalPages - 1) {
                         pages.push(<span key="ellipsis2" className="px-2">...</span>);
                       }
                       pages.push(
                         <Button
-                          key={localPagination.totalPages}
+                          key={pagination.totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => handlePageChange(localPagination.totalPages)}
+                          onClick={() => handlePageChange(pagination.totalPages)}
                         >
-                          {localPagination.totalPages}
+                          {pagination.totalPages}
                         </Button>
                       );
                     }
-                    
+
                     return pages;
                   })()}
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(Math.min(currentPage + 1, localPagination.totalPages))}
-                  disabled={currentPage === localPagination.totalPages}
+                  onClick={() => handlePageChange(Math.min(currentPage + 1, pagination.totalPages))}
+                  disabled={currentPage === pagination.totalPages}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />
@@ -400,15 +357,6 @@ export default function ClassesPage() {
         onSuccess={handleModalSuccess}
       />
 
-      <ConfirmDeleteModal
-        open={isDeleteModalOpen}
-        onOpenChange={closeDeleteModal}
-        onConfirm={handleDeleteConfirm}
-        title="Excluir Classe"
-        description={`Tem certeza que deseja excluir a classe "${selectedClass?.designacao}"? Esta ação não pode ser desfeita.`}
-        loading={deleting}
-        error={deleteError}
-      />
     </Container>
   );
 }

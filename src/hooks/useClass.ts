@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react"
 import classService from "@/services/class.service"
-import { IClass, IClassInput, IClassListResponse } from "@/types/class.types"
+import { IClass, IClassInput, IPagination } from "@/types/class.types"
 
 // Hook para listar classes
 export const useClasses = () => {
   const [classes, setClasses] = useState<IClass[]>([])
-  const [pagination, setPagination] = useState<any>(null)
+  const [pagination, setPagination] = useState<IPagination | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -210,9 +210,9 @@ export const useClassManager = () => {
     fetchClasses(currentPage, limit, searchTerm)
   }
 
-  // Estatísticas básicas
+  // Estatísticas baseadas nos dados da paginação e da página atual
   const stats = {
-    total: classes?.length || 0,
+    total: pagination?.totalItems || 0,
     active: classes?.filter((c: IClass) => c.status === 1).length || 0,
     inactive: classes?.filter((c: IClass) => c.status === 0).length || 0,
   }
