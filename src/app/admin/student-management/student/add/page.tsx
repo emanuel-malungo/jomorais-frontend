@@ -56,7 +56,6 @@ import {
 import BIService from '@/services/bi.service';
 import { ConsultaBilheteResponse } from '@/types/bi.types';
 import { useProfessions } from '@/hooks/useProfession';
-import { ITipoStatus } from '@/types/status-control.types';
 import { useStatus } from '@/hooks/useStatusControl';
 
 type AddStudentFormData = yup.InferType<typeof addStudentSchema>;

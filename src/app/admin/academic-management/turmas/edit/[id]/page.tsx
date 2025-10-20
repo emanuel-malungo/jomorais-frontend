@@ -25,9 +25,6 @@ import {
   Save,
   X,
   Loader2,
-  Users,
-  MapPin,
-  Clock,
   GraduationCap,
 } from 'lucide-react';
 import { useTurma, useUpdateTurma } from '@/hooks/useTurma';
@@ -103,7 +100,7 @@ export default function EditTurmaPage() {
         periodo: turma.codigo_Periodo?.toString() || "",
         anoLetivo: turma.codigo_AnoLectivo?.toString() || "",
         capacidade: turma.max_Alunos?.toString() || "",
-        diretor: "", // Diretor não está na tabela tb_turmas
+        diretor: "",
         status: turma.status || "Ativo",
       });
     }
@@ -235,8 +232,8 @@ export default function EditTurmaPage() {
   return (
     <Container>
       {/* Header Fixo */}
-      <div className="sticky top-0 z-50 bg-background border-b shadow-sm mb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="bg-background border-b shadow-sm mb-8 rounded-2xl">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
@@ -285,11 +282,11 @@ export default function EditTurmaPage() {
       </div>
 
       {/* Formulário */}
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="space-y-8">
         <form id="turma-form" onSubmit={handleSubmit} className="space-y-8">
           
           {/* Informações Básicas */}
-          <Card className="border-l-4 border-l-blue-500">
+          <Card className="">
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
                 <School className="w-6 h-6 mr-3 text-blue-500" />
@@ -385,7 +382,7 @@ export default function EditTurmaPage() {
           </Card>
 
           {/* Configuração Acadêmica */}
-          <Card className="border-l-4 border-l-purple-500">
+          <Card className="">
             <CardHeader>
               <CardTitle className="flex items-center text-xl">
                 <GraduationCap className="w-6 h-6 mr-3 text-purple-500" />
