@@ -2,6 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { useForm, Controller } from 'react-hook-form';
+import * as yup from 'yup';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,13 +28,21 @@ import {
   Loader2,
   AlertCircle,
   User,
-  Mail,
-  Phone,
   GraduationCap,
 } from 'lucide-react';
 
 import { useCreateDocente, useEspecialidades } from '@/hooks/useTeacher';
-import { IDocenteInput } from '@/types/teacher.types';
+
+// Schema de validação
+const docenteSchema = yup.object({
+  nome: yup.string().required('Nome é obrigatório'),
+  email: yup.string().email('Email inválido').required('Email é obrigatório'),
+  contacto: yup.string().required('Contacto é obrigatório'),
+  status: yup.number().default(1),
+  codigo_Especialidade: yup.number().required('Especialidade é obrigatória'),
+});
+
+type DocenteFormData = yup.InferType<typeof docenteSchema>;
 
 export default function AddTeacherPage() {
   const router = useRouter();
@@ -39,57 +50,28 @@ export default function AddTeacherPage() {
   const { createDocente, loading: createLoading } = useCreateDocente();
   const { especialidades } = useEspecialidades();
 
-  const [formData, setFormData] = useState<IDocenteInput>({
-    nome: '',
-    email: '',
-    contacto: '',
-    status: 1,
-    codigo_Especialidade: 1,
-    codigo_Utilizador: 0,
-    // user_id será definido apenas se preenchido pelo usuário
-  });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const handleInputChange = (field: keyof IDocenteInput, value: string | number | null) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    // Limpar mensagens ao editar
-    setSaveSuccess(false);
-    setSaveError(null);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validação básica
-    if (!formData.nome || !formData.email) {
-      setSaveError('Por favor, preencha os campos obrigatórios: Nome e Email');
-      return;
+  const { control, handleSubmit: handleFormSubmit, formState: { errors } } = useForm<DocenteFormData>({
+    resolver: yupResolver(docenteSchema),
+    defaultValues: {
+      nome: '',
+      email: '',
+      contacto: '',
+      status: 1,
+      codigo_Especialidade: 1,
     }
+  });
 
+  const handleSubmit = async (data: DocenteFormData) => {
     try {
       setIsSubmitting(true);
       setSaveError(null);
       setSaveSuccess(false);
 
-      // Filtrar campos vazios ou nulos antes de enviar
-      const cleanedData = Object.fromEntries(
-        Object.entries(formData).filter(([key, value]) => {
-          // Manter campos obrigatórios mesmo se vazios
-          if (['nome', 'email', 'contacto', 'status', 'codigo_Especialidade'].includes(key)) {
-            return true;
-          }
-          // Filtrar campos opcionais vazios
-          return value !== '' && value !== null && value !== undefined;
-        })
-      ) as IDocenteInput;
-
-      const result = await createDocente(cleanedData);
+      const result = await createDocente(data);
       
       if (result) {
         setSaveSuccess(true);
@@ -113,7 +95,7 @@ export default function AddTeacherPage() {
   return (
     <Container>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 bg-white p-6 rounded-2xl shadow">
         <div className="flex items-center space-x-4">
           <Button variant="outline" size="sm" onClick={handleBack}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -123,6 +105,31 @@ export default function AddTeacherPage() {
             <h1 className="text-3xl font-bold text-gray-900">Novo Docente</h1>
             <p className="text-gray-600">Adicionar novo docente ao sistema</p>
           </div>
+        </div>
+        
+        {/* Botões de Ação no Header */}
+        <div className="flex items-center space-x-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleBack}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={() => handleFormSubmit(handleSubmit)()}
+            disabled={isSubmitting || createLoading}
+            className="bg-[#3B6C4D] hover:bg-[#2d5016]"
+          >
+            {isSubmitting || createLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            {isSubmitting || createLoading ? 'Criando...' : 'Criar Docente'}
+          </Button>
         </div>
       </div>
 
@@ -157,7 +164,7 @@ export default function AddTeacherPage() {
       )}
 
       {/* Formulário */}
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleFormSubmit(handleSubmit)} className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Informações Básicas */}
           <Card>
@@ -170,35 +177,60 @@ export default function AddTeacherPage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="nome">Nome Completo <span className="text-red-500">*</span></Label>
-                <Input
-                  id="nome"
-                  value={formData.nome}
-                  onChange={(e) => handleInputChange('nome', e.target.value)}
-                  placeholder="Nome completo do docente"
-                  className={!formData.nome ? 'border-red-300' : ''}
+                <Controller
+                  name="nome"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id="nome"
+                      placeholder="Nome completo do docente"
+                      className={errors.nome ? 'border-red-500' : ''}
+                    />
+                  )}
                 />
+                {errors.nome && (
+                  <p className="text-red-500 text-sm mt-1">{errors.nome.message}</p>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="email@exemplo.com"
-                  className={!formData.email ? 'border-red-300' : ''}
+                <Controller
+                  name="email"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id="email"
+                      type="email"
+                      placeholder="email@exemplo.com"
+                      className={errors.email ? 'border-red-500' : ''}
+                    />
+                  )}
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                )}
               </div>
 
               <div>
-                <Label htmlFor="contacto">Contacto</Label>
-                <Input
-                  id="contacto"
-                  value={formData.contacto}
-                  onChange={(e) => handleInputChange('contacto', e.target.value)}
-                  placeholder="+244 xxx xxx xxx"
+                <Label htmlFor="contacto">Contacto <span className="text-red-500">*</span></Label>
+                <Controller
+                  name="contacto"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id="contacto"
+                      placeholder="923456789"
+                      className={errors.contacto ? 'border-red-500' : ''}
+                    />
+                  )}
                 />
+                {errors.contacto && (
+                  <p className="text-red-500 text-sm mt-1">{errors.contacto.message}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -213,87 +245,59 @@ export default function AddTeacherPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="especialidade">Especialidade</Label>
-                <Select
-                  value={formData.codigo_Especialidade?.toString()}
-                  onValueChange={(value) => handleInputChange('codigo_Especialidade', parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma especialidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {especialidades.map((esp) => (
-                      <SelectItem key={esp.codigo} value={esp.codigo.toString()}>
-                        {esp.designacao}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status?.toString()}
-                  onValueChange={(value) => handleInputChange('status', parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Ativo</SelectItem>
-                    <SelectItem value="0">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="codigo_Utilizador">Código Utilizador</Label>
-                <Input
-                  id="codigo_Utilizador"
-                  type="number"
-                  value={formData.codigo_Utilizador}
-                  onChange={(e) => handleInputChange('codigo_Utilizador', parseInt(e.target.value) || 0)}
-                  placeholder="0"
+                <Label htmlFor="especialidade">Especialidade <span className="text-red-500">*</span></Label>
+                <Controller
+                  name="codigo_Especialidade"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                    >
+                      <SelectTrigger className={errors.codigo_Especialidade ? 'border-red-500' : ''}>
+                        <SelectValue placeholder="Selecione uma especialidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {especialidades.map((esp) => (
+                          <SelectItem key={esp.codigo} value={esp.codigo.toString()}>
+                            {esp.designacao}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
+                {errors.codigo_Especialidade && (
+                  <p className="text-red-500 text-sm mt-1">{errors.codigo_Especialidade.message}</p>
+                )}
               </div>
 
               <div>
-                <Label htmlFor="codigo_disciplina">Código Disciplina Principal</Label>
-                <Input
-                  id="codigo_disciplina"
-                  type="number"
-                  value={formData.codigo_disciplina || ''}
-                  onChange={(e) => handleInputChange('codigo_disciplina', parseInt(e.target.value) || null)}
-                  placeholder="Código da disciplina principal (opcional)"
+                <Label htmlFor="status">Status <span className="text-red-500">*</span></Label>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                    >
+                      <SelectTrigger className={errors.status ? 'border-red-500' : ''}>
+                        <SelectValue placeholder="Selecione o status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Ativo</SelectItem>
+                        <SelectItem value="0">Inativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
+                {errors.status && (
+                  <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>
+                )}
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Botões de Ação */}
-        <div className="flex items-center justify-end space-x-4 pt-6 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleBack}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || createLoading}
-            className="bg-[#3B6C4D] hover:bg-[#2d5016]"
-          >
-            {isSubmitting || createLoading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            {isSubmitting || createLoading ? 'Criando...' : 'Criar Docente'}
-          </Button>
         </div>
       </form>
     </Container>
