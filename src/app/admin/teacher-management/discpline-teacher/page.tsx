@@ -57,20 +57,6 @@ import {
 
 // Dados removidos - agora usando API real
 
-const professorOptions = [
-  { value: "all", label: "Todos os Professores" },
-  { value: "joao", label: "João Silva Santos" },
-  { value: "maria", label: "Maria Santos Costa" },
-  { value: "carlos", label: "Carlos Mendes Lima" },
-  { value: "ana", label: "Ana Costa Ferreira" },
-];
-
-const periodoOptions = [
-  { value: "all", label: "Todos os Períodos" },
-  { value: "manha", label: "Manhã" },
-  { value: "tarde", label: "Tarde" },
-  { value: "noite", label: "Noite" },
-];
 
 const statusOptions = [
   { value: "all", label: "Todos os Status" },
@@ -81,8 +67,6 @@ const statusOptions = [
 export default function TeacherDisciplinesPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [professorFilter, setProfessorFilter] = useState("all");
-  const [periodoFilter, setPeriodoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -226,18 +210,6 @@ export default function TeacherDisciplinesPage() {
         searchPlaceholder="Buscar por professor, disciplina, turma ou sala..."
         filters={[
           {
-            label: "Professor",
-            value: professorFilter,
-            onChange: setProfessorFilter,
-            options: professorOptions,
-          },
-          {
-            label: "Período",
-            value: periodoFilter,
-            onChange: setPeriodoFilter,
-            options: periodoOptions,
-          },
-          {
             label: "Status",
             value: statusFilter,
             onChange: setStatusFilter,
@@ -330,22 +302,9 @@ export default function TeacherDisciplinesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleViewAssignment(discipline.codigo)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Visualizar
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEditAssignment(discipline.codigo)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteAssignment(discipline.codigo)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
