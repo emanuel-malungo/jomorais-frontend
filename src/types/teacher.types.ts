@@ -49,8 +49,19 @@ export interface IDocente {
     email: string;
   } | null;
   tb_especialidade: IEspecialidade;
-  tb_disciplinas_docente: IDisciplinaDocente[];
-  tb_directores_turmas: IDiretorTurma[];
+  tb_disciplinas_docente?: IDisciplinaDocente[];
+  tb_directores_turmas?: IDiretorTurma[];
+  tb_docente_turma?: Array<{
+    codigo_Docente: number;
+    codigo_turma: number;
+  }>;
+  
+  // Contador de relacionamentos (usado na listagem)
+  _count?: {
+    tb_disciplinas_docente: number;
+    tb_directores_turmas: number;
+    tb_docente_turma: number;
+  };
 }
 
 // Interface para input de criação/atualização de docente

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -32,11 +31,8 @@ import {
   Users,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
-  Trash2,
   UserCheck,
-  UserX,
   Calendar,
   Phone,
   Mail,
@@ -50,30 +46,54 @@ import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
-import { useDocentes, useDeleteDocente, useEspecialidades } from '@/hooks/useTeacher';
+import { useDocentes, useEspecialidades } from '@/hooks/useTeacher';
 import { IDocente } from '@/types/teacher.types';
 
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "1", label: "Ativo" },
-  { value: "0", label: "Inativo" },
-];
+import { useStatus } from '@/hooks/useStatusControl';
+
 
 // Opções de especialidades serão geradas dinamicamente
 
 export default function ListTeacherPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [especialidadeFilter, setEspecialidadeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  // Usar os novos hooks
-  const { docentes, loading, error, pagination, refetch } = useDocentes(currentPage, itemsPerPage, searchTerm);
-  const { deleteDocente, loading: deleteLoading } = useDeleteDocente();
-  const { especialidades } = useEspecialidades();
+  const { status } = useStatus(1, 100, ""); 
 
-  const [filteredDocentes, setFilteredDocentes] = useState<IDocente[]>([]);
+  // Debounce do searchTerm para evitar muitas requisições
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); // Resetar para primeira página ao buscar
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const statusOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Status" }];
+    if (status && status.length > 0) {
+      status.forEach((s) => {
+        options.push({
+          value: s.codigo.toString(),
+          label: s.designacao
+        });
+      });
+    }
+    return options;
+  }, [status]);
+
+  // Usar o hook com busca via API
+  const { docentes, loading, error, pagination, refetch } = useDocentes(
+    currentPage, 
+    itemsPerPage, 
+    debouncedSearch
+  );
+  const { especialidades } = useEspecialidades();
 
   // Gerar opções de especialidades dinamicamente
   const especialidadeOptions = [
@@ -84,18 +104,18 @@ export default function ListTeacherPage() {
     }))
   ];
 
-  // Filtrar docentes (aplicado aos dados da página atual)
-  useEffect(() => {
+  // Aplicar filtros locais apenas nos dados da página atual (já filtrados pela busca na API)
+  const filteredDocentes = useMemo(() => {
     let filtered = docentes;
 
-    // Filtro por status
+    // Filtro por status (local)
     if (statusFilter !== "all") {
-      filtered = filtered.filter((docente: IDocente) => 
+      filtered = filtered.filter((docente: IDocente) =>
         docente.status.toString() === statusFilter
       );
     }
 
-    // Filtro por especialidade
+    // Filtro por especialidade (local)
     if (especialidadeFilter !== "all") {
       filtered = filtered.filter((docente: IDocente) => {
         if (!docente.tb_especialidade) return false;
@@ -103,78 +123,20 @@ export default function ListTeacherPage() {
       });
     }
 
-    setFilteredDocentes(filtered);
+    return filtered;
   }, [statusFilter, especialidadeFilter, docentes]);
-
-  // Resetar para primeira página quando filtros mudarem
-  useEffect(() => {
-    if (searchTerm || statusFilter !== "all" || especialidadeFilter !== "all") {
-      setCurrentPage(1);
-    }
-  }, [searchTerm, statusFilter, especialidadeFilter]);
 
   // Paginação - usando dados da API
   const totalPages = pagination?.totalPages || 1;
   const totalItems = pagination?.totalItems || 0;
-  const currentDocentes = filteredDocentes; // Já são os dados da página atual
+  const currentDocentes = filteredDocentes; // Dados da página atual com filtros locais aplicados
   const startIndex = pagination ? (pagination.currentPage - 1) * pagination.itemsPerPage + 1 : 1;
   const endIndex = pagination ? Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems) : filteredDocentes.length;
-
-  const handleViewTeacher = (teacherId: number) => {
-    window.location.href = `/admin/teacher-management/teacher/details/${teacherId}`;
-  };
 
   const handleEditTeacher = (teacherId: number) => {
     window.location.href = `/admin/teacher-management/teacher/edit/${teacherId}`;
   };
 
-  const handleDeleteTeacher = async (teacherId: number) => {
-    if (confirm('Tem certeza que deseja excluir este docente?')) {
-      const success = await deleteDocente(teacherId);
-      if (success) {
-        refetch(); // Recarregar a lista
-      }
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-AO');
-  };
-
-  const calculateAge = (birthDate: any) => {
-    // Se o birthDate for um objeto vazio ou inválido, retorna "N/A"
-    if (!birthDate || typeof birthDate === 'object' && Object.keys(birthDate).length === 0) {
-      return "N/A";
-    }
-    
-    try {
-      const today = new Date();
-      const birth = new Date(birthDate);
-      
-      // Verifica se a data é válida
-      if (isNaN(birth.getTime())) {
-        return "N/A";
-      }
-      
-      let age = today.getFullYear() - birth.getFullYear();
-      const monthDiff = today.getMonth() - birth.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-        age--;
-      }
-      return age.toString();
-    } catch (error) {
-      return "N/A";
-    }
-  };
-
-  const formatSalary = (salary: number | undefined) => {
-    if (!salary) return "N/A";
-    return new Intl.NumberFormat('pt-AO', {
-      style: 'currency',
-      currency: 'AOA',
-      minimumFractionDigits: 0,
-    }).format(salary);
-  };
 
   return (
     <Container>
@@ -194,7 +156,7 @@ export default function ListTeacherPage() {
             <div>
               <span className="text-red-700 font-medium">Erro ao carregar docentes:</span>
               <p className="text-red-600 text-sm mt-1">{error}</p>
-              <button 
+              <button
                 onClick={refetch}
                 className="text-red-600 underline text-sm mt-2 hover:text-red-800"
               >
@@ -209,8 +171,8 @@ export default function ListTeacherPage() {
         <StatCard
           title="Total de Professores"
           value={totalItems.toString()}
-          change="+5.2%"
-          changeType="up"
+          change={`${pagination?.itemsPerPage || 0} por página`}
+          changeType="neutral"
           icon={Users}
           color="text-[#182F59]"
           bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
@@ -218,10 +180,10 @@ export default function ListTeacherPage() {
         />
 
         <StatCard
-          title="Docentes Ativos"
-          value={docentes.filter((d: IDocente) => d.status === 1).length.toString()}
-          change="+2.1%"
-          changeType="up"
+          title="Docentes na Página"
+          value={currentDocentes.length.toString()}
+          change={`de ${itemsPerPage} possíveis`}
+          changeType="neutral"
           icon={UserCheck}
           color="text-emerald-600"
           bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
@@ -230,9 +192,13 @@ export default function ListTeacherPage() {
 
         <StatCard
           title="Com Disciplinas"
-          value={docentes.filter((d: IDocente) => d.tb_disciplinas_docente && d.tb_disciplinas_docente.length > 0).length.toString()}
-          change="+1.8%"
-          changeType="up"
+          value={currentDocentes.filter((d: IDocente) => {
+            const count = d._count?.tb_disciplinas_docente || 0;
+            const arrayLength = d.tb_disciplinas_docente?.length || 0;
+            return count > 0 || arrayLength > 0;
+          }).length.toString()}
+          change="na página atual"
+          changeType="neutral"
           icon={BookOpen}
           color="text-[#FFD002]"
           bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
@@ -242,7 +208,7 @@ export default function ListTeacherPage() {
         <StatCard
           title="Página Atual"
           value={`${currentPage}/${totalPages}`}
-          change="Paginação"
+          change={`${totalItems} total`}
           changeType="neutral"
           icon={GraduationCap}
           color="text-purple-600"
@@ -278,10 +244,11 @@ export default function ListTeacherPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Docentes da Página {currentPage} ({filteredDocentes.length} de {itemsPerPage})
+            Lista de Docentes
+            {debouncedSearch && ` - Resultados para "${debouncedSearch}"`}
           </CardTitle>
           <CardDescription>
-            Página {currentPage} de {totalPages} - Total: {totalItems} docentes
+            Mostrando {startIndex} a {endIndex} de {totalItems} docentes | Página {currentPage} de {totalPages}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -366,22 +333,22 @@ export default function ListTeacherPage() {
                         <div className="space-y-1">
                           <p className="text-sm font-medium">{teacher.tb_especialidade?.designacao || 'N/A'}</p>
                           <p className="text-xs text-gray-500">
-                            {teacher.tb_disciplinas_docente?.length || 0} disciplina(s)
+                            {teacher._count?.tb_disciplinas_docente || teacher.tb_disciplinas_docente?.length || 0} disciplina(s)
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
                           <p className="text-sm font-medium">
-                            {teacher.tb_disciplinas_docente?.length || 0} disciplina(s)
+                            {teacher._count?.tb_disciplinas_docente || teacher.tb_disciplinas_docente?.length || 0} disciplina(s)
                           </p>
                           <p className="text-xs text-gray-500">
-                            {teacher.tb_directores_turmas?.length || 0} turma(s) dirigida(s)
+                            {teacher._count?.tb_directores_turmas || teacher.tb_directores_turmas?.length || 0} turma(s) dirigida(s)
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           variant={teacher.status === 1 ? "default" : "secondary"}
                           className={teacher.status === 1 ? "bg-emerald-100 text-emerald-800" : ""}
                         >
@@ -397,22 +364,9 @@ export default function ListTeacherPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleViewTeacher(teacher.codigo || 0)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Visualizar
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEditTeacher(teacher.codigo || 0)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteTeacher(teacher.codigo || 0)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -446,9 +400,9 @@ export default function ListTeacherPage() {
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
+
                     const pages = [];
-                    
+
                     // Primeira página
                     if (adjustedStartPage > 1) {
                       pages.push(
@@ -466,7 +420,7 @@ export default function ListTeacherPage() {
                         pages.push(<span key="ellipsis1" className="px-2">...</span>);
                       }
                     }
-                    
+
                     // Páginas do meio
                     for (let i = adjustedStartPage; i <= endPage; i++) {
                       pages.push(
@@ -482,7 +436,7 @@ export default function ListTeacherPage() {
                         </Button>
                       );
                     }
-                    
+
                     // Última página
                     if (endPage < totalPages) {
                       if (endPage < totalPages - 1) {
@@ -500,7 +454,7 @@ export default function ListTeacherPage() {
                         </Button>
                       );
                     }
-                    
+
                     return pages;
                   })()}
                 </div>
