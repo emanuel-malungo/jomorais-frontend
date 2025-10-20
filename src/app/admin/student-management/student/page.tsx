@@ -50,8 +50,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-
-
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';

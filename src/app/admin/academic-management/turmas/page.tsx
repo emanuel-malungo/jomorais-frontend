@@ -35,7 +35,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -50,41 +49,26 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  Download,
-  Upload,
   Users,
   Printer,
   GraduationCap,
   ChevronLeft,
   ChevronRight,
-  Activity,
   Archive,
   ToggleLeft,
   ToggleRight,
-  AlertTriangle,
   MapPin,
   Clock,
   FileText,
+  UserX,
 } from 'lucide-react';
 import { useTurmaManager, useArchiveTurma } from '@/hooks';
 import { TurmaReportService } from '@/services/turmaReport.service';
 import api from '@/utils/api.utils';
 
-// Dados vêm da API real através do hook useTurmaManager
-
-const periodoOptions = [
-  { value: "all", label: "Todos os Períodos" },
-  { value: "manha", label: "Manhã" },
-  { value: "tarde", label: "Tarde" },
-  { value: "noite", label: "Noite" },
-];
-
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "ativo", label: "Ativo" },
-  { value: "inativo", label: "Inativo" },
-  { value: "arquivado", label: "Arquivado" },
-];
+import { useStatus } from '@/hooks/useStatusControl'
+import { usePeriodos } from '@/hooks';
+import { useCourses } from '@/hooks/useCourse';
 
 export default function TurmasPage() {
   const {
@@ -96,17 +80,66 @@ export default function TurmasPage() {
     handleSearch,
     refetch
   } = useTurmaManager();
-  
+
   const { archiveTurma, isLoading: archivingTurma } = useArchiveTurma();
-  
+
   const [periodoFilter, setPeriodoFilter] = useState("all");
   const [cursoFilter, setCursoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  
+
+  const { status } = useStatus(1, 100, "");
+  const { courses } = useCourses(1, 100, "");
+  const { periodos, fetchPeriodos } = usePeriodos();
+
+  // Carregar períodos ao montar o componente
+  useEffect(() => {
+    fetchPeriodos(1, 100, "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const statusOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Status" }];
+    if (status && status.length > 0) {
+      status.forEach((s) => {
+        options.push({
+          value: s.codigo.toString(),
+          label: s.designacao
+        });
+      });
+    }
+    return options;
+  }, [status]);
+
+  const cursoOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Cursos" }];
+    if (courses && courses.length > 0) {
+      courses.forEach((c) => {
+        options.push({
+          value: c.codigo.toString(),
+          label: c.designacao
+        });
+      });
+    }
+    return options;
+  }, [courses]);
+
+  const periodoOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Todos os Períodos" }];
+    if (periodos && periodos.length > 0) {
+      periodos.forEach((p) => {
+        options.push({
+          value: p.codigo.toString(),
+          label: p.designacao
+        });
+      });
+    }
+    return options;
+  }, [periodos]);
+
   // Estados para paginação local (já que useTurmaManager carrega todas as turmas)
   const [currentPage, setCurrentPage] = useState(1);
   const limit = 10; // Itens por página
-  
+
   // Função para mudança de página
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -117,23 +150,7 @@ export default function TurmasPage() {
     setCurrentPage(1);
   }, [periodoFilter, cursoFilter, statusFilter, searchTerm]);
 
-  // Opções de curso dinâmicas baseadas nos dados reais
-  const cursoOptions = useMemo(() => {
-    const cursosUnicos = Array.from(new Set(
-      turmas
-        .filter((turma: any) => turma.tb_cursos?.designacao)
-        .map((turma: any) => turma.tb_cursos!.designacao)
-    ));
-    
-    return [
-      { value: "all", label: "Todos os Cursos" },
-      ...cursosUnicos.map((curso: string) => ({
-        value: curso.toLowerCase().replace(/\s+/g, '-'),
-        label: curso
-      }))
-    ];
-  }, [turmas]);
-  
+
   // Estados para o modal de relatórios
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedTurma, setSelectedTurma] = useState<any>(null);
@@ -150,33 +167,19 @@ export default function TurmasPage() {
     let filtered = turmas;
 
     if (periodoFilter !== "all") {
-      filtered = filtered.filter(turma => 
-        turma.tb_periodos?.designacao.toLowerCase() === periodoFilter
+      filtered = filtered.filter(turma =>
+        turma.tb_periodos?.codigo.toString() === periodoFilter
       );
     }
 
     if (cursoFilter !== "all") {
-      filtered = filtered.filter(turma => {
-        const cursoName = turma.tb_cursos?.designacao.toLowerCase() || '';
-        switch (cursoFilter) {
-          case "informatica":
-            return cursoName.includes("informática");
-          case "contabilidade":
-            return cursoName.includes("contabilidade");
-          case "administracao":
-            return cursoName.includes("administração");
-          case "secretariado":
-            return cursoName.includes("secretariado");
-          case "electronica":
-            return cursoName.includes("electrónica");
-          default:
-            return true;
-        }
-      });
+      filtered = filtered.filter(turma =>
+        turma.tb_cursos?.codigo.toString() === cursoFilter
+      );
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter(turma => 
+      filtered = filtered.filter(turma =>
         turma.status?.toLowerCase() === statusFilter
       );
     }
@@ -225,11 +228,11 @@ export default function TurmasPage() {
     setIsGeneratingPDF(true);
     try {
       console.log('Gerando PDF para todas as turmas do ano letivo:', selectedAnoLectivo);
-      
+
       if (!selectedAnoLectivo) {
         throw new Error('Ano letivo é obrigatório');
       }
-      
+
       await TurmaReportService.generateAllTurmasPDF(selectedAnoLectivo.codigo);
       alert(`PDF de todas as turmas do ano letivo ${selectedAnoLectivo.designacao} gerado com sucesso!`);
     } catch (error) {
@@ -302,17 +305,9 @@ export default function TurmasPage() {
     }
   };
 
-  // Estatísticas das turmas baseadas nos dados da API
-  const estatisticasTurmas = [
-    { periodo: "Manhã", count: turmas.filter(t => t.tb_periodos?.designacao === "Manhã").length },
-    { periodo: "Tarde", count: turmas.filter(t => t.tb_periodos?.designacao === "Tarde").length },
-    { periodo: "Noite", count: turmas.filter(t => t.tb_periodos?.designacao === "Noite").length }
-  ];
-
   // Em produção, dados de matrícula viriam de endpoint específico
   const totalMatriculados = 0; // Placeholder
   const totalCapacidade = turmas.reduce((sum, turma) => sum + (turma.max_Alunos || 0), 0);
-  const ocupacao = '0'; // Placeholder até integrar com API de matrículas
 
   // Estados de loading e error
   if (isLoading) {
@@ -353,7 +348,7 @@ export default function TurmasPage() {
     <Container>
       {/* Header usando WelcomeHeader */}
       <WelcomeHeader
-        title="Turmas"
+        title="Gestão de Turmas"
         description="Gerencie todas as turmas do sistema educacional. Organize por cursos, períodos e classes, visualize informações detalhadas e mantenha o controle de matrículas e capacidade."
         iconMain={<School className="h-8 w-8 text-white" />}
         titleBtnLeft="Listar Alunos"
@@ -380,7 +375,7 @@ export default function TurmasPage() {
 
         <StatCard
           icon={Users}
-          title="Total Matriculados"
+          title="Tuarmas Ativas"
           value={totalMatriculados.toString()}
           change="+4.2%"
           changeType="up"
@@ -389,23 +384,25 @@ export default function TurmasPage() {
           accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
         />
 
-        <StatCard
-          icon={GraduationCap}
-          title="Capacidade Total"
-          value={totalCapacidade.toString()}
-          change="Estável"
-          changeType="neutral"
-          color="text-[#FFD002]"
-          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
-          accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
+    
+
+          <StatCard
+          title="Turmas Inativas"
+          // value={turmas.filter(s => s.codigo_Status !== 1).length.toString()}
+          change="Inativos"
+          changeType="down"
+          icon={UserX}
+          color="text-red-600"
+          bgColor="bg-gradient-to-br from-red-50 via-white to-red-50/50"
+          accentColor="bg-gradient-to-br from-red-500 to-red-600"
         />
 
         <StatCard
-          icon={Activity}
-          title="Taxa de Ocupação"
-          value={`${ocupacao}%`}
-          change="+2.1%"
-          changeType="up"
+          title="Página Atual"
+          // value={`${currentPage}/${serverPagination.totalPages || 1}`}
+          change="Paginação"
+          changeType="neutral"
+          icon={UserX}
           color="text-purple-600"
           bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
           accentColor="bg-gradient-to-br from-purple-500 to-purple-600"
@@ -506,7 +503,7 @@ export default function TurmasPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant={turma.status === "Ativo" ? "default" : "secondary"}
                         className={turma.status === "Ativo" ? "bg-emerald-100 text-emerald-800" : ""}
                       >
@@ -528,11 +525,11 @@ export default function TurmasPage() {
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          
+
                           {/* Ações de status baseadas no status atual */}
                           {turma.status === 'Ativo' && (
                             <>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleDeactivateTurma(turma.codigo)}
                                 className="text-orange-600"
                                 disabled={archivingTurma}
@@ -540,7 +537,7 @@ export default function TurmasPage() {
                                 <ToggleLeft className="mr-2 h-4 w-4" />
                                 Desativar
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleArchiveTurma(turma.codigo)}
                                 className="text-blue-600"
                                 disabled={archivingTurma}
@@ -550,10 +547,10 @@ export default function TurmasPage() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          
+
                           {turma.status === 'Inativo' && (
                             <>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleActivateTurma(turma.codigo)}
                                 className="text-green-600"
                                 disabled={archivingTurma}
@@ -561,7 +558,7 @@ export default function TurmasPage() {
                                 <ToggleRight className="mr-2 h-4 w-4" />
                                 Ativar
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleArchiveTurma(turma.codigo)}
                                 className="text-blue-600"
                                 disabled={archivingTurma}
@@ -571,9 +568,9 @@ export default function TurmasPage() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          
+
                           {turma.status === 'Arquivado' && (
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleActivateTurma(turma.codigo)}
                               className="text-green-600"
                               disabled={archivingTurma}
@@ -582,9 +579,9 @@ export default function TurmasPage() {
                               Reativar
                             </DropdownMenuItem>
                           )}
-                          
+
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => handleDeleteTurma(turma.codigo)}
                             className="text-red-600"
                           >
@@ -604,7 +601,7 @@ export default function TurmasPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, filteredTurmas.length)} de {filteredTurmas.length} turmas
+                Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, filteredTurmas.length)} de {filteredTurmas.length} turmas
               </div>
               <div className="flex items-center space-x-2">
                 <Button
@@ -622,9 +619,9 @@ Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, fil
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
+
                     const pages = [];
-                    
+
                     // Primeira página
                     if (adjustedStartPage > 1) {
                       pages.push(
@@ -641,7 +638,7 @@ Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, fil
                         pages.push(<span key="ellipsis1" className="px-2">...</span>);
                       }
                     }
-                    
+
                     // Páginas do meio
                     for (let i = adjustedStartPage; i <= endPage; i++) {
                       pages.push(
@@ -656,7 +653,7 @@ Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, fil
                         </Button>
                       );
                     }
-                    
+
                     // Última página
                     if (endPage < totalPages) {
                       if (endPage < totalPages - 1) {
@@ -673,7 +670,7 @@ Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, fil
                         </Button>
                       );
                     }
-                    
+
                     return pages;
                   })()}
                 </div>
@@ -704,7 +701,7 @@ Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, fil
               Selecione o tipo de relatório que deseja gerar
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6 py-4">
             {/* Filtro por Ano Letivo */}
             <div className="space-y-2">
@@ -822,7 +819,7 @@ Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, fil
                   </>
                 )}
               </Button>
-              
+
               <Button
                 onClick={handleGeneratePDF}
                 disabled={isGeneratingPDF || !selectedAnoLectivo || (reportType === 'single' && !selectedTurma)}
