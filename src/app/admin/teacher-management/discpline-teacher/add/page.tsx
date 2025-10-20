@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   ArrowLeft,
   Save,
-  BookOpen,
   User,
   Clock,
   Calendar,
@@ -198,9 +197,9 @@ export default function AddDisciplineTeacher() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="space-y-8">
         {/* Informações Básicas */}
-        <Card className="border-l-4 border-l-blue-500">
+        <Card className="">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <User className="h-5 w-5 text-blue-600" />

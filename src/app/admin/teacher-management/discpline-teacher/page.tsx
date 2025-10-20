@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { useDisciplinasDocente, useDeleteDisciplinaDocente } from '@/hooks/useDisciplineTeacher';
+import { IDisciplinaDocente } from '@/types/disciplineTeacher.types';
 import { 
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DisciplineTeacherModal } from '@/components/discipline-teacher/discipline-teacher-modal';
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
@@ -46,7 +48,6 @@ import {
   Eye,
   Edit,
   Trash2,
-  Download,
   GraduationCap,
   Clock,
   ChevronLeft,
@@ -91,12 +92,16 @@ export default function TeacherDisciplinesPage() {
   const [itemToDelete, setItemToDelete] = useState<{ id: number; nome: string } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Estados para modal de criação/edição
+  const [showModal, setShowModal] = useState(false);
+  const [selectedDisciplineTeacher, setSelectedDisciplineTeacher] = useState<IDisciplinaDocente | null>(null);
+
   // Hooks da API
   const { data: disciplines, pagination, loading, error, refetch } = useDisciplinasDocente(currentPage, itemsPerPage, searchTerm);
   const { deleteDisciplinaDocente, loading: deleteLoading } = useDeleteDisciplinaDocente();
 
   // Funções de manipulação
-  const handleDeleteClick = (discipline: any) => {
+  const handleDeleteClick = (discipline: IDisciplinaDocente) => {
     setItemToDelete({
       id: discipline.codigo,
       nome: `${discipline.tb_docente.nome} - ${discipline.tb_disciplinas.designacao}`
@@ -130,7 +135,11 @@ export default function TeacherDisciplinesPage() {
   };
 
   const handleEditAssignment = (assignmentId: number) => {
-    router.push(`/admin/teacher-management/discpline-teacher/edit/${assignmentId}`);
+    const discipline = disciplines?.find(d => d.codigo === assignmentId);
+    if (discipline) {
+      setSelectedDisciplineTeacher(discipline);
+      setShowModal(true);
+    }
   };
 
   const handleDeleteAssignment = (assignmentId: number) => {
@@ -157,7 +166,10 @@ export default function TeacherDisciplinesPage() {
         onClickBtnLeft={() => console.log("Exportar")}
         titleBtnRight="Nova Atribuição"
         iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
-        onClickBtnRight={() => window.location.href = '/admin/teacher-management/discpline-teacher/add'}
+        onClickBtnRight={() => {
+          setSelectedDisciplineTeacher(null);
+          setShowModal(true);
+        }}
       />
 
       {/* Stats Cards usando StatCard */}
@@ -435,6 +447,22 @@ export default function TeacherDisciplinesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Criação/Edição */}
+      <DisciplineTeacherModal
+        open={showModal}
+        onOpenChange={(open) => {
+          setShowModal(open);
+          if (!open) {
+            setSelectedDisciplineTeacher(null);
+          }
+        }}
+        disciplineTeacher={selectedDisciplineTeacher}
+        onSuccess={() => {
+          refetch();
+          setSelectedDisciplineTeacher(null);
+        }}
+      />
 
       {/* Modal de Confirmação de Exclusão */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
