@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Container from '@/components/layout/Container';
 import StatCard from '@/components/layout/StatCard';
 import { 
@@ -14,9 +14,7 @@ import {
 } from '@/hooks/useAcademicEvaluation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -36,7 +34,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -58,7 +55,6 @@ import {
   FileText,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
   Trash2,
   Activity,
@@ -67,9 +63,6 @@ import {
   Settings,
   Loader2,
 } from 'lucide-react';
-
-// Sistema de Configurações de Avaliação Acadêmica
-// Gerencia tipos de avaliação, tipos de nota, trimestres e relatórios
 
 export default function NotesPage() {
   // Hooks da API real para configurações de avaliação
@@ -108,20 +101,6 @@ export default function NotesPage() {
 
   // Estados de loading combinados
   const isLoading = trimestresLoading || tiposNotaLoading || relatorioLoading;
-  const hasError = trimestresError && tiposNotaError && relatorioError; // Só mostra erro se TODOS falharem
-  
-  // Log para debug
-  console.log('Estados:', {
-    trimestresLoading, tiposNotaLoading, relatorioLoading,
-    trimestresError, tiposNotaError, relatorioError,
-    trimestres: trimestres?.length, tiposNota: tiposNota?.length, relatorio
-  });
-
-  // Funções para gerenciar exclusão
-  const handleDeleteClick = (item: {id: number, nome: string, tipo: 'trimestre' | 'tipoNota'}) => {
-    setItemToDelete(item);
-    setShowDeleteModal(true);
-  };
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
@@ -157,7 +136,7 @@ export default function NotesPage() {
       setTrimestreForm({ designacao: '', dataInicio: '', dataFim: '' });
       // Recarregar dados seria feito aqui se necessário
     } catch (error) {
-      console.error('Erro ao criar trimestre:', error);
+      // console.error('Erro ao criar trimestre:', error);
     }
   };
 
@@ -200,44 +179,6 @@ export default function NotesPage() {
     );
   }
 
-  if (hasError) {
-    return (
-      <Container>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center max-w-md">
-            <div className="text-red-500 mb-4">
-              <FileText className="h-12 w-12 mx-auto mb-2" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao Carregar Dados</h2>
-            <p className="text-gray-600 mb-2">Não foi possível carregar as configurações de avaliação.</p>
-            
-            {/* Detalhes do erro para debug */}
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
-              <p className="text-sm text-red-800 font-semibold mb-2">Detalhes do erro:</p>
-              <p className="text-xs text-red-700 mb-1">Trimestres: {trimestresError || 'OK'}</p>
-              <p className="text-xs text-red-700 mb-1">Tipos de Nota: {tiposNotaError || 'OK'}</p>
-              <p className="text-xs text-red-700 mb-1">Relatório: {relatorioError || 'OK'}</p>
-              <p className="text-xs text-red-700">API URL: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Button onClick={() => window.location.reload()} className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 w-full">
-                Tentar Novamente
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => console.log('Logs:', { trimestresError, tiposNotaError, relatorioError })}
-                className="w-full"
-              >
-                Ver Logs no Console
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Container>
-    );
-  }
-
   return (
     <Container>
       {/* Header seguindo padrão do Dashboard */}
@@ -251,7 +192,7 @@ export default function NotesPage() {
                 </div>
                 <div>
                   <h1 className="text-4xl font-bold text-gray-900">
-                    Configurações de Avaliação
+                    Gestão de Trimestres Acadêmicos
                   </h1>
                   <p className="text-[#F9CD1D] font-semibold text-lg">Tipos de Avaliação, Notas e Trimestres</p>
                 </div>
@@ -271,7 +212,7 @@ export default function NotesPage() {
 
 
       {/* Stats Cards das Configurações */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Trimestres"
           value={relatorio ? relatorio.resumo.totalTrimestres.toString() : "0"}
@@ -315,7 +256,7 @@ export default function NotesPage() {
           bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
           accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
         />
-      </div>
+      </div> */}
 
       {/* Tabelas de Dados CRUD */}
       <div className="space-y-8">
@@ -359,25 +300,9 @@ export default function NotesPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/details/${trimestre.codigo}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Detalhes
-                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/edit/${trimestre.codigo}`}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteClick({
-                                  id: trimestre.codigo, 
-                                  nome: trimestre.designacao || `Trimestre ${trimestre.codigo}`, 
-                                  tipo: 'trimestre'
-                                })}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -397,7 +322,7 @@ export default function NotesPage() {
         </Card>
 
         {/* Tabela de Tipos de Nota */}
-        <Card>
+        {/* <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center space-x-2">
               <Award className="h-5 w-5 text-emerald-600" />
@@ -448,25 +373,9 @@ export default function NotesPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/details/${tipo.codigo}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Detalhes
-                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/edit/${tipo.codigo}`}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteClick({
-                                  id: tipo.codigo, 
-                                  nome: tipo.designacao || `Tipo ${tipo.codigo}`, 
-                                  tipo: 'tipoNota'
-                                })}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -483,7 +392,7 @@ export default function NotesPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Modal de Criação de Trimestre */}
