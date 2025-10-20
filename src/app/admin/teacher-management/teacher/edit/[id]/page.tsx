@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 
 import { useDocente, useUpdateDocente, useEspecialidades } from '@/hooks/useTeacher';
+import { useStatus } from '@/hooks/useStatusControl';
 
 // Schema de validação
 const docenteSchema = yup.object({
@@ -48,14 +49,14 @@ export default function EditTeacherPage() {
   const router = useRouter();
   const params = useParams();
   const teacherId = parseInt(params.id as string);
-  
+
   const { docente: teacher, loading, error } = useDocente(teacherId);
   const { updateDocente, loading: updateLoading } = useUpdateDocente();
   const { especialidades } = useEspecialidades();
+  const { status } = useStatus(1, 100, "");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { control, handleSubmit: handleFormSubmit, formState: { errors }, reset } = useForm<DocenteFormData>({
     resolver: yupResolver(docenteSchema),
@@ -82,26 +83,19 @@ export default function EditTeacherPage() {
   }, [teacher, reset]);
 
   const handleSubmit = async (data: DocenteFormData) => {
-    try {
-      setIsSubmitting(true);
-      setSaveError(null);
-      setSaveSuccess(false);
 
-      const result = await updateDocente(teacherId, data);
-      
-      if (result) {
-        setSaveSuccess(true);
-        setTimeout(() => {
-          router.push('/admin/teacher-management/teacher');
-        }, 2000);
-      } else {
-        setSaveError('Erro ao atualizar docente');
-      }
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Erro ao atualizar docente');
-    } finally {
-      setIsSubmitting(false);
+    setIsSubmitting(true);
+    setSaveSuccess(false);
+
+    const result = await updateDocente(teacherId, data);
+
+    if (result) {
+      setSaveSuccess(true);
+      setTimeout(() => {
+        router.push('/admin/teacher-management/teacher');
+      }, 2000);
     }
+    setIsSubmitting(false);
   };
 
   const handleBack = () => {
@@ -159,7 +153,7 @@ export default function EditTeacherPage() {
             <p className="text-gray-600">{teacher.nome}</p>
           </div>
         </div>
-        
+
         {/* Botões de Ação no Header */}
         <div className="flex items-center space-x-4">
           <Button
@@ -192,26 +186,6 @@ export default function EditTeacherPage() {
           <div className="flex items-center">
             <div className="text-green-500 mr-2">✓</div>
             <span className="text-green-700">Docente atualizado com sucesso! Redirecionando...</span>
-          </div>
-        </div>
-      )}
-
-      {saveError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-              <div>
-                <span className="text-red-700 font-medium">Erro ao salvar:</span>
-                <p className="text-red-600 text-sm mt-1">{saveError}</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setSaveError(null)}
-              className="text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
           </div>
         </div>
       )}
@@ -339,8 +313,11 @@ export default function EditTeacherPage() {
                         <SelectValue placeholder="Selecione o status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">Ativo</SelectItem>
-                        <SelectItem value="0">Inativo</SelectItem>
+                        {status.map((item) => (
+                          <SelectItem key={item.codigo} value={item.codigo.toString()}>
+                            {item.designacao}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}

@@ -26,12 +26,12 @@ import {
   ArrowLeft,
   Save,
   Loader2,
-  AlertCircle,
   User,
   GraduationCap,
 } from 'lucide-react';
 
 import { useCreateDocente, useEspecialidades } from '@/hooks/useTeacher';
+import { useStatus } from '@/hooks/useStatusControl';
 
 // Schema de validação
 const docenteSchema = yup.object({
@@ -51,8 +51,6 @@ export default function AddTeacherPage() {
   const { especialidades } = useEspecialidades();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { control, handleSubmit: handleFormSubmit, formState: { errors } } = useForm<DocenteFormData>({
     resolver: yupResolver(docenteSchema),
@@ -65,27 +63,21 @@ export default function AddTeacherPage() {
     }
   });
 
+  const { status } = useStatus(1, 100, ""); 
+
   const handleSubmit = async (data: DocenteFormData) => {
-    try {
+
       setIsSubmitting(true);
-      setSaveError(null);
-      setSaveSuccess(false);
 
       const result = await createDocente(data);
       
       if (result) {
-        setSaveSuccess(true);
         setTimeout(() => {
           router.push('/admin/teacher-management/teacher');
         }, 2000);
-      } else {
-        setSaveError('Erro ao criar docente');
       }
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Erro ao criar docente');
-    } finally {
       setIsSubmitting(false);
-    }
+    
   };
 
   const handleBack = () => {
@@ -132,36 +124,6 @@ export default function AddTeacherPage() {
           </Button>
         </div>
       </div>
-
-      {/* Estados de Sucesso e Erro */}
-      {saveSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center">
-            <div className="text-green-500 mr-2">✓</div>
-            <span className="text-green-700">Docente criado com sucesso! Redirecionando...</span>
-          </div>
-        </div>
-      )}
-
-      {saveError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-              <div>
-                <span className="text-red-700 font-medium">Erro ao salvar:</span>
-                <p className="text-red-600 text-sm mt-1">{saveError}</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setSaveError(null)}
-              className="text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Formulário */}
       <form onSubmit={handleFormSubmit(handleSubmit)} className="space-y-8">
@@ -286,8 +248,11 @@ export default function AddTeacherPage() {
                         <SelectValue placeholder="Selecione o status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">Ativo</SelectItem>
-                        <SelectItem value="0">Inativo</SelectItem>
+                        {status.map((item) => (
+                          <SelectItem key={item.codigo} value={item.codigo.toString()}>
+                            {item.designacao}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}

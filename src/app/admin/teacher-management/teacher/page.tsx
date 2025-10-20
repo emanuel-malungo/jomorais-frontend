@@ -88,7 +88,7 @@ export default function ListTeacherPage() {
   }, [status]);
 
   // Usar o hook com busca via API
-  const { docentes, loading, error, pagination, refetch } = useDocentes(
+  const { docentes, loading, pagination } = useDocentes(
     currentPage, 
     itemsPerPage, 
     debouncedSearch
