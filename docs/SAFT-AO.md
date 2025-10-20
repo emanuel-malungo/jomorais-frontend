@@ -1,8 +1,8 @@
-# Sistema de Exportação SAFT-AO
+# Sistema SAFT-AO - Standard Audit File for Tax Angola
 
-## Visão Geral
+## 🎯 Visão Geral
 
-O Sistema de Exportação SAFT-AO (Standard Audit File for Tax - Angola) foi implementado no sistema Jomorais para gerar ficheiros fiscais conforme as especificações da AGT (Administração Geral Tributária de Angola).
+O Sistema SAFT-AO foi implementado no sistema Jomorais em **conformidade total com o Decreto Executivo n.º 74/19** da AGT (Administração Geral Tributária de Angola). Este sistema permite a exportação de dados contabilísticos e de faturação em formato XML estruturado com assinatura digital RSA.
 
 ## Funcionalidades Implementadas
 

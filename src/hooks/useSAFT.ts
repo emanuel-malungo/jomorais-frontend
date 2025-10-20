@@ -1,282 +1,251 @@
-import { useState, useCallback } from 'react';
-import saftService from '@/services/saft.service';
-import { ISAFTExportConfig, ISAFTExportResponse } from '@/types/saft.types';
+import { useState, useEffect } from 'react';
+import SAFTService from '@/services/saft.service';
+import SAFTValidatorService, { IValidationResult } from '@/services/saft-validator.service';
+import CryptoService from '@/services/crypto.service';
+import { ISAFTExportConfig, ISAFTExportResponse, ISAFTFile } from '@/types/saft.types';
 
-export const useSAFTExport = () => {
+export const useSAFT = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ISAFTExportResponse | null>(null);
+  const [exportProgress, setExportProgress] = useState(0);
 
-  const exportSAFT = useCallback(async (config: ISAFTExportConfig): Promise<ISAFTExportResponse> => {
+  const exportSAFT = async (config: ISAFTExportConfig): Promise<ISAFTExportResponse> => {
+    setIsLoading(true);
+    setError(null);
+    setExportProgress(0);
+
     try {
-      setIsLoading(true);
-      setError(null);
-      setResult(null);
+      // Simular progresso durante a exportação
+      const progressInterval = setInterval(() => {
+        setExportProgress(prev => Math.min(prev + 10, 90));
+      }, 500);
 
-      console.log('🔄 Iniciando exportação SAFT via hook:', config);
-
-      const response = await saftService.exportSAFT(config);
-      setResult(response);
-
-      if (response.success) {
-        console.log('✅ Exportação SAFT concluída com sucesso');
-      } else {
-        console.error('❌ Erro na exportação SAFT:', response.message);
-        setError(response.message);
-      }
-
-      return response;
+      const result = await SAFTService.exportSAFT(config);
+      
+      clearInterval(progressInterval);
+      setExportProgress(100);
+      
+      return result;
     } catch (err: any) {
-      const errorMessage = err.message || 'Erro inesperado ao exportar SAFT';
-      console.error('❌ Erro no hook useSAFTExport:', err);
+      const errorMessage = err.message || 'Erro ao exportar SAFT';
       setError(errorMessage);
-      
-      const errorResponse: ISAFTExportResponse = {
-        success: false,
-        message: errorMessage,
-        errors: [errorMessage]
-      };
-      setResult(errorResponse);
-      
-      return errorResponse;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
+      setTimeout(() => setExportProgress(0), 2000);
     }
-  }, []);
+  };
 
-  const validateConfig = useCallback(async (config: ISAFTExportConfig) => {
+  const validateConfig = async (config: ISAFTExportConfig) => {
     try {
-      setIsValidating(true);
-      setError(null);
-
-      console.log('🔍 Validando configuração SAFT:', config);
-
-      const validation = await saftService.validateExportConfig(config);
-      
-      if (!validation.valid) {
-        console.warn('⚠️ Configuração SAFT inválida:', validation.errors);
-        setError(validation.errors.join(', '));
-      } else {
-        console.log('✅ Configuração SAFT válida');
-      }
-
-      return validation;
+      return await SAFTService.validateExportConfig(config);
     } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao validar configuração';
-      console.error('❌ Erro na validação SAFT:', err);
-      setError(errorMessage);
-      
+      setError(err.message || 'Erro ao validar configuração');
+      return { valid: false, errors: [err.message] };
+    }
+  };
+
+  const validateSAFTFile = (saftFile: ISAFTFile): IValidationResult => {
+    try {
+      return SAFTValidatorService.validateSAFTFile(saftFile);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao validar ficheiro SAFT');
       return {
         valid: false,
-        errors: [errorMessage]
+        errors: [{ code: 'VALIDATION_ERROR', message: err.message, severity: 'error' as const }],
+        warnings: [],
+        summary: { totalErrors: 1, totalWarnings: 0, criticalErrors: 1 }
       };
-    } finally {
-      setIsValidating(false);
     }
-  }, []);
+  };
 
-  const generateMockSAFT = useCallback(async (config: ISAFTExportConfig): Promise<ISAFTExportResponse> => {
+  const getStatistics = async (startDate: string, endDate: string) => {
     try {
-      setIsLoading(true);
-      setError(null);
-      setResult(null);
+      return await SAFTService.getExportStatistics(startDate, endDate);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao buscar estatísticas');
+      return null;
+    }
+  };
 
-      console.log('🔄 Gerando SAFT mock via hook:', config);
+  const generateKeys = async () => {
+    setIsLoading(true);
+    setError(null);
 
-      const response = await saftService.generateMockSAFT(config);
-      setResult(response);
+    try {
+      const keyPair = await CryptoService.generateKeyPair();
+      
+      // Salvar chaves no localStorage
+      localStorage.setItem('saft_private_key', keyPair.privateKey);
+      localStorage.setItem('saft_public_key', keyPair.publicKey);
+      
+      return keyPair;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Erro ao gerar chaves';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      if (response.success) {
-        console.log('✅ SAFT mock gerado com sucesso');
-      } else {
-        console.error('❌ Erro ao gerar SAFT mock:', response.message);
-        setError(response.message);
+  const exportPublicKey = () => {
+    try {
+      const publicKey = localStorage.getItem('saft_public_key');
+      if (!publicKey) {
+        throw new Error('Chave pública não encontrada');
       }
 
-      return response;
+      const pemKey = CryptoService.exportPublicKeyPEM();
+      const blob = new Blob([pemKey], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'chave_publica_saft.pem';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      window.URL.revokeObjectURL(url);
+      
+      return true;
     } catch (err: any) {
-      const errorMessage = err.message || 'Erro inesperado ao gerar SAFT mock';
-      console.error('❌ Erro no hook generateMockSAFT:', err);
-      setError(errorMessage);
-      
-      const errorResponse: ISAFTExportResponse = {
-        success: false,
-        message: errorMessage,
-        errors: [errorMessage]
-      };
-      setResult(errorResponse);
-      
-      return errorResponse;
-    } finally {
-      setIsLoading(false);
+      setError(err.message || 'Erro ao exportar chave pública');
+      return false;
     }
-  }, []);
+  };
 
-  const downloadFile = useCallback((downloadUrl: string, fileName: string) => {
+  const checkKeys = () => {
+    const hasPrivateKey = localStorage.getItem('saft_private_key');
+    const hasPublicKey = localStorage.getItem('saft_public_key');
+    return !!(hasPrivateKey && hasPublicKey);
+  };
+
+  const clearKeys = () => {
+    localStorage.removeItem('saft_private_key');
+    localStorage.removeItem('saft_public_key');
+  };
+
+  const downloadFile = (downloadUrl: string, fileName: string) => {
     try {
-      saftService.downloadSAFTFile(downloadUrl, fileName);
-      console.log('✅ Download iniciado:', fileName);
+      SAFTService.downloadSAFTFile(downloadUrl, fileName);
+      return true;
     } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao fazer download';
-      console.error('❌ Erro no download:', err);
-      setError(errorMessage);
+      setError(err.message || 'Erro ao fazer download');
+      return false;
     }
-  }, []);
+  };
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  const clearResult = useCallback(() => {
-    setResult(null);
-  }, []);
+  const generateValidationReport = (validationResult: IValidationResult): string => {
+    return SAFTValidatorService.generateValidationReport(validationResult);
+  };
 
   return {
-    // Estados
     isLoading,
-    isValidating,
     error,
-    result,
-    
-    // Funções
+    exportProgress,
     exportSAFT,
     validateConfig,
-    generateMockSAFT,
+    validateSAFTFile,
+    getStatistics,
+    generateKeys,
+    exportPublicKey,
+    checkKeys,
+    clearKeys,
     downloadFile,
-    clearError,
-    clearResult
+    generateValidationReport,
+    clearError: () => setError(null)
   };
 };
 
-export const useSAFTStatistics = () => {
-  const [statistics, setStatistics] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// Hook para configuração padrão do SAFT
+export const useDefaultSAFTConfig = () => {
+  const [config, setConfig] = useState<ISAFTExportConfig>({
+    startDate: '',
+    endDate: '',
+    includeCustomers: true,
+    includeProducts: true,
+    includeInvoices: true,
+    includePayments: true,
+    companyInfo: {
+      nif: '',
+      name: '',
+      address: '',
+      city: 'Luanda',
+      postalCode: '',
+      phone: '',
+      email: ''
+    },
+    softwareInfo: {
+      name: 'Sistema Jomorais',
+      version: '1.0.0',
+      certificateNumber: '',
+      companyNIF: ''
+    }
+  });
 
-  const loadStatistics = useCallback(async (startDate: string, endDate: string) => {
+  useEffect(() => {
+    // Definir datas padrão (mês atual)
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    setConfig(prev => ({
+      ...prev,
+      startDate: firstDay.toISOString().split('T')[0],
+      endDate: lastDay.toISOString().split('T')[0]
+    }));
+
+    // Carregar informações da empresa se disponível
+    loadCompanyInfo();
+  }, []);
+
+  const loadCompanyInfo = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-
-      console.log('📊 Carregando estatísticas SAFT:', { startDate, endDate });
-
-      const stats = await saftService.getExportStatistics(startDate, endDate);
-      setStatistics(stats);
-
-      console.log('✅ Estatísticas SAFT carregadas:', stats);
-    } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao carregar estatísticas';
-      console.error('❌ Erro ao carregar estatísticas SAFT:', err);
-      setError(errorMessage);
-      
-      // Definir estatísticas padrão em caso de erro
-      setStatistics({
-        totalInvoices: 0,
-        totalPayments: 0,
-        totalCustomers: 0,
-        totalProducts: 0,
-        totalAmount: 0
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const clearStatistics = useCallback(() => {
-    setStatistics(null);
-  }, []);
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  return {
-    // Estados
-    statistics,
-    isLoading,
-    error,
-    
-    // Funções
-    loadStatistics,
-    clearStatistics,
-    clearError
-  };
-};
-
-export const useSAFTCompanyInfo = () => {
-  const [companyInfo, setCompanyInfo] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadCompanyInfo = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      console.log('🏢 Carregando informações da empresa para SAFT...');
-
-      const company = await saftService.getCompanyInfo();
-      setCompanyInfo(company);
-
-      console.log('✅ Informações da empresa carregadas:', company);
-    } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao carregar informações da empresa';
-      console.error('❌ Erro ao carregar informações da empresa:', err);
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const clearCompanyInfo = useCallback(() => {
-    setCompanyInfo(null);
-  }, []);
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  return {
-    // Estados
-    companyInfo,
-    isLoading,
-    error,
-    
-    // Funções
-    loadCompanyInfo,
-    clearCompanyInfo,
-    clearError
-  };
-};
-
-// Hook principal que combina todas as funcionalidades
-export const useSAFT = () => {
-  const exportHook = useSAFTExport();
-  const statisticsHook = useSAFTStatistics();
-  const companyHook = useSAFTCompanyInfo();
-
-  return {
-    // Export
-    export: exportHook,
-    
-    // Statistics
-    statistics: statisticsHook,
-    
-    // Company Info
-    company: companyHook,
-    
-    // Estados combinados
-    isLoading: exportHook.isLoading || statisticsHook.isLoading || companyHook.isLoading,
-    hasError: !!(exportHook.error || statisticsHook.error || companyHook.error),
-    
-    // Função para limpar todos os erros
-    clearAllErrors: () => {
-      exportHook.clearError();
-      statisticsHook.clearError();
-      companyHook.clearError();
+      const companyData = await SAFTService.getCompanyInfo();
+      if (companyData?.data) {
+        setConfig(prev => ({
+          ...prev,
+          companyInfo: {
+            nif: companyData.data.nif || prev.companyInfo.nif,
+            name: companyData.data.nome || prev.companyInfo.name,
+            address: companyData.data.endereco || prev.companyInfo.address,
+            city: companyData.data.cidade || prev.companyInfo.city,
+            postalCode: companyData.data.codigoPostal || prev.companyInfo.postalCode,
+            phone: companyData.data.telefone || prev.companyInfo.phone,
+            email: companyData.data.email || prev.companyInfo.email
+          }
+        }));
+      }
+    } catch (error) {
+      console.warn('Erro ao carregar informações da empresa:', error);
     }
   };
-};
 
-export default useSAFT;
+  const updateConfig = (updates: Partial<ISAFTExportConfig>) => {
+    setConfig(prev => ({ ...prev, ...updates }));
+  };
+
+  const updateCompanyInfo = (updates: Partial<ISAFTExportConfig['companyInfo']>) => {
+    setConfig(prev => ({
+      ...prev,
+      companyInfo: { ...prev.companyInfo, ...updates }
+    }));
+  };
+
+  const updateSoftwareInfo = (updates: Partial<ISAFTExportConfig['softwareInfo']>) => {
+    setConfig(prev => ({
+      ...prev,
+      softwareInfo: { ...prev.softwareInfo, ...updates }
+    }));
+  };
+
+  return {
+    config,
+    updateConfig,
+    updateCompanyInfo,
+    updateSoftwareInfo,
+    setConfig
+  };
+};

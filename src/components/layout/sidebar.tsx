@@ -29,6 +29,7 @@ import {
   Building,
   UserCog,
   TrendingUp,
+  Shield,
 } from "lucide-react"
 
 export interface MenuItem {
@@ -81,6 +82,7 @@ const menuItems: MenuItem[] = [
     children: [
       { title: "Pagamentos", icon: Wallet, href: "/admin/financeiro/pagamentos" },
       { title: "Relatórios de Vendas", icon: TrendingUp, href: "/admin/financeiro/relatorios-vendas" },
+      { title: "Exportação SAFT-AO", icon: Shield, href: "/admin/financeiro/saft" },
       { title: "Serviços", icon: FileText, href: "/admin/finance-management/services" },
       { title: "Notas de Crédito", icon: FileText, href: "/admin/finance-management/credit-notes" }
     ]
@@ -91,8 +93,7 @@ const menuItems: MenuItem[] = [
     children: [
       { title: "Relatórios de Alunos", icon: Users, href: "/admin/reports-management/students" },
       { title: "Relatórios Financeiros", icon: DollarSign, href: "/admin/reports-management/financial" },
-      { title: "Relatórios Acadêmicos", icon: BookOpen, href: "/admin/reports-management/academic" },
-      { title: "Exportação SAFT", icon: FileText, href: "/admin/reports-management/saft-export" }
+      { title: "Relatórios Acadêmicos", icon: BookOpen, href: "/admin/reports-management/academic" }
     ]
   },
   {
