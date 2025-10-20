@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useDiretoresTurma, useDeleteDiretorTurma, useCreateDiretorTurma } from '@/hooks/useDirectorTurma';
+import { useDiretoresTurma, useCreateDiretorTurma, useUpdateDiretorTurma } from '@/hooks/useDirectorTurma';
 import { IDiretorTurma, IDiretorTurmaInput } from '@/types/directorTurma.types';
 import { useDocentes } from '@/hooks/useTeacher';
 import turmaService from '@/services/turma.service';
@@ -54,9 +53,7 @@ import {
   Search,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
-  Trash2,
   Users,
   GraduationCap,
   ChevronLeft,
@@ -65,12 +62,11 @@ import {
   AlertCircle,
   Save,
   X,
-  BookOpen,
   Calendar,
 } from 'lucide-react';
 
 export default function DirectorTurmaPage() {
-  const router = useRouter();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -81,25 +77,21 @@ export default function DirectorTurmaPage() {
     itemsPerPage,
     searchTerm
   );
-  const { deleteDiretorTurma, loading: deleteLoading } = useDeleteDiretorTurma();
   const { createDiretorTurma, loading: createLoading } = useCreateDiretorTurma();
+  const { updateDiretorTurma, loading: updateLoading } = useUpdateDiretorTurma();
   
   // Hooks para dados do modal
   const { docentes, loading: docentesLoading } = useDocentes(1, 100); // Carregar todos os professores
   
   // Estados locais para turmas e anos letivos
-  const [turmas, setTurmas] = useState<any[]>([]);
+  const [turmas, setTurmas] = useState<Array<{ codigo: number; designacao: string }>>([]);
   const [turmasLoading, setTurmasLoading] = useState(false);
-  const [anosLectivos, setAnosLectivos] = useState<any[]>([]);
+  const [anosLectivos, setAnosLectivos] = useState<Array<{ codigo: number; designacao: string }>>([]);
   const [anosLoading, setAnosLoading] = useState(false);
   
-  // Estados para modal de confirmação de exclusão
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number; nome: string } | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-
-  // Estados para modal de criação
+  // Estados para modal de criação/edição
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingDirector, setEditingDirector] = useState<IDiretorTurma | null>(null);
   const [formData, setFormData] = useState({
     codigoDocente: "",
     codigoTurma: "",
@@ -108,37 +100,16 @@ export default function DirectorTurmaPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleViewDirector = (directorId: number) => {
-    router.push(`/admin/teacher-management/director-turma/details/${directorId}`);
-  };
 
-  const handleEditDirector = (directorId: number) => {
-    router.push(`/admin/teacher-management/director-turma/edit/${directorId}`);
-  };
-
-  const handleDeleteClick = (director: IDiretorTurma) => {
-    setItemToDelete({ id: director.codigo, nome: director.tb_docente.nome });
-    setShowDeleteModal(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
-
-    setDeletingId(itemToDelete.id);
-    const success = await deleteDiretorTurma(itemToDelete.id);
-    
-    if (success) {
-      refetch(); // Recarregar lista após exclusão
-      setShowDeleteModal(false);
-      setItemToDelete(null);
-    }
-    
-    setDeletingId(null);
-  };
-
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
-    setItemToDelete(null);
+  const handleEditDirector = (director: IDiretorTurma) => {
+    setEditingDirector(director);
+    setFormData({
+      codigoDocente: director.codigoDocente.toString(),
+      codigoTurma: director.codigoTurma.toString(),
+      codigoAnoLectivo: director.codigoAnoLectivo.toString(),
+      designacao: director.designacao || "",
+    });
+    setShowCreateModal(true);
   };
 
   // Funções para carregar dados
@@ -177,13 +148,22 @@ export default function DirectorTurmaPage() {
     fetchAnosLectivos(); // Carregar todos os anos letivos
   }, []); // Executar apenas uma vez na montagem do componente
 
-  // Funções do modal de criação
+  // Funções do modal de criação/edição
   const handleCreateClick = () => {
+    setEditingDirector(null);
+    setFormData({
+      codigoDocente: "",
+      codigoTurma: "",
+      codigoAnoLectivo: "",
+      designacao: "",
+    });
+    setErrors({});
     setShowCreateModal(true);
   };
 
   const handleCancelCreate = () => {
     setShowCreateModal(false);
+    setEditingDirector(null);
     setFormData({
       codigoDocente: "",
       codigoTurma: "",
@@ -239,7 +219,14 @@ export default function DirectorTurmaPage() {
       designacao: formData.designacao || null,
     };
 
-    const result = await createDiretorTurma(input);
+    let result;
+    if (editingDirector) {
+      // Modo edição
+      result = await updateDiretorTurma(editingDirector.codigo, input);
+    } else {
+      // Modo criação
+      result = await createDiretorTurma(input);
+    }
     
     if (result) {
       refetch(); // Recarregar lista
@@ -429,28 +416,10 @@ export default function DirectorTurmaPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => handleViewDirector(director.codigo)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Visualizar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleEditDirector(director.codigo)}
+                              onClick={() => handleEditDirector(director)}
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(director)}
-                              className="text-red-600"
-                              disabled={deletingId === director.codigo}
-                            >
-                              {deletingId === director.codigo ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="mr-2 h-4 w-4" />
-                              )}
-                              Excluir
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -515,18 +484,20 @@ export default function DirectorTurmaPage() {
         </div>
       )}
 
-      {/* Modal de Criação */}
+      {/* Modal de Criação/Edição */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <div className="h-10 w-10 bg-[#F9CD1D] rounded-full flex items-center justify-center">
-                <Plus className="h-5 w-5 text-white" />
+                {editingDirector ? <Edit className="h-5 w-5 text-white" /> : <Plus className="h-5 w-5 text-white" />}
               </div>
-              <span>Novo Diretor de Turma</span>
+              <span>{editingDirector ? 'Editar Diretor de Turma' : 'Novo Diretor de Turma'}</span>
             </DialogTitle>
             <DialogDescription>
-              Atribua um professor como diretor de uma turma específica.
+              {editingDirector 
+                ? 'Atualize as informações do diretor de turma.' 
+                : 'Atribua um professor como diretor de uma turma específica.'}
             </DialogDescription>
           </DialogHeader>
           
@@ -656,60 +627,28 @@ export default function DirectorTurmaPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancelCreate} disabled={createLoading}>
+            <Button variant="outline" onClick={handleCancelCreate} disabled={createLoading || updateLoading}>
               <X className="w-4 h-4 mr-2" />
               Cancelar
             </Button>
             <Button 
               onClick={handleCreateSubmit}
-              disabled={createLoading}
+              disabled={createLoading || updateLoading}
               className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90"
             >
-              {createLoading ? (
+              {(createLoading || updateLoading) ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              {createLoading ? 'Criando...' : 'Criar Atribuição'}
+              {(createLoading || updateLoading) 
+                ? (editingDirector ? 'Atualizando...' : 'Criando...') 
+                : (editingDirector ? 'Atualizar' : 'Criar Atribuição')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Confirmação de Exclusão */}
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="h-5 w-5 text-red-600" />
-              </div>
-              <span>Confirmar Exclusão</span>
-            </DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir o diretor de turma {itemToDelete?.nome}?
-              Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancelDelete}>
-              Cancelar
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleConfirmDelete}
-              disabled={deleteLoading}
-            >
-              {deleteLoading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="w-4 h-4 mr-2" />
-              )}
-              {deleteLoading ? 'Excluindo...' : 'Excluir'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Container>
   );
 }
