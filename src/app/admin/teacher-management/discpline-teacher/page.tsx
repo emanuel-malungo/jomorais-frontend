@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Container from '@/components/layout/Container';
 import { useDisciplinasDocente, useDeleteDisciplinaDocente } from '@/hooks/useDisciplineTeacher';
 import { IDisciplinaDocente } from '@/types/disciplineTeacher.types';
@@ -38,14 +37,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   BookOpen,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
   Trash2,
   GraduationCap,
@@ -65,7 +62,6 @@ const statusOptions = [
 ];
 
 export default function TeacherDisciplinesPage() {
-  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,15 +79,6 @@ export default function TeacherDisciplinesPage() {
   // Hooks da API
   const { data: disciplines, pagination, loading, error, refetch } = useDisciplinasDocente(currentPage, itemsPerPage, searchTerm);
   const { deleteDisciplinaDocente, loading: deleteLoading } = useDeleteDisciplinaDocente();
-
-  // Funções de manipulação
-  const handleDeleteClick = (discipline: IDisciplinaDocente) => {
-    setItemToDelete({
-      id: discipline.codigo,
-      nome: `${discipline.tb_docente.nome} - ${discipline.tb_disciplinas.designacao}`
-    });
-    setShowDeleteModal(true);
-  };
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
@@ -114,22 +101,11 @@ export default function TeacherDisciplinesPage() {
     setItemToDelete(null);
   };
 
-  const handleViewAssignment = (assignmentId: number) => {
-    router.push(`/admin/teacher-management/discpline-teacher/details/${assignmentId}`);
-  };
-
   const handleEditAssignment = (assignmentId: number) => {
     const discipline = disciplines?.find(d => d.codigo === assignmentId);
     if (discipline) {
       setSelectedDisciplineTeacher(discipline);
       setShowModal(true);
-    }
-  };
-
-  const handleDeleteAssignment = (assignmentId: number) => {
-    const discipline = disciplines?.find(d => d.codigo === assignmentId);
-    if (discipline) {
-      handleDeleteClick(discipline);
     }
   };
 
