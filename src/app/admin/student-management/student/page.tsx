@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import Container from '@/components/layout/Container';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import Container from '@/components/layout/Container';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -50,105 +50,50 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
+import { WelcomeHeader } from '@/components/dashboard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
+import { useRouter } from 'next/navigation';
 import useStudent from '@/hooks/useStudent';
 import { Student } from '@/types/student.types';
-import { useStatus } from '@/hooks/useStatusControl';
-import { useCourses } from '@/hooks/useCourse';
+import { calculateAge } from '@/utils/calculateAge.utils';
+import useFilterOptions from '@/hooks/useFilterOptions';
 
 export default function ListStudentPage() {
+
   const { students, loading, pagination, getAllStudents, deleteStudent } = useStudent();
+  const router = useRouter();
 
+  // Usar hook de opções de filtros
+  const { statusOptions, courseOptions } = useFilterOptions();
 
-  // Buscar dados de status e cursos
-  const { status } = useStatus(1, 100, ""); // Carregar todos os status
-  const { courses } = useCourses(1, 100, ""); // Carregar todos os cursos
-  
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  
+
   // Estados para modal de confirmação de exclusão
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Criar opções de status dinamicamente
-  const statusOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Status" }];
-    if (status && status.length > 0) {
-      status.forEach((s) => {
-        options.push({
-          value: s.codigo.toString(),
-          label: s.designacao
-        });
-      });
-    }
-    return options;
-  }, [status]);
-
-  // Criar opções de cursos dinamicamente
-  const courseOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Cursos" }];
-    if (courses && courses.length > 0) {
-      courses.forEach((c) => {
-        options.push({
-          value: c.codigo.toString(),
-          label: c.designacao
-        });
-      });
-    }
-    return options;
-  }, [courses]);
-
   // Carregar estudantes do backend quando filtros mudarem
   useEffect(() => {
-    getAllStudents(currentPage, itemsPerPage, searchTerm);
-  }, [currentPage, itemsPerPage, searchTerm, getAllStudents]);
+    getAllStudents(currentPage, itemsPerPage, searchTerm, statusFilter, courseFilter);
+  }, [currentPage, itemsPerPage, searchTerm, statusFilter, courseFilter, getAllStudents]);
 
   // Resetar para primeira página quando filtros mudarem
   useEffect(() => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [searchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, statusFilter, courseFilter]);
 
-  // Resetar para primeira página quando filtros mudarem
-  useEffect(() => {
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-    }
-  }, [searchTerm]);
-
-  // Aplicar filtros locais de status e curso (já que o backend não suporta ainda)
-  const filteredStudents = useMemo(() => {
-    let filtered = students;
-
-    // Filtro por status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(student => 
-        student.codigo_Status.toString() === statusFilter
-      );
-    }
-
-    // Filtro por curso
-    if (courseFilter !== "all") {
-      filtered = filtered.filter(student => {
-        if (!student.tb_matriculas) return false;
-        return student.tb_matriculas.tb_cursos.codigo.toString() === courseFilter;
-      });
-    }
-
-    return filtered;
-  }, [students, statusFilter, courseFilter]);
-
-  // Usar estudantes filtrados para exibição
-  const displayStudents = filteredStudents;
+  // Os estudantes já vêm filtrados do backend
+  const displayStudents = students;
 
   // Usar paginação do backend
   const serverPagination = useMemo(() => {
@@ -164,17 +109,9 @@ export default function ListStudentPage() {
   const startIndex = ((serverPagination.currentPage - 1) * serverPagination.itemsPerPage) + 1;
   const endIndex = Math.min(serverPagination.currentPage * serverPagination.itemsPerPage, serverPagination.totalItems);
 
-  const handleViewStudent = (studentId: number) => {
-    window.location.href = `/admin/student-management/student/details/${studentId}`;
-  };
-
-  const handleEditStudent = (studentId: number) => {
-    window.location.href = `/admin/student-management/student/edit/${studentId}`;
-  };
-
   const confirmDeleteStudent = async () => {
     if (!studentToDelete) return;
-    
+
     try {
       setDeleting(true);
       await deleteStudent(studentToDelete.codigo!);
@@ -201,37 +138,10 @@ export default function ListStudentPage() {
     setStudentToDelete(null);
   };
 
-  const calculateAge = (birthDate: any) => {
-    // Se o birthDate for um objeto vazio ou inválido, retorna "N/A"
-    if (!birthDate || typeof birthDate === 'object' && Object.keys(birthDate).length === 0) {
-      return "N/A";
-    }
-    
-    try {
-      const today = new Date();
-      const birth = new Date(birthDate);
-      
-      // Verifica se a data é válida
-      if (isNaN(birth.getTime())) {
-        return "N/A";
-      }
-      
-      let age = today.getFullYear() - birth.getFullYear();
-      const monthDiff = today.getMonth() - birth.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-        age--;
-      }
-      return age.toString();
-    } catch (error) {
-      console.error('Erro ao calcular idade:', error);
-      return "N/A";
-    }
-  };
-
   return (
     <Container>
       {/* Header seguindo padrão do Dashboard */}
- 
+
       <WelcomeHeader
         title="Gestão de Alunos"
         description="Gerencie todos os alunos matriculados na instituição. Visualize informações detalhadas, acompanhe matrículas e mantenha os dados sempre atualizados."
@@ -371,7 +281,7 @@ export default function ListStudentPage() {
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
                               <span className="flex items-center">
                                 <Calendar className="w-3 h-3 mr-1" />
-                                {calculateAge(student.dataNascimento) !== "N/A" 
+                                {calculateAge(student.dataNascimento) !== "N/A"
                                   ? `${calculateAge(student.dataNascimento)} anos`
                                   : "Idade N/A"
                                 }
@@ -396,7 +306,7 @@ export default function ListStudentPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           variant={student.codigo_Status === 1 ? "default" : "secondary"}
                           className={student.codigo_Status === 1 ? "bg-emerald-100 text-emerald-800" : ""}
                         >
@@ -413,11 +323,11 @@ export default function ListStudentPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleViewStudent(student.codigo || 0)}>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/student-management/student/details/${student.codigo || 0}`)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Visualizar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditStudent(student.codigo || 0)}>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/student-management/student/edit/${student.codigo || 0}`)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
@@ -461,9 +371,9 @@ export default function ListStudentPage() {
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(serverPagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
+
                     const pages = [];
-                    
+
                     // Primeira página
                     if (adjustedStartPage > 1) {
                       pages.push(
@@ -481,7 +391,7 @@ export default function ListStudentPage() {
                         pages.push(<span key="ellipsis1" className="px-2">...</span>);
                       }
                     }
-                    
+
                     // Páginas do meio
                     for (let i = adjustedStartPage; i <= endPage; i++) {
                       pages.push(
@@ -497,7 +407,7 @@ export default function ListStudentPage() {
                         </Button>
                       );
                     }
-                    
+
                     // Última página
                     if (endPage < serverPagination.totalPages) {
                       if (endPage < serverPagination.totalPages - 1) {
@@ -515,7 +425,7 @@ export default function ListStudentPage() {
                         </Button>
                       );
                     }
-                    
+
                     return pages;
                   })()}
                 </div>
@@ -548,15 +458,15 @@ export default function ListStudentPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={cancelDeleteStudent}
               disabled={deleting}
             >
               Cancelar
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={confirmDeleteStudent}
               disabled={deleting}
             >

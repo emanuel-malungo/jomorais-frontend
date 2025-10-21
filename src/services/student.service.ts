@@ -15,7 +15,13 @@ export default class StudentService {
         return this.getAllStudents(1, 100);
     }
 
-    static async getAllStudents(page: number, limit: number, search: string = ''): Promise<{ students: Student[], pagination: IPagination }> {
+    static async getAllStudents(
+        page: number, 
+        limit: number, 
+        search: string = '', 
+        statusFilter: string | null = null, 
+        cursoFilter: string | null = null
+    ): Promise<{ students: Student[], pagination: IPagination }> {
 
         // Construir a query string explicitamente para garantir que o backend
         // receba os parâmetros no formato esperado (evita comportamento de
@@ -25,6 +31,12 @@ export default class StudentService {
         params.append('limit', limit.toString());
         if (search) {
             params.append('search', search);
+        }
+        if (statusFilter && statusFilter !== 'all') {
+            params.append('status', statusFilter);
+        }
+        if (cursoFilter && cursoFilter !== 'all') {
+            params.append('curso', cursoFilter);
         }
 
         // Cache buster para evitar respostas cacheadas durante desenvolvimento

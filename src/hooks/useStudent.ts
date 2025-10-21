@@ -49,12 +49,18 @@ export const useStudent = (): UseStudentReturn => {
         }
     }, [setLoading, clearError]);
 
-    const getAllStudents = useCallback(async (page: number = 1, limit: number = 10, search: string = '') => {
+    const getAllStudents = useCallback(async (
+        page: number = 1, 
+        limit: number = 10, 
+        search: string = '', 
+        statusFilter: string | null = null, 
+        cursoFilter: string | null = null
+    ) => {
         try {
             setLoading(true);
             clearError();
 
-            const response = await StudentService.getAllStudents(page, limit, search);
+            const response = await StudentService.getAllStudents(page, limit, search, statusFilter, cursoFilter);
 
 
             setState(prev => ({

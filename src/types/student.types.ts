@@ -81,7 +81,7 @@ export interface UseStudentState {
 
 // Interface para o retorno do hook
 export interface UseStudentReturn extends UseStudentState {
-  getAllStudents: (page?: number, limit?: number, search?: string) => Promise<void>;
+  getAllStudents: (page?: number, limit?: number, search?: string, statusFilter?: string | null, cursoFilter?: string | null) => Promise<void>;
   getAllStudentsComplete: () => Promise<void>;
   getStudentById: (id: number) => Promise<void>;
   createStudent: (studentData: Student) => Promise<void>;
