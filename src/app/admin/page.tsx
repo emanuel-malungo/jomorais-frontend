@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -8,8 +8,6 @@ import useAuth from '@/hooks/useAuth';
 import useDashboard from '@/hooks/useDashboard';
 import { 
   ChartCard,
-  RecentActivity,
-  SystemStatus
 } from '@/components/dashboard';
 import { 
   Users, 
@@ -19,7 +17,6 @@ import {
   Clock,
   Target,
   Award,
-  Settings,
   Download
 } from 'lucide-react';
 import {
@@ -44,7 +41,6 @@ import WelcomeHeader from '@/components/layout/WelcomeHeader';
 
 
 export default function Dashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
   const { user, logout } = useAuth();
   
   // Usar o hook personalizado do dashboard
@@ -54,11 +50,7 @@ export default function Dashboard() {
     monthlyRevenue,
     gradeDistribution,
     weeklyAttendance,
-    recentActivity,
-    systemStatus,
     isLoading,
-    error,
-    refreshAll
   } = useDashboard();
 
   // Função para formatar valores de moeda

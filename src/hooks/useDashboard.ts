@@ -12,6 +12,9 @@ import type {
   SystemStatus
 } from '@/types/dashboard.types';
 
+import { toast } from "react-toastify";
+import { getErrorMessage } from "@/utils/getErrorMessage.utils";
+
 interface UseDashboardReturn {
   // Data
   dashboardData: DashboardData | null;
@@ -22,7 +25,7 @@ interface UseDashboardReturn {
   weeklyAttendance: WeeklyAttendance[];
   recentActivity: RecentActivity[];
   systemStatus: SystemStatus | null;
-  
+
   // Loading states
   isLoading: boolean;
   isLoadingStats: boolean;
@@ -32,10 +35,10 @@ interface UseDashboardReturn {
   isLoadingAttendance: boolean;
   isLoadingActivity: boolean;
   isLoadingStatus: boolean;
-  
+
   // Error states
   error: string | null;
-  
+
   // Actions
   fetchDashboardData: () => Promise<void>;
   fetchStats: () => Promise<void>;
@@ -78,11 +81,11 @@ export const useDashboard = (): UseDashboardReturn => {
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const data = await DashboardService.getDashboardData();
       setDashboardData(data);
-      
+
       // Atualizar estados individuais
       setStats(data.stats);
       setEnrollmentEvolution(data.enrollmentEvolution);
@@ -91,10 +94,9 @@ export const useDashboard = (): UseDashboardReturn => {
       setWeeklyAttendance(data.weeklyAttendance);
       setRecentActivity(data.recentActivity);
       setSystemStatus(data.systemStatus);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar dados do dashboard';
-      setError(errorMessage);
-      console.error('Erro ao buscar dados do dashboard:', err);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar dados do dashboard");
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -106,14 +108,13 @@ export const useDashboard = (): UseDashboardReturn => {
   const fetchStats = useCallback(async () => {
     setIsLoadingStats(true);
     setError(null);
-    
+
     try {
       const data = await DashboardService.getDashboardStats();
       setStats(data);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar estatísticas';
-      setError(errorMessage);
-      console.error('Erro ao buscar estatísticas:', err);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar dados do dashboard");
+      toast.error(errorMessage);
     } finally {
       setIsLoadingStats(false);
     }
@@ -125,14 +126,13 @@ export const useDashboard = (): UseDashboardReturn => {
   const fetchEnrollmentEvolution = useCallback(async () => {
     setIsLoadingEnrollment(true);
     setError(null);
-    
+
     try {
       const data = await DashboardService.getEnrollmentEvolution();
       setEnrollmentEvolution(data);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar evolução de matrículas';
-      setError(errorMessage);
-      console.error('Erro ao buscar evolução de matrículas:', err);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar evolução de matrículas");
+      toast.error(errorMessage);
     } finally {
       setIsLoadingEnrollment(false);
     }
@@ -144,14 +144,13 @@ export const useDashboard = (): UseDashboardReturn => {
   const fetchMonthlyRevenue = useCallback(async () => {
     setIsLoadingRevenue(true);
     setError(null);
-    
+
     try {
       const data = await DashboardService.getMonthlyRevenue();
       setMonthlyRevenue(data);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar receita mensal';
-      setError(errorMessage);
-      console.error('Erro ao buscar receita mensal:', err);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar receita mensal");
+      toast.error(errorMessage);
     } finally {
       setIsLoadingRevenue(false);
     }
@@ -163,14 +162,13 @@ export const useDashboard = (): UseDashboardReturn => {
   const fetchGradeDistribution = useCallback(async () => {
     setIsLoadingGrades(true);
     setError(null);
-    
+
     try {
       const data = await DashboardService.getGradeDistribution();
       setGradeDistribution(data);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar distribuição de notas';
-      setError(errorMessage);
-      console.error('Erro ao buscar distribuição de notas:', err);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar distribuição de notas");
+      toast.error(errorMessage);
     } finally {
       setIsLoadingGrades(false);
     }
@@ -182,14 +180,13 @@ export const useDashboard = (): UseDashboardReturn => {
   const fetchWeeklyAttendance = useCallback(async () => {
     setIsLoadingAttendance(true);
     setError(null);
-    
+
     try {
       const data = await DashboardService.getWeeklyAttendance();
       setWeeklyAttendance(data);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar presença semanal';
-      setError(errorMessage);
-      console.error('Erro ao buscar presença semanal:', err);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar presença semanal");
+      toast.error(errorMessage);
     } finally {
       setIsLoadingAttendance(false);
     }
@@ -201,14 +198,13 @@ export const useDashboard = (): UseDashboardReturn => {
   const fetchRecentActivity = useCallback(async (limit: number = 10) => {
     setIsLoadingActivity(true);
     setError(null);
-    
+
     try {
       const data = await DashboardService.getRecentActivity(limit);
       setRecentActivity(data);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar atividades recentes';
-      setError(errorMessage);
-      console.error('Erro ao buscar atividades recentes:', err);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar atividades recentes");
+      toast.error(errorMessage);
     } finally {
       setIsLoadingActivity(false);
     }
@@ -220,14 +216,13 @@ export const useDashboard = (): UseDashboardReturn => {
   const fetchSystemStatus = useCallback(async () => {
     setIsLoadingStatus(true);
     setError(null);
-    
+
     try {
       const data = await DashboardService.getSystemStatus();
       setSystemStatus(data);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao carregar status do sistema';
-      setError(errorMessage);
-      console.error('Erro ao buscar status do sistema:', err);
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar status do sistema");
+      toast.error(errorMessage);
     } finally {
       setIsLoadingStatus(false);
     }
@@ -255,7 +250,7 @@ export const useDashboard = (): UseDashboardReturn => {
     weeklyAttendance,
     recentActivity,
     systemStatus,
-    
+
     // Loading states
     isLoading,
     isLoadingStats,
@@ -265,10 +260,10 @@ export const useDashboard = (): UseDashboardReturn => {
     isLoadingAttendance,
     isLoadingActivity,
     isLoadingStatus,
-    
+
     // Error
     error,
-    
+
     // Actions
     fetchDashboardData,
     fetchStats,
