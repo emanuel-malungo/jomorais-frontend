@@ -1,18 +1,21 @@
 import { useState, useEffect, useCallback } from "react"
 import ConfirmationService from "@/services/confirmation.service"
-import { 
-  IConfirmation, 
-  IConfirmationInput, 
-  IConfirmationListResponse, 
-  IConfirmationsByClassAndYear 
+import {
+  IConfirmation,
+  IConfirmationInput,
+  IConfirmationListResponse,
+  IConfirmationsByClassAndYear,
+  IConfirmationStatistics
 } from "@/types/confirmation.types"
+import { toast } from 'react-toastify';
+import { getErrorMessage } from '@/utils/getErrorMessage.utils';
 
 // Listagem com paginação e busca com filtros
 export function useConfirmations(
-  page = 1, 
-  limit = 10, 
-  search = "", 
-  status?: string | null, 
+  page = 1,
+  limit = 10,
+  search = "",
+  status?: string | null,
   anoLectivo?: string | null
 ) {
   const [confirmations, setConfirmations] = useState<IConfirmation[]>([])
@@ -26,17 +29,18 @@ export function useConfirmations(
       setError(null)
       // Buscar com filtros no backend
       const { data, pagination } = await ConfirmationService.getConfirmations(
-        page, 
-        limit, 
+        page,
+        limit,
         search,
         status,
         anoLectivo
       )
-      
+
       setConfirmations(data)
       setPagination(pagination)
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar confirmações")
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar alunos");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -62,8 +66,9 @@ export function useConfirmation(id?: number) {
       setError(null)
       const data = await ConfirmationService.getConfirmationById(id)
       setConfirmation(data)
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar confirmação")
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar confirmação");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -85,24 +90,12 @@ export function useCreateConfirmation() {
     try {
       setLoading(true)
       setError(null)
-      console.log('Hook: Enviando payload para service:', payload)
       const result = await ConfirmationService.createConfirmation(payload)
-      console.log('Hook: Resposta do service:', result)
+      toast.success("Confirmação criada com sucesso!")
       return result
-    } catch (err: any) {
-      const errorMessage = err.response?.status === 409 
-        ? "Já existe uma confirmação para esta matrícula neste ano letivo"
-        : err.response?.status === 404
-        ? "Matrícula, turma ou utilizador não encontrado"
-        : err.response?.status === 400
-        ? err.response?.data?.message === "Já existe uma confirmação para esta matrícula neste ano letivo"
-          ? "Esta matrícula já possui confirmação para o ano letivo selecionado"
-          : `Dados inválidos: ${err.response?.data?.message || err.message}`
-        : err.message || "Erro ao criar confirmação"
-      
-      console.error('Hook: Mensagem de erro final:', errorMessage)
-      setError(errorMessage)
-      throw new Error(errorMessage)
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao criar confirmação");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -120,13 +113,14 @@ export function useUpdateConfirmation(id: number) {
     try {
       setLoading(true)
       setError(null)
-      return await ConfirmationService.updateConfirmation(id, payload)
-    } catch (err: any) {
-      const errorMessage = err.response?.status === 404
-        ? "Confirmação, matrícula, turma ou utilizador não encontrado"
-        : err.message || "Erro ao atualizar confirmação"
-      setError(errorMessage)
-      throw new Error(errorMessage)
+      const result = await ConfirmationService.updateConfirmation(id, payload)
+      if (result) {
+        toast.success("Confirmação atualizada com sucesso!")
+      }
+      return result
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao atualizar confirmação");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -145,12 +139,9 @@ export function useDeleteConfirmation() {
       setLoading(true)
       setError(null)
       await ConfirmationService.deleteConfirmation(id)
-    } catch (err: any) {
-      const errorMessage = err.response?.status === 404
-        ? "Confirmação não encontrada"
-        : err.message || "Erro ao deletar confirmação"
-      setError(errorMessage)
-      throw new Error(errorMessage)
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar confirmação");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -168,15 +159,17 @@ export function useBatchConfirmation() {
     try {
       setLoading(true)
       setError(null)
-      return await ConfirmationService.batchConfirmation(payload)
-    } catch (err: any) {
-      setError(err.message || "Erro ao criar confirmações em lote")
-      throw err
+      const result = await ConfirmationService.batchConfirmation(payload)
+      if (result) {
+        toast.success("Confirmações criadas com sucesso!")
+      }
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao criar confirmações em lote");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
   }, [])
-
   return { batchConfirmation, loading, error }
 }
 
@@ -190,21 +183,50 @@ export function useConfirmationsByClassAndYear() {
     try {
       setLoading(true)
       setError(null)
-      const data = await ConfirmationService.getConfirmationsByClassAndYear(params)
-      setConfirmations(data)
+      const data = await ConfirmationService.getConfirmationsByClassAndYear(params);
+      setConfirmations(data);
       return data
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar confirmações por turma e ano")
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar confirmações por turma e ano");
+      toast.error(errorMessage);
       throw err
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }, [])
 
-  return { 
-    confirmations, 
-    loading, 
-    error, 
-    fetchConfirmationsByClassAndYear 
+  return {
+    confirmations,
+    loading,
+    error,
+    fetchConfirmationsByClassAndYear
   }
+}
+
+// Estatísticas de confirmações
+export function useConfirmationsStatistics(status?: string | null, anoLectivo?: string | null) {
+  const [statistics, setStatistics] = useState<IConfirmationStatistics | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchStatistics = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await ConfirmationService.getConfirmationsStatistics(status, anoLectivo)
+      setStatistics(data)
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar estatísticas de confirmações");
+      setError(errorMessage)
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false)
+    }
+  }, [status, anoLectivo])
+
+  useEffect(() => {
+    fetchStatistics()
+  }, [fetchStatistics])
+
+  return { statistics, loading, error, refetch: fetchStatistics }
 }

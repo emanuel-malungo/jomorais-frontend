@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useConfirmations } from '@/hooks/useConfirmation';
-import { IConfirmation } from '@/types/confirmation.types';
+import { useConfirmations, useConfirmationsStatistics } from '@/hooks/useConfirmation';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import {
   Card,
@@ -76,6 +75,15 @@ export default function ConfirmationsListPage() {
     yearFilter !== "all" ? yearFilter : null
   );
 
+  // Hook para buscar estatísticas com os mesmos filtros
+  const {
+    statistics,
+    loading: statsLoading,
+  } = useConfirmationsStatistics(
+    statusFilter !== "all" ? statusFilter : null,
+    yearFilter !== "all" ? yearFilter : null
+  );
+
   // Recarregar quando mudar a busca (com debounce)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -129,7 +137,7 @@ export default function ConfirmationsListPage() {
 
         <StatCard
           title="Total de Confirmações"
-          value={(pagination?.totalItems || 0).toString()}
+          value={statsLoading ? "..." : (statistics?.totalConfirmacoes || 0).toString()}
           change="Total"
           changeType="up"
           icon={Users}
@@ -140,8 +148,8 @@ export default function ConfirmationsListPage() {
 
         <StatCard
           title="Confirmações Ativas"
-          value={(confirmations?.filter((c: IConfirmation) => c.codigo_Status === 1).length || 0).toString()}
-          change="+8.7%"
+          value={statsLoading ? "..." : (statistics?.confirmacoesAtivas || 0).toString()}
+          change={statistics?.percentuais.ativas ? `${statistics.percentuais.ativas}%` : "0%"}
           changeType="up"
           icon={CheckCircle}
           color="text-emerald-600"
@@ -151,8 +159,8 @@ export default function ConfirmationsListPage() {
 
         <StatCard
           title="Aprovados"
-          value={(confirmations?.filter((c: IConfirmation) => c.classificacao === "Aprovado").length || 0).toString()}
-          change="+12.1%"
+          value={statsLoading ? "..." : (statistics?.aprovados || 0).toString()}
+          change={statistics?.percentuais.aprovados ? `${statistics.percentuais.aprovados}%` : "0%"}
           changeType="up"
           icon={GraduationCap}
           color="text-[#FFD002]"
@@ -161,10 +169,10 @@ export default function ConfirmationsListPage() {
         />
 
         <StatCard
-          title="Pendentes"
-          value={(confirmations?.filter((c: IConfirmation) => c.classificacao === "Pendente").length || 0).toString()}
-          change="Atenção"
-          changeType="neutral"
+          title="Reprovados"
+          value={statsLoading ? "..." : (statistics?.reprovados || 0).toString()}
+          change={statistics?.percentuais.reprovados ? `${statistics.percentuais.reprovados}%` : "0%"}
+          changeType="down"
           icon={Clock}
           color="text-red-600"
           bgColor="bg-gradient-to-br from-red-50 via-white to-red-50/50"

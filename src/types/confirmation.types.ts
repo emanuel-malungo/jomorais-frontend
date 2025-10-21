@@ -130,3 +130,34 @@ export interface IConfirmationsByClassAndYear {
   codigo_Turma: number
   codigo_AnoLectivo: number
 }
+
+export interface IConfirmationStatistics {
+  totalConfirmacoes: number
+  confirmacoesAtivas: number
+  confirmacoesInativas: number
+  aprovados: number
+  reprovados: number
+  pendentes: number
+  distribuicaoPorAnoLectivo: {
+    codigo_Ano_lectivo: number
+    designacao: string
+    total: number
+  }[]
+  distribuicaoPorClassificacao: {
+    classificacao: string
+    total: number
+  }[]
+  distribuicaoPorTurma: {
+    codigo_Turma: number
+    designacao_Turma: string
+    designacao_Classe: string
+    total: number
+  }[]
+  percentuais: {
+    ativas: string
+    inativas: string
+    aprovados: string
+    reprovados: string
+    pendentes: string
+  }
+}
