@@ -31,9 +31,19 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useMatricula, useUpdateMatricula } from '@/hooks/useMatricula';
-import { useCourses } from '@/hooks/useCourse';
+import { useStudent } from '@/hooks/useStudent';
+import { Student } from '@/types/student.types';
+import { ICourse } from '@/types/course.types';
 import { IMatriculaInput } from '@/types/matricula.types';
-import api from '@/utils/api.utils';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
+
+// Tipo estendido para curso com relacionamentos
+interface CourseWithRelations extends ICourse {
+  duracao_anos?: number;
+  tb_niveis_academicos?: {
+    designacao: string;
+  };
+}
 
 
 
@@ -44,16 +54,32 @@ export default function EditEnrollmentPage() {
   
   const enrollmentId = parseInt(params.id as string);
   
-  // Estados para busca de alunos via API
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [loadingSearch, setLoadingSearch] = useState(false);
+  // Helper para calcular idade de forma segura
+  const calculateAge = (birthDate: string | Record<string, unknown> | undefined): string => {
+    if (!birthDate) return 'Idade não informada';
+    try {
+      const dateStr = typeof birthDate === 'string' ? birthDate : String(birthDate);
+      const age = new Date().getFullYear() - new Date(dateStr).getFullYear();
+      return `${age} anos`;
+    } catch {
+      return 'Idade não informada';
+    }
+  };
+  
+  // Estados para busca de alunos
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   
   // Hooks da API
   const { matricula, loading: matriculaLoading, error: matriculaError } = useMatricula(enrollmentId);
   const { updateMatricula, loading: updateLoading } = useUpdateMatricula(enrollmentId);
-  const { courses, loading: coursesLoading } = useCourses(1, 100);
+  const {
+    courses,
+    statusOptions,
+    loadingCourses: coursesLoading,
+    loadingStatus: statusLoading
+  } = useFilterOptions(1, 100);
+  const { students, loading: loadingSearch, getAllStudents } = useStudent();
   
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -80,48 +106,13 @@ export default function EditEnrollmentPage() {
       
       // Definir aluno selecionado inicial
       if (matricula.tb_alunos) {
-        setSelectedStudent(matricula.tb_alunos);
+        setSelectedStudent(matricula.tb_alunos as unknown as Student);
         setStudentSearch(matricula.tb_alunos.nome);
       }
     }
   }, [matricula]);
   
-  // Função para buscar alunos via API com parâmetro search
-  const searchStudents = async (searchTerm: string) => {
-    if (!searchTerm || searchTerm.length < 2) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    try {
-      setLoadingSearch(true);
-
-      const response = await api.get('/api/student-management/alunos', {
-        params: {
-          page: 1,
-          limit: 50,
-          search: searchTerm
-        }
-      });
-
-      const data = response.data;
-      if (data.success && data.data) {
-        setSearchResults(data.data);
-        setShowSearchResults(true);
-      } else {
-        setSearchResults([]);
-        setShowSearchResults(true);
-      }
-    } catch (error) {
-      setSearchResults([]);
-      setShowSearchResults(true);
-    } finally {
-      setLoadingSearch(false);
-    }
-  };
-
-  // Debounce para busca de alunos
+  // Buscar alunos usando o hook useStudent
   useEffect(() => {
     // Não buscar se for o nome do aluno já selecionado
     if (selectedStudent && studentSearch === selectedStudent.nome) {
@@ -129,14 +120,19 @@ export default function EditEnrollmentPage() {
     }
     
     const timeoutId = setTimeout(() => {
-      searchStudents(studentSearch);
+      if (studentSearch && studentSearch.length >= 2) {
+        getAllStudents(1, 50, studentSearch);
+        setShowSearchResults(true);
+      } else {
+        setShowSearchResults(false);
+      }
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [studentSearch]);
+  }, [studentSearch, getAllStudents, selectedStudent]);
   
   // Selecionar aluno
-  const handleSelectStudent = (student: any) => {
+  const handleSelectStudent = (student: Student) => {
     setSelectedStudent(student);
     setFormData(prev => ({
       ...prev,
@@ -154,9 +150,6 @@ export default function EditEnrollmentPage() {
     }
   };
   
-  // Filtrar alunos baseado na busca (não mais usado, mas mantido para compatibilidade)
-  const filteredStudents = searchResults;
-
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (field: string, value: string) => {
@@ -219,7 +212,8 @@ export default function EditEnrollmentPage() {
     }
   };
 
-  const selectedCourse = courses?.find((c: any) => c.codigo.toString() === formData.codigo_Curso);
+  const selectedCourse = courses?.find((c) => c.codigo.toString() === formData.codigo_Curso) as CourseWithRelations | undefined;
+  const selectedStatus = statusOptions?.find((s) => s.value === formData.codigoStatus);
   
   // Loading state
   if (matriculaLoading || coursesLoading) {
@@ -384,7 +378,7 @@ export default function EditEnrollmentPage() {
                       }
                     }}
                     onFocus={() => {
-                      if (studentSearch.length >= 2 && searchResults.length > 0) {
+                      if (studentSearch.length >= 2 && students.length > 0) {
                         setShowSearchResults(true);
                       }
                     }}
@@ -403,8 +397,8 @@ export default function EditEnrollmentPage() {
                         <Loader2 className="h-5 w-5 animate-spin mx-auto text-gray-400" />
                         <p className="text-sm text-gray-500 mt-2">Buscando alunos...</p>
                       </div>
-                    ) : searchResults.length > 0 ? (
-                      searchResults.map((student: any) => (
+                    ) : students.length > 0 ? (
+                      students.map((student: Student) => (
                         <button
                           key={student.codigo}
                           type="button"
@@ -419,9 +413,7 @@ export default function EditEnrollmentPage() {
                               <p className="font-medium text-gray-900">{student.nome}</p>
                               <p className="text-xs text-gray-500">{student.email || 'Sem email'}</p>
                               <p className="text-xs text-gray-400">
-                                {student.dataNascimento 
-                                  ? `${new Date().getFullYear() - new Date(student.dataNascimento).getFullYear()} anos` 
-                                  : 'Idade não informada'} • {student.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                                {calculateAge(student.dataNascimento)} • {student.sexo === 'M' ? 'Masculino' : 'Feminino'}
                               </p>
                             </div>
                           </div>
@@ -449,9 +441,7 @@ export default function EditEnrollmentPage() {
                           <p className="font-semibold text-blue-900">{selectedStudent.nome}</p>
                           <p className="text-sm text-blue-600">{selectedStudent.email || 'Sem email'}</p>
                           <p className="text-xs text-blue-500">
-                            {selectedStudent.dataNascimento 
-                              ? `${new Date().getFullYear() - new Date(selectedStudent.dataNascimento).getFullYear()} anos` 
-                              : 'Idade não informada'} • {selectedStudent.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                            {calculateAge(selectedStudent.dataNascimento)} • {selectedStudent.sexo === 'M' ? 'Masculino' : 'Feminino'}
                           </p>
                         </div>
                       </div>
@@ -512,11 +502,11 @@ export default function EditEnrollmentPage() {
                             Carregando cursos...
                           </div>
                         </SelectItem>
-                      ) : courses?.map((course: any) => (
+                      ) : courses?.map((course) => (
                         <SelectItem key={course.codigo} value={course.codigo.toString()}>
                           <div className="flex flex-col">
                             <span className="font-medium">{course.designacao}</span>
-                            <span className="text-xs text-gray-500">{course.duracao || 'Duração não informada'}</span>
+                            <span className="text-xs text-gray-500">{(course as CourseWithRelations).duracao_anos || 'Duração não informada'}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -560,8 +550,25 @@ export default function EditEnrollmentPage() {
                       <SelectValue placeholder="Selecione o status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Ativa</SelectItem>
-                      <SelectItem value="0">Inativa</SelectItem>
+                      {statusLoading ? (
+                        <div className="p-2 text-center text-gray-500">
+                          <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                          Carregando status...
+                        </div>
+                      ) : statusOptions && statusOptions.length > 0 ? (
+                        statusOptions
+                          .filter(option => option.value !== "all")
+                          .map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))
+                      ) : (
+                        <>
+                          <SelectItem value="1">Ativa</SelectItem>
+                          <SelectItem value="0">Inativa</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -598,7 +605,9 @@ export default function EditEnrollmentPage() {
                 <div className="p-4 bg-green-50 rounded-lg">
                   <h4 className="font-medium text-green-900 mb-2">Novo Curso</h4>
                   <p className="text-sm font-semibold text-green-800">{selectedCourse.designacao}</p>
-                  <p className="text-xs text-green-600">Duração: {selectedCourse.duracao}</p>
+                  <p className="text-xs text-green-600">
+                    {selectedCourse.duracao_anos ? `Duração: ${selectedCourse.duracao_anos} anos` : 'Duração não informada'}
+                  </p>
                   {selectedCourse.codigo.toString() !== matricula?.codigo_Curso.toString() && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
@@ -631,7 +640,7 @@ export default function EditEnrollmentPage() {
                   variant={formData.codigoStatus === "1" ? "default" : "secondary"}
                   className={formData.codigoStatus === "1" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
                 >
-                  {formData.codigoStatus === "1" ? "Ativa" : "Inativa"}
+                  {selectedStatus?.label || (formData.codigoStatus === "1" ? "Ativa" : "Inativa")}
                 </Badge>
                 {formData.codigoStatus !== matricula?.codigoStatus.toString() && (
                   <Badge variant="outline" className="mt-2 ml-2 text-xs border-orange-300 text-orange-700">
