@@ -57,7 +57,6 @@ export default function AddEnrollmentPage() {
   // Estados para busca de alunos
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [submitError, setSubmitError] = useState<string>("");
 
   // Hooks da API
   const { createMatricula, loading: createLoading } = useCreateMatricula();
@@ -105,14 +104,6 @@ export default function AddEnrollmentPage() {
 
   // Handler para submissão do formulário
   const onSubmit = async (data: MatriculaFormData) => {
-
-    setSubmitError("");
-
-    // Validações adicionais
-    if (!selectedStudent) {
-      setSubmitError('Nenhum aluno foi selecionado');
-      return;
-    }
 
     const dataMatricula = new Date(data.data_Matricula + 'T00:00:00.000Z').toISOString();
 
