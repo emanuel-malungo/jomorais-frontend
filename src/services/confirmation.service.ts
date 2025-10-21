@@ -58,11 +58,20 @@ export default class ConfirmationService {
     }
   }
 
-  static async getConfirmations(page = 1, limit = 10, search = ""): Promise<IConfirmationListResponse> {
-    // Buscar sem filtro no backend - busca será feita no frontend
-    const response = await api.get("/api/student-management/confirmacoes", {
-      params: { page, limit }
-    })
+  static async getConfirmations(
+    page = 1, 
+    limit = 10, 
+    search = "", 
+    status?: string | null, 
+    anoLectivo?: string | null
+  ): Promise<IConfirmationListResponse> {
+    const params: any = { page, limit };
+    
+    if (search) params.search = search;
+    if (status && status !== 'all') params.status = status;
+    if (anoLectivo && anoLectivo !== 'all') params.anoLectivo = anoLectivo;
+    
+    const response = await api.get("/api/student-management/confirmacoes", { params })
     const apiResponse = response.data
     if (apiResponse.success) {
       return { data: apiResponse.data, pagination: apiResponse.pagination }

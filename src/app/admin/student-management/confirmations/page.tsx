@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useConfirmations } from '@/hooks/useConfirmation';
 import { IConfirmation } from '@/types/confirmation.types';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 import {
   Card,
   CardContent,
@@ -46,119 +47,51 @@ import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
-import { useStatus } from '@/hooks/useStatusControl';
-import { useAnosLectivos } from '@/hooks/useAnoLectivo';
-
-
 export default function ConfirmationsListPage() {
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  const { status } = useStatus(1, 100, "");
-  const { anosLectivos, fetchAnosLectivos } = useAnosLectivos();
+  // Usar o hook useFilterOptions para obter as opções de filtros
+  const {
+    statusOptions,
+    academicYearOptions
+  } = useFilterOptions(1, 100, "");
 
-  // Buscar anos letivos ao montar o componente
-  useEffect(() => {
-    fetchAnosLectivos(1, 100, "");
-  }, []); // Remover dependência para evitar loop
-
-  const statusOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Status" }];
-    if (status && status.length > 0) {
-      status.forEach((s) => {
-        options.push({
-          value: s.codigo.toString(),
-          label: s.designacao
-        });
-      });
-    }
-    return options;
-  }, [status]);
-
-  const academicYearOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Anos" }];
-    if (anosLectivos && anosLectivos.length > 0) {
-      anosLectivos.forEach((ano) => {
-        options.push({
-          value: ano.codigo.toString(),
-          label: ano.designacao
-        });
-      });
-    }
-    return options;
-  }, [anosLectivos]);
-
-
-
-  // Hook para buscar confirmações da API
+  // Hook para buscar confirmações da API com filtros
   const {
     confirmations,
     pagination,
     loading: isLoading,
     error,
     refetch: fetchConfirmations
-  } = useConfirmations(currentPage, itemsPerPage, searchTerm);
-
-  // Estados derivados
-  const [filteredConfirmations, setFilteredConfirmations] = useState<IConfirmation[]>(confirmations || []);
-
-  // Aplicar filtros locais (além da busca que já é feita na API)
-  useEffect(() => {
-    if (!confirmations) {
-      setFilteredConfirmations([]);
-      return;
-    }
-
-    let filtered = confirmations;
-
-    // Filtros locais (a busca por texto já é feita na API)
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((confirmation: IConfirmation) =>
-        confirmation.codigo_Status.toString() === statusFilter
-      );
-    }
-
-    if (yearFilter !== "all") {
-      filtered = filtered.filter((confirmation: IConfirmation) =>
-        confirmation.codigo_Ano_lectivo.toString() === yearFilter
-      );
-    }
-
-    setFilteredConfirmations(filtered);
-  }, [statusFilter, yearFilter, confirmations]);
+  } = useConfirmations(
+    currentPage, 
+    itemsPerPage, 
+    searchTerm,
+    statusFilter !== "all" ? statusFilter : null,
+    yearFilter !== "all" ? yearFilter : null
+  );
 
   // Recarregar quando mudar a busca (com debounce)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setCurrentPage(1);
-      fetchConfirmations();
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]); // Remover fetchConfirmations da dependência
+  }, [searchTerm]);
 
-  // Recarregar quando mudar a página
-  useEffect(() => {
-    fetchConfirmations();
-  }, [currentPage]); // Remover fetchConfirmations da dependência
+  // Usar dados diretamente da API (filtros são aplicados no backend)
+  const totalPages = pagination?.totalPages || 1;
+  const totalItems = pagination?.totalItems || 0;
+  const currentConfirmations = confirmations || [];
 
-  // Usar paginação da API quando disponível, senão usar paginação local
-  const totalPages = pagination?.totalPages || Math.ceil(filteredConfirmations.length / itemsPerPage);
-  const totalItems = pagination?.totalItems || filteredConfirmations.length;
-
-  // Se estamos usando paginação da API, mostrar todos os itens filtrados
-  // Se não, fazer paginação local
-  const currentConfirmations = pagination ? filteredConfirmations : (() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredConfirmations.slice(startIndex, endIndex);
-  })();
-
-  const startIndex = pagination ? ((currentPage - 1) * itemsPerPage) + 1 : (currentPage - 1) * itemsPerPage + 1;
-  const endIndex = pagination ? Math.min(currentPage * itemsPerPage, totalItems) : Math.min(currentPage * itemsPerPage, filteredConfirmations.length);
+  const startIndex = ((currentPage - 1) * itemsPerPage) + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
 
 
   const handleEditConfirmation = (confirmationId: number) => {

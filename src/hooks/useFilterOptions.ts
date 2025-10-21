@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useStatus } from '@/hooks/useStatusControl';
 import { useCourses } from '@/hooks/useCourse';
+import { useAnosLectivos } from '@/hooks/useAnoLectivo';
 
 /**
  * Interface para opções de filtro
@@ -16,10 +17,13 @@ export interface FilterOption {
 export interface UseFilterOptionsReturn {
     statusOptions: FilterOption[];
     courseOptions: FilterOption[];
+    academicYearOptions: FilterOption[];
     status: ReturnType<typeof useStatus>['status'];
     courses: ReturnType<typeof useCourses>['courses'];
+    anosLectivos: ReturnType<typeof useAnosLectivos>['anosLectivos'];
     loadingStatus: boolean;
     loadingCourses: boolean;
+    loadingAcademicYears: boolean;
 }
 
 export const useFilterOptions = (
@@ -33,6 +37,14 @@ export const useFilterOptions = (
 
     // Carregar todos os cursos
     const { courses, loading: loadingCourses } = useCourses(page, limit, search);
+
+    // Carregar todos os anos letivos
+    const { anosLectivos, isLoading: loadingAcademicYears, fetchAnosLectivos } = useAnosLectivos();
+
+    // Buscar anos letivos ao montar o componente
+    useEffect(() => {
+        fetchAnosLectivos(page, limit, search);
+    }, [fetchAnosLectivos, page, limit, search]);
 
     // Criar opções de status dinamicamente
     const statusOptions = useMemo(() => {
@@ -66,13 +78,32 @@ export const useFilterOptions = (
         return options;
     }, [courses]);
 
+    // Criar opções de anos letivos dinamicamente
+    const academicYearOptions = useMemo(() => {
+        const options: FilterOption[] = [{ value: "all", label: "Todos os Anos" }];
+
+        if (anosLectivos && anosLectivos.length > 0) {
+            anosLectivos.forEach((ano) => {
+                options.push({
+                    value: ano.codigo.toString(),
+                    label: ano.designacao
+                });
+            });
+        }
+
+        return options;
+    }, [anosLectivos]);
+
     return {
         statusOptions,
         courseOptions,
+        academicYearOptions,
         status,
         courses,
+        anosLectivos,
         loadingStatus,
         loadingCourses,
+        loadingAcademicYears,
     };
 };
 

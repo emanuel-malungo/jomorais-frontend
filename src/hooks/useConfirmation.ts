@@ -7,9 +7,14 @@ import {
   IConfirmationsByClassAndYear 
 } from "@/types/confirmation.types"
 
-// Listagem com paginação e busca local
-export function useConfirmations(page = 1, limit = 10, search = "") {
-  const [allConfirmations, setAllConfirmations] = useState<IConfirmation[]>([])
+// Listagem com paginação e busca com filtros
+export function useConfirmations(
+  page = 1, 
+  limit = 10, 
+  search = "", 
+  status?: string | null, 
+  anoLectivo?: string | null
+) {
   const [confirmations, setConfirmations] = useState<IConfirmation[]>([])
   const [pagination, setPagination] = useState<IConfirmationListResponse["pagination"] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -19,30 +24,23 @@ export function useConfirmations(page = 1, limit = 10, search = "") {
     try {
       setLoading(true)
       setError(null)
-      // Buscar sem filtro no backend
-      const { data, pagination } = await ConfirmationService.getConfirmations(page, limit, "")
-      setAllConfirmations(data)
+      // Buscar com filtros no backend
+      const { data, pagination } = await ConfirmationService.getConfirmations(
+        page, 
+        limit, 
+        search,
+        status,
+        anoLectivo
+      )
       
-      // Aplicar busca localmente
-      const filteredData = search ? data.filter((confirmation: IConfirmation) => {
-        const nomeAluno = confirmation.tb_matriculas?.tb_alunos?.nome?.toLowerCase() || ''
-        const designacaoTurma = confirmation.tb_turmas?.designacao?.toLowerCase() || ''
-        const classificacao = confirmation.classificacao?.toLowerCase() || ''
-        const searchLower = search.toLowerCase()
-        
-        return nomeAluno.includes(searchLower) || 
-               designacaoTurma.includes(searchLower) || 
-               classificacao.includes(searchLower)
-      }) : data
-      
-      setConfirmations(filteredData)
+      setConfirmations(data)
       setPagination(pagination)
     } catch (err: any) {
       setError(err.message || "Erro ao carregar confirmações")
     } finally {
       setLoading(false)
     }
-  }, [page, limit, search])
+  }, [page, limit, search, status, anoLectivo])
 
   useEffect(() => {
     fetchConfirmations()
@@ -92,10 +90,6 @@ export function useCreateConfirmation() {
       console.log('Hook: Resposta do service:', result)
       return result
     } catch (err: any) {
-      console.error('Hook: Erro capturado:', err)
-      console.error('Hook: Status da resposta:', err.response?.status)
-      console.error('Hook: Dados da resposta:', err.response?.data)
-      
       const errorMessage = err.response?.status === 409 
         ? "Já existe uma confirmação para esta matrícula neste ano letivo"
         : err.response?.status === 404
