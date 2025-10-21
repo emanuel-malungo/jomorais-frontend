@@ -133,7 +133,7 @@ export default function ConfirmationsListPage() {
       />
 
       {/* Stats Cards seguindo padrão do Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
 
         <StatCard
           title="Total de Confirmações"
@@ -149,7 +149,7 @@ export default function ConfirmationsListPage() {
         <StatCard
           title="Confirmações Ativas"
           value={statsLoading ? "..." : (statistics?.confirmacoesAtivas || 0).toString()}
-          change={statistics?.percentuais.ativas ? `${statistics.percentuais.ativas}%` : "0%"}
+          change={"Ativas"}
           changeType="up"
           icon={CheckCircle}
           color="text-emerald-600"
@@ -157,21 +157,21 @@ export default function ConfirmationsListPage() {
           accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
         />
 
-        <StatCard
-          title="Aprovados"
+        {/* <StatCard
+          title="Confirmações Aprovados"
           value={statsLoading ? "..." : (statistics?.aprovados || 0).toString()}
-          change={statistics?.percentuais.aprovados ? `${statistics.percentuais.aprovados}%` : "0%"}
+          change={"Aprovados"}
           changeType="up"
           icon={GraduationCap}
           color="text-[#FFD002]"
           bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
           accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
-        />
+        /> */}
 
         <StatCard
-          title="Reprovados"
+          title="Confirmações Reprovados"
           value={statsLoading ? "..." : (statistics?.reprovados || 0).toString()}
-          change={statistics?.percentuais.reprovados ? `${statistics.percentuais.reprovados}%` : "0%"}
+          change={"Reprovados"}
           changeType="down"
           icon={Clock}
           color="text-red-600"
