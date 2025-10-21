@@ -87,6 +87,7 @@ export interface UseStudentReturn extends UseStudentState {
   createStudent: (studentData: Student) => Promise<void>;
   updateStudent: (id: number, studentData: Student) => Promise<void>;
   deleteStudent: (id: number) => Promise<void>;
+  getAlunosStatistics: (statusFilter?: string | null, cursoFilter?: string | null) => Promise<AlunosStatistics | null>;
   clearError: () => void;
   clearStudent: () => void;
   setLoading: (loading: boolean) => void;
@@ -129,4 +130,37 @@ export interface CreateStudentPayload {
     codigo_Utilizador: string;
     status: number;
   };
+}
+
+export interface AlunosStatistics {
+    totalAlunos: number;
+    alunosAtivos: number;
+    alunosInativos: number;
+    alunosComMatricula: number;
+    alunosSemMatricula: number;
+    distribuicaoPorSexo: {
+        masculino: number;
+        feminino: number;
+        outro: number;
+    };
+    percentuais: {
+        ativos: string;
+        inativos: string;
+        comMatricula: string;
+        semMatricula: string;
+    };
+}
+
+export interface StatisticsResponse {
+    success: boolean;
+    message: string;
+    data: AlunosStatistics;
+}
+
+
+export interface IPagination {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
 }

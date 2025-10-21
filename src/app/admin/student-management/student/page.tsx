@@ -49,10 +49,11 @@ import { useRouter } from 'next/navigation';
 import useStudent from '@/hooks/useStudent';
 import { calculateAge } from '@/utils/calculateAge.utils';
 import useFilterOptions from '@/hooks/useFilterOptions';
+import { AlunosStatistics } from '@/types/student.types';
 
 export default function ListStudentPage() {
 
-  const { students, loading, pagination, getAllStudents } = useStudent();
+  const { students, loading, pagination, getAllStudents, getAlunosStatistics } = useStudent();
   const router = useRouter();
 
   // Usar hook de opções de filtros
@@ -63,6 +64,27 @@ export default function ListStudentPage() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  
+  // Estatísticas
+  const [statistics, setStatistics] = useState<AlunosStatistics | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+    // Carregar estatísticas quando filtros mudarem
+  useEffect(() => {
+    const loadStatistics = async () => {
+      try {
+        setLoadingStats(true);
+        const stats = await getAlunosStatistics(statusFilter, courseFilter);
+        setStatistics(stats);
+      } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    loadStatistics();
+  }, [statusFilter, courseFilter, getAlunosStatistics]);
 
   // Carregar estudantes do backend quando filtros mudarem
   useEffect(() => {
@@ -96,8 +118,8 @@ export default function ListStudentPage() {
 
   return (
     <Container>
+     
       {/* Header seguindo padrão do Dashboard */}
-
       <WelcomeHeader
         title="Gestão de Alunos"
         description="Gerencie todos os alunos matriculados na instituição. Visualize informações detalhadas, acompanhe matrículas e mantenha os dados sempre atualizados."
@@ -110,8 +132,8 @@ export default function ListStudentPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total de Alunos"
-          value={(pagination?.totalItems || 0).toString()}
-          change="Total"
+          value={loadingStats ? "..." : (statistics?.totalAlunos || 0).toString()}
+          change={loadingStats ? "Carregando..." : `${statistics?.percentuais.ativos || '0'}% ativos`}
           changeType="up"
           icon={Users}
           color="text-[#182F59]"
@@ -121,8 +143,8 @@ export default function ListStudentPage() {
 
         <StatCard
           title="Alunos Ativos"
-          value={students.filter(s => s.codigo_Status === 1).length.toString()}
-          change="Ativos"
+          value={loadingStats ? "..." : (statistics?.alunosAtivos || 0).toString()}
+          change={loadingStats ? "Carregando..." : `${statistics?.percentuais.ativos || '0'}%`}
           changeType="up"
           icon={UserCheck}
           color="text-emerald-600"
@@ -132,8 +154,8 @@ export default function ListStudentPage() {
 
         <StatCard
           title="Alunos Inativos"
-          value={students.filter(s => s.codigo_Status !== 1).length.toString()}
-          change="Inativos"
+          value={loadingStats ? "..." : (statistics?.alunosInativos || 0).toString()}
+          change={loadingStats ? "Carregando..." : `${statistics?.percentuais.inativos || '0'}%`}
           changeType="down"
           icon={UserX}
           color="text-red-600"
@@ -142,11 +164,11 @@ export default function ListStudentPage() {
         />
 
         <StatCard
-          title="Página Atual"
-          value={`${currentPage}/${serverPagination.totalPages}`}
-          change="Paginação"
-          changeType="neutral"
-          icon={UserX}
+          title="Com Matrícula"
+          value={loadingStats ? "..." : (statistics?.alunosComMatricula || 0).toString()}
+          change={loadingStats ? "Carregando..." : `${statistics?.percentuais.comMatricula || '0'}%`}
+          changeType="up"
+          icon={UserCheck}
           color="text-purple-600"
           bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
           accentColor="bg-gradient-to-br from-purple-500 to-purple-600"

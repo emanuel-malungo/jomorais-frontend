@@ -228,6 +228,27 @@ export const useStudent = (): UseStudentReturn => {
         }
     }, [setLoading, clearError]);
 
+    const getAlunosStatistics = useCallback(async (statusFilter: string | null = null, cursoFilter: string | null = null) => {
+        try {
+            setLoading(true);
+            clearError();
+
+            const statistics = await StudentService.getAlunosStatistics(statusFilter, cursoFilter);
+
+            setState(prev => ({
+                ...prev,
+                loading: false,
+                error: null,
+            }));
+
+            return statistics;
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error, "Erro ao carregar estatísticas dos alunos");
+            toast.error(errorMessage);
+            return null;
+        }
+    }, [setLoading, clearError]);
+
     return {
         ...state,
         getAllStudents,
@@ -236,6 +257,7 @@ export const useStudent = (): UseStudentReturn => {
         createStudent,
         updateStudent,
         deleteStudent,
+        getAlunosStatistics,
         clearError,
         clearStudent,
         setLoading,

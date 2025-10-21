@@ -1,12 +1,12 @@
 import api from "@/utils/api.utils";
-import { Student, StudentResponse } from "@/types/student.types";
+import {
+    Student,
+    StudentResponse,
+    AlunosStatistics,
+    StatisticsResponse,
+    IPagination
+} from "@/types/student.types";
 
-interface IPagination {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
-}
 
 export default class StudentService {
 
@@ -16,10 +16,10 @@ export default class StudentService {
     }
 
     static async getAllStudents(
-        page: number, 
-        limit: number, 
-        search: string = '', 
-        statusFilter: string | null = null, 
+        page: number,
+        limit: number,
+        search: string = '',
+        statusFilter: string | null = null,
         cursoFilter: string | null = null
     ): Promise<{ students: Student[], pagination: IPagination }> {
 
@@ -83,4 +83,28 @@ export default class StudentService {
     }
 
 
+    static async getAlunosStatistics(statusFilter: string | null = null, cursoFilter: string | null = null): Promise<AlunosStatistics> {
+        const params = new URLSearchParams();
+
+        if (statusFilter && statusFilter !== 'all') {
+            params.append('status', statusFilter);
+        }
+
+        if (cursoFilter && cursoFilter !== 'all') {
+            params.append('curso', cursoFilter);
+        }
+
+        // Cache buster para evitar cache
+        params.append('_t', Date.now().toString());
+        const queryString = params.toString();
+        
+        const url = `/api/student-management/statistics/alunos${queryString ? `?${queryString}` : ''}`;
+
+        const response = await api.get(url);
+        const apiResponse: StatisticsResponse = response.data;
+
+        return apiResponse.data;
+    }
 }
+
+
