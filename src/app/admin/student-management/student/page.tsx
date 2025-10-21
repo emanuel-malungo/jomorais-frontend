@@ -7,7 +7,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -204,14 +203,6 @@ export default function ListStudentPage() {
           <CardTitle>
             Lista de Alunos ({displayStudents.length} na página)
           </CardTitle>
-          <CardDescription>
-            Página {serverPagination.currentPage} de {serverPagination.totalPages} - Total: {serverPagination.totalItems} alunos
-            {(statusFilter !== 'all' || courseFilter !== 'all' || searchTerm) && (
-              <span className="text-blue-600 ml-2">
-                (filtrado{statusFilter !== 'all' ? ' por status' : ''}{courseFilter !== 'all' ? ' por curso' : ''}{searchTerm ? ' por busca' : ''})
-              </span>
-            )}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
