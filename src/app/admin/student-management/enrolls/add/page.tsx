@@ -32,42 +32,22 @@ import {
   Search,
   Loader2,
 } from 'lucide-react';
+import { useStudent } from '@/hooks/useStudent';
+import { Student } from '@/types/student.types';
+import { ICourse } from '@/types/course.types';
 import { useCreateMatricula } from '@/hooks/useMatricula';
-import { useCourses } from '@/hooks/useCourse';
 import { IMatriculaInput } from '@/types/matricula.types';
-import api from '@/utils/api.utils';
+import { matriculaSchema } from '@/validations/matricula.validations';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 
-// Schema de validação Yup
-const matriculaSchema = yup.object({
-  codigo_Aluno: yup
-    .string()
-    .required('Aluno é obrigatório')
-    .test('is-valid-number', 'ID do aluno inválido', (value) => {
-      const num = parseInt(value || '');
-      return !isNaN(num) && num > 0;
-    }),
-  codigo_Curso: yup
-    .string()
-    .required('Curso é obrigatório')
-    .test('is-valid-number', 'ID do curso inválido', (value) => {
-      const num = parseInt(value || '');
-      return !isNaN(num) && num > 0;
-    }),
-  data_Matricula: yup
-    .string()
-    .required('Data de matrícula é obrigatória')
-    .test('not-future', 'Data de matrícula não pode ser futura', (value) => {
-      if (!value) return true;
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      const matriculaDate = new Date(value);
-      return matriculaDate <= today;
-    }),
-  codigoStatus: yup
-    .string()
-    .required('Status é obrigatório')
-    .oneOf(['0', '1'], 'Status inválido'),
-}).required();
+// Tipo estendido para curso com relacionamentos
+interface CourseWithRelations extends ICourse {
+  duracao_anos?: number;
+  tb_niveis_academicos?: {
+    designacao: string;
+  };
+}
+
 
 type MatriculaFormData = yup.InferType<typeof matriculaSchema>;
 
@@ -76,15 +56,19 @@ export default function AddEnrollmentPage() {
   const [studentSearch, setStudentSearch] = useState("");
 
   // Estados para busca de alunos
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [loadingSearch, setLoadingSearch] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [submitError, setSubmitError] = useState<string>("");
 
   // Hooks da API
   const { createMatricula, loading: createLoading } = useCreateMatricula();
-  const { courses, loading: coursesLoading } = useCourses(1, 100);
+  const { 
+    courses, 
+    statusOptions, 
+    loadingCourses: coursesLoading,
+    loadingStatus: statusLoading 
+  } = useFilterOptions(1, 100);
+  const { students, loading: loadingSearch, getAllStudents } = useStudent();
 
   // React Hook Form com Yup
   const {
@@ -106,49 +90,19 @@ export default function AddEnrollmentPage() {
   // Watch dos valores do formulário para o resumo
   const watchedValues = watch();
 
-  // Função para buscar alunos via API com parâmetro search
-  const searchStudents = async (searchTerm: string) => {
-    if (!searchTerm || searchTerm.length < 2) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    try {
-      setLoadingSearch(true);
-
-      const response = await api.get('/api/student-management/alunos', {
-        params: {
-          page: 1,
-          limit: 50,
-          search: searchTerm
-        }
-      });
-
-      const data = response.data;
-        if (data.success && data.data) {
-        setSearchResults(data.data);
-        setShowSearchResults(true);
-      } else {
-        setSearchResults([]);
-        setShowSearchResults(true);
-      }
-    } catch (error) {
-      setSearchResults([]);
-      setShowSearchResults(true);
-    } finally {
-      setLoadingSearch(false);
-    }
-  };
-
-  // Debounce para busca de alunos
+  // Buscar alunos usando o hook useStudent
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      searchStudents(studentSearch);
+      if (studentSearch && studentSearch.length >= 2) {
+        getAllStudents(1, 50, studentSearch);
+        setShowSearchResults(true);
+      } else {
+        setShowSearchResults(false);
+      }
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [studentSearch]);
+  }, [studentSearch, getAllStudents]);
 
   // Handler para submissão do formulário
   const onSubmit = async (data: MatriculaFormData) => {
@@ -179,11 +133,11 @@ export default function AddEnrollmentPage() {
         router.push('/admin/student-management/enrolls');
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao criar matrícula:', error);
 
       // Tratar erros específicos
-      if (error.message) {
+      if (error instanceof Error && error.message) {
         setSubmitError(error.message);
       } else {
         setSubmitError('Erro interno do servidor. Tente novamente.');
@@ -192,14 +146,15 @@ export default function AddEnrollmentPage() {
   };
 
   // Selecionar aluno
-  const handleSelectStudent = (student: any) => {
+  const handleSelectStudent = (student: Student) => {
     setSelectedStudent(student);
     setValue('codigo_Aluno', student.codigo.toString(), { shouldValidate: true });
     setShowSearchResults(false);
     setStudentSearch(student.nome || '');
   };
 
-  const selectedCourse = courses?.find((c: any) => c.codigo.toString() === watchedValues.codigo_Curso);
+  const selectedCourse = courses?.find((c) => c.codigo.toString() === watchedValues.codigo_Curso) as CourseWithRelations | undefined;
+  const selectedStatus = statusOptions?.find((s) => s.value === watchedValues.codigoStatus);
 
   return (
     <Container>
@@ -259,7 +214,7 @@ export default function AddEnrollmentPage() {
                     {showSearchResults && (
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">
-                          Resultados da Busca {searchResults.length > 0 && `(${searchResults.length} encontrado${searchResults.length !== 1 ? 's' : ''})`}
+                          Resultados da Busca {students.length > 0 && `(${students.length} encontrado${students.length !== 1 ? 's' : ''})`}
                         </label>
                         <div className="max-h-60 overflow-y-auto border rounded-lg">
                           {loadingSearch ? (
@@ -269,7 +224,7 @@ export default function AddEnrollmentPage() {
                                 <span>Buscando alunos...</span>
                               </div>
                             </div>
-                          ) : searchResults.length === 0 ? (
+                          ) : students.length === 0 ? (
                             <div className="p-4 text-center text-gray-500">
                               <div className="flex items-center justify-center space-x-2">
                                 <AlertCircle className="h-4 w-4" />
@@ -277,7 +232,7 @@ export default function AddEnrollmentPage() {
                               </div>
                             </div>
                           ) : (
-                            searchResults.map((student: any) => (
+                            students.map((student: Student) => (
                               <div
                                 key={student.codigo}
                                 className="p-3 border-b hover:bg-gray-50 cursor-pointer"
@@ -339,13 +294,13 @@ export default function AddEnrollmentPage() {
                                 Carregando cursos...
                               </div>
                             ) : courses && courses.length > 0 ? (
-                              courses.map((course: any) => (
+                              courses.map((course) => (
                                 <SelectItem key={course.codigo} value={course.codigo.toString()}>
                                   <div className="flex flex-col">
                                     <span className="font-medium">{course.designacao}</span>
                                     <span className="text-xs text-gray-500">
-                                      {course.duracao_anos} ano{course.duracao_anos !== 1 ? 's' : ''} •
-                                      {course.tb_niveis_academicos?.designacao || 'N/A'}
+                                      {(course as CourseWithRelations).duracao_anos} ano{(course as CourseWithRelations).duracao_anos !== 1 ? 's' : ''} •
+                                      {(course as CourseWithRelations).tb_niveis_academicos?.designacao || 'N/A'}
                                     </span>
                                   </div>
                                 </SelectItem>
@@ -400,8 +355,25 @@ export default function AddEnrollmentPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="1">Ativa</SelectItem>
-                            <SelectItem value="0">Inativa</SelectItem>
+                            {statusLoading ? (
+                              <div className="p-2 text-center text-gray-500">
+                                <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                                Carregando status...
+                              </div>
+                            ) : statusOptions && statusOptions.length > 0 ? (
+                              statusOptions
+                                .filter(option => option.value !== "all") // Remover opção "Todos"
+                                .map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))
+                            ) : (
+                              <>
+                                <SelectItem value="1">Ativa</SelectItem>
+                                <SelectItem value="0">Inativa</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                       )}
@@ -470,8 +442,8 @@ export default function AddEnrollmentPage() {
                     <h4 className="font-medium text-blue-900 mb-2">Curso</h4>
                     <p className="text-sm font-semibold text-blue-800">{selectedCourse.designacao}</p>
                     <p className="text-xs text-blue-600">
-                      {(selectedCourse as any).duracao_anos} ano{(selectedCourse as any).duracao_anos !== 1 ? 's' : ''} •
-                      {(selectedCourse as any).tb_niveis_academicos?.designacao || 'N/A'}
+                      {selectedCourse.duracao_anos} ano{selectedCourse.duracao_anos !== 1 ? 's' : ''} •
+                      {selectedCourse.tb_niveis_academicos?.designacao || 'N/A'}
                     </p>
                   </div>
                 )}
@@ -491,7 +463,7 @@ export default function AddEnrollmentPage() {
                     variant={watchedValues.codigoStatus === "1" ? "default" : "secondary"}
                     className={watchedValues.codigoStatus === "1" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
                   >
-                    {watchedValues.codigoStatus === "1" ? "Ativa" : "Inativa"}
+                    {selectedStatus?.label || (watchedValues.codigoStatus === "1" ? "Ativa" : "Inativa")}
                   </Badge>
                 </div>
               </CardContent>
