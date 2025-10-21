@@ -57,16 +57,9 @@ export const useStudent = (): UseStudentReturn => {
         cursoFilter: string | null = null
     ) => {
         try {
+            
             setLoading(true);
             clearError();
-
-            console.log('[useStudent] Buscando alunos com filtros:', { 
-                page, 
-                limit, 
-                search, 
-                statusFilter, 
-                cursoFilter 
-            });
 
             const response = await StudentService.getAllStudents(page, limit, search, statusFilter, cursoFilter);
 
