@@ -32,17 +32,17 @@ import {
   MoreHorizontal,
   Edit,
   Users,
-  Calendar,
-  ArrowRightLeft,
-  CheckCircle,
-  Clock,
+  // Calendar,
+  // ArrowRightLeft,
+  // CheckCircle,
+  // Clock,
   ChevronLeft,
   ChevronRight,
   Loader2,
 } from 'lucide-react';
 
 import { WelcomeHeader } from '@/components/dashboard';
-import StatCard from '@/components/layout/StatCard';
+// import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
 import { useTransfers } from '@/hooks/useTransfer';
@@ -142,25 +142,25 @@ export default function TransfersListPage() {
     return null;
   };
 
-  const getTransferStatus = (dataTransferencia: string | object) => {
-    if (!dataTransferencia || typeof dataTransferencia === 'object') {
-      return { status: 'Pendente', color: 'bg-amber-100 text-amber-800' };
-    }
-    try {
-      const date = new Date(dataTransferencia);
-      if (isNaN(date.getTime())) {
-        return { status: 'Erro', color: 'bg-red-100 text-red-800' };
-      }
-      const today = new Date();
-      if (date <= today) {
-        return { status: 'Concluída', color: 'bg-green-100 text-green-800' };
-      } else {
-        return { status: 'Agendada', color: 'bg-blue-100 text-blue-800' };
-      }
-    } catch {
-      return { status: 'Erro', color: 'bg-red-100 text-red-800' };
-    }
-  };
+  // const getTransferStatus = (dataTransferencia: string | object) => {
+  //   if (!dataTransferencia || typeof dataTransferencia === 'object') {
+  //     return { status: 'Pendente', color: 'bg-amber-100 text-amber-800' };
+  //   }
+  //   try {
+  //     const date = new Date(dataTransferencia);
+  //     if (isNaN(date.getTime())) {
+  //       return { status: 'Erro', color: 'bg-red-100 text-red-800' };
+  //     }
+  //     const today = new Date();
+  //     if (date <= today) {
+  //       return { status: 'Concluída', color: 'bg-green-100 text-green-800' };
+  //     } else {
+  //       return { status: 'Agendada', color: 'bg-blue-100 text-blue-800' };
+  //     }
+  //   } catch {
+  //     return { status: 'Erro', color: 'bg-red-100 text-red-800' };
+  //   }
+  // };
 
 
 
@@ -177,7 +177,7 @@ export default function TransfersListPage() {
       />
 
       {/* Stats Cards seguindo padrão do Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
 
         <StatCard
           title="Total de Transferências"
@@ -222,7 +222,7 @@ export default function TransfersListPage() {
           bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
           accentColor="bg-gradient-to-br from-blue-500 to-blue-600"
         />
-      </div>
+      </div> */}
 
       <FilterSearchCard
         title="Filtros e Busca"
