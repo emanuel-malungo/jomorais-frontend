@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import Container  from '@/components/layout/Container';
 import { 
   Download, 
   FileText, 
@@ -277,6 +278,7 @@ IMPORTANTE: Manter esta chave segura e fazer backup!`;
   };
 
   return (
+    <Container>
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -688,5 +690,6 @@ IMPORTANTE: Manter esta chave segura e fazer backup!`;
         </Alert>
       )}
     </div>
+    </Container>
   );
 }
