@@ -18,10 +18,18 @@ export default class MatriculaService {
     return apiResponse.data
   }
 
-  static async getMatriculas(page = 1, limit = 10, search = ""): Promise<IMatriculaListResponse> {
-    const response = await api.get("/api/student-management/matriculas", {
-      params: { page, limit, search }
-    })
+  static async getMatriculas(page = 1, limit = 10, search = "", statusFilter?: string | null, cursoFilter?: string | null): Promise<IMatriculaListResponse> {
+    const params: Record<string, string | number> = { page, limit, search };
+    
+    // Adicionar filtros apenas se forem fornecidos e não forem "all"
+    if (statusFilter && statusFilter !== "all") {
+      params.status = statusFilter;
+    }
+    if (cursoFilter && cursoFilter !== "all") {
+      params.curso = cursoFilter;
+    }
+    
+    const response = await api.get("/api/student-management/matriculas", { params })
     const apiResponse = response.data
     return { data: apiResponse.data, pagination: apiResponse.pagination }
   }
@@ -59,5 +67,5 @@ export default class MatriculaService {
     const apiResponse = response.data;
     return apiResponse.data;
   }
-  
+
 }

@@ -12,7 +12,7 @@ import { toast } from "react-toastify"
 import { getErrorMessage } from "@/utils/getErrorMessage.utils"
 
 // Listagem com paginação e busca via API
-export function useMatriculas(page = 1, limit = 10, search = "") {
+export function useMatriculas(page = 1, limit = 10, search = "", statusFilter?: string | null, cursoFilter?: string | null) {
   const [matriculas, setMatriculas] = useState<IMatricula[]>([])
   const [pagination, setPagination] = useState<IMatriculaListResponse["pagination"] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -22,18 +22,19 @@ export function useMatriculas(page = 1, limit = 10, search = "") {
     try {
       setLoading(true)
       setError(null)
-      // Buscar com filtro no backend
-      const { data, pagination } = await MatriculaService.getMatriculas(page, limit, search)
+      // Buscar com filtros no backend
+      const { data, pagination } = await MatriculaService.getMatriculas(page, limit, search, statusFilter, cursoFilter)
 
       setMatriculas(data)
       setPagination(pagination)
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, "Erro ao carregar receita mensal");
+      const errorMessage = getErrorMessage(err, "Erro ao carregar matrículas");
       toast.error(errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false)
     }
-  }, [page, limit, search])
+  }, [page, limit, search, statusFilter, cursoFilter])
 
   useEffect(() => {
     fetchMatriculas()

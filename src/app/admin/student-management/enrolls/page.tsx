@@ -50,19 +50,27 @@ import { useFilterOptions } from '@/hooks/useFilterOptions';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
 export default function EnrollmentsListPage() {
+  // Estados para filtros
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [courseFilter, setCourseFilter] = useState("all");
+  
   // Hooks da API
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const { matriculas, pagination, loading, error, refetch } = useMatriculas(currentPage, itemsPerPage, debouncedSearchTerm);
+  
+  // Passar filtros para o hook - agora a filtragem é feita no backend
+  const { matriculas, pagination, loading, error, refetch } = useMatriculas(
+    currentPage, 
+    itemsPerPage, 
+    debouncedSearchTerm,
+    statusFilter,
+    courseFilter
+  );
 
   const router = useRouter();
   const { statusOptions, courseOptions } = useFilterOptions();
-
-  // Estados para filtros
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [courseFilter, setCourseFilter] = useState("all");
 
   // Debounce para busca
   useEffect(() => {
@@ -73,22 +81,6 @@ export default function EnrollmentsListPage() {
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
-
-  // Filtrar matrículas localmente (apenas para filtros de status e curso)
-  // A busca por texto já é feita pela API
-  const filteredMatriculas = matriculas.filter((matricula: any) => {
-    // Filtro por status
-    if (statusFilter !== "all" && matricula.codigoStatus.toString() !== statusFilter) {
-      return false;
-    }
-
-    // Filtro por curso
-    if (courseFilter !== "all" && matricula.codigo_Curso.toString() !== courseFilter) {
-      return false;
-    }
-
-    return true;
-  });
 
   // Reset página quando filtros mudarem
   useEffect(() => {
@@ -128,7 +120,7 @@ export default function EnrollmentsListPage() {
 
         <StatCard
           title="Matrículas Ativos"
-          value={filteredMatriculas.filter(s => s.codigoStatus === 1).length.toString()}
+          value={matriculas.filter(s => s.codigoStatus === 1).length.toString()}
           change="Ativos"
           changeType="up"
           icon={CheckCircle}
@@ -139,7 +131,7 @@ export default function EnrollmentsListPage() {
 
         <StatCard
           title="Matrículas Com Confirmação"
-          value={filteredMatriculas.filter(s => s.codigoStatus === 1).length.toString()}
+          value={matriculas.filter(s => s.codigoStatus === 1).length.toString()}
           change="Confirmação"
           changeType="up"
           icon={BookOpen}
@@ -150,7 +142,7 @@ export default function EnrollmentsListPage() {
 
         <StatCard
           title="Matrículas Sem Confirmação"
-          value={filteredMatriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length.toString()}
+          value={matriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length.toString()}
           change="Atenção"
           changeType="up"
           icon={Clock}
@@ -225,7 +217,7 @@ export default function EnrollmentsListPage() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ) : filteredMatriculas.length === 0 ? (
+                ) : matriculas.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
@@ -242,7 +234,7 @@ export default function EnrollmentsListPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredMatriculas.map((enrollment) => (
+                  matriculas.map((enrollment) => (
                     <TableRow key={enrollment.codigo}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
