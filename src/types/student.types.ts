@@ -65,3 +65,68 @@ export interface StudentResponse {
     itemsPerPage: number;
   };
 }
+
+export interface UseStudentState {
+  students: Student[];
+  student: Student | null;
+  loading: boolean;
+  error: string | null;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  } | null;
+}
+
+// Interface para o retorno do hook
+export interface UseStudentReturn extends UseStudentState {
+  getAllStudents: (page?: number, limit?: number, search?: string) => Promise<void>;
+  getAllStudentsComplete: () => Promise<void>;
+  getStudentById: (id: number) => Promise<void>;
+  createStudent: (studentData: Student) => Promise<void>;
+  updateStudent: (id: number, studentData: Student) => Promise<void>;
+  deleteStudent: (id: number) => Promise<void>;
+  clearError: () => void;
+  clearStudent: () => void;
+  setLoading: (loading: boolean) => void;
+}
+
+export interface EncarregadoData {
+  nome?: string;
+  telefone?: string;
+  email?: string;
+  codigo_Profissao?: number;
+  local_Trabalho?: string;
+  status?: number;
+}
+
+export interface CreateStudentPayload {
+  nome: string;
+  pai: string;
+  mae: string;
+  sexo: string;
+  dataNascimento?: string;
+  telefone: string;
+  email: string;
+  morada: string;
+  codigo_Nacionalidade: number;
+  codigo_Estado_Civil: number;
+  codigo_Comuna: number;
+  codigoTipoDocumento: number;
+  codigo_Status: number;
+  escolaProveniencia: number;
+  codigo_Utilizador: string;
+  n_documento_identificacao: string;
+  dataEmissao: string;
+  provinciaEmissao: string;
+  encarregado: {
+    nome?: string;
+    telefone?: string;
+    email: string;
+    codigo_Profissao: number;
+    local_Trabalho: string;
+    codigo_Utilizador: string;
+    status: number;
+  };
+}
