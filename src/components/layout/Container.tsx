@@ -1,27 +1,34 @@
 "use client";
-import { useState, type ReactNode } from 'react';
+import { useState, useContext, type ReactNode } from 'react';
 import Header from './Header';
 import Sidebar from './sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { AuthContext } from '@/contexts/auth.context';
 
 interface ContainerProps {
   children: ReactNode;
-  onLogout?: () => void;
 }
 
-const Container: React.FC<ContainerProps> = ({ children, onLogout }) => {
+const Container: React.FC<ContainerProps> = ({ children }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const authContext = useContext(AuthContext);
 
   const handleToggleMobileSidebar = () => {
     console.log('Toggle mobile sidebar:', !mobileSidebarOpen);
     setMobileSidebarOpen(true);
   };
 
+  const handleLogout = async () => {
+    if (authContext?.logout) {
+      await authContext.logout();
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block w-72">
-        <Sidebar onLogout={onLogout} />
+        <Sidebar onLogout={handleLogout} />
       </div>
 
       {/* Mobile Sidebar */}
@@ -35,14 +42,14 @@ const Container: React.FC<ContainerProps> = ({ children, onLogout }) => {
           <SheetHeader className="sr-only">
             <SheetTitle>Menu de Navegação</SheetTitle>
           </SheetHeader>
-          <Sidebar onLogout={onLogout} />
+          <Sidebar onLogout={handleLogout} />
         </SheetContent>
       </Sheet>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <Header onToggleMobileSidebar={handleToggleMobileSidebar} onLogout={onLogout} />
+        <Header onToggleMobileSidebar={handleToggleMobileSidebar} />
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">

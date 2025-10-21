@@ -19,100 +19,66 @@ import {
   DollarSign,
   Calendar
 } from 'lucide-react';
-
-interface CreditNote {
-  id: number;
-  estudante_id: string;
-  tipo_credito: string;
-  valor: string;
-  motivo: string;
-  descricao: string;
-  data_emissao: string;
-  data_validade: string;
-  aplicar_automaticamente: boolean;
-  observacoes: string;
-  status: string;
-}
+import { useCreditNote, useUpdateCreditNote } from '@/hooks/useCreditNote';
+import { ICreditNoteInput } from '@/types/creditNote.types';
 
 export default function EditCreditNote() {
   const params = useParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState<CreditNote>({
-    id: 0,
-    estudante_id: '',
-    tipo_credito: '',
-    valor: '',
-    motivo: '',
+  const creditNoteId = parseInt(params.id as string);
+  
+  const { creditNote, loading, fetchCreditNote } = useCreditNote(creditNoteId);
+  const { updateCreditNote, loading: updating } = useUpdateCreditNote();
+  const [formData, setFormData] = useState<ICreditNoteInput>({
+    designacao: '',
+    fatura: '',
     descricao: '',
-    data_emissao: '',
-    data_validade: '',
-    aplicar_automaticamente: false,
-    observacoes: '',
-    status: 'ativo'
+    valor: '',
+    codigo_aluno: 0,
+    documento: '',
+    next: '',
+    dataOperacao: '',
+    hash: '',
+    codigoPagamentoi: undefined
   });
 
-  // Dados mockados das notas de crédito
-  const creditNotesData = [
-    {
-      id: 1,
-      estudante_id: "1",
-      tipo_credito: "desconto",
-      valor: "10000",
-      motivo: "desconto_promocional",
-      descricao: "Desconto promocional para estudantes com bom desempenho acadêmico",
-      data_emissao: "2024-09-15",
-      data_validade: "2024-12-31",
-      aplicar_automaticamente: true,
-      status: "ativo",
-      observacoes: "Desconto aplicável nas próximas 3 mensalidades"
-    },
-    {
-      id: 2,
-      estudante_id: "2",
-      tipo_credito: "reembolso",
-      valor: "25000",
-      motivo: "pagamento_duplicado",
-      descricao: "Reembolso devido a pagamento duplicado da propina de setembro",
-      data_emissao: "2024-09-20",
-      data_validade: "",
-      aplicar_automaticamente: false,
-      status: "utilizado",
-      observacoes: "Valor já aplicado na propina de outubro"
-    }
-  ];
-
+  // Carregar nota de crédito
   useEffect(() => {
-    const loadCreditNote = async () => {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const creditNoteId = parseInt(params.id as string);
-      const foundCreditNote = creditNotesData.find(cn => cn.id === creditNoteId);
-      
-      if (foundCreditNote) {
-        setFormData(foundCreditNote);
-      }
-      
-      setLoading(false);
-    };
+    if (creditNoteId) {
+      fetchCreditNote();
+    }
+  }, [creditNoteId, fetchCreditNote]);
 
-    loadCreditNote();
-  }, [params.id]);
+  // Preencher formulário quando nota carregar
+  useEffect(() => {
+    if (creditNote) {
+      setFormData({
+        designacao: creditNote.designacao || '',
+        fatura: creditNote.fatura || '',
+        descricao: creditNote.descricao || '',
+        valor: creditNote.valor || '',
+        codigo_aluno: creditNote.codigo_aluno || 0,
+        documento: creditNote.documento || '',
+        next: creditNote.next || '',
+        dataOperacao: creditNote.dataOperacao || '',
+        hash: creditNote.hash || '',
+        codigoPagamentoi: creditNote.codigoPagamentoi
+      });
+    }
+  }, [creditNote]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     
     try {
-      // Simular atualização da nota de crédito
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      router.push(`/admin/finance-management/credit-notes/details/${params.id}`);
+      // Remover codigo_aluno do payload de atualização (não pode ser alterado)
+      const { codigo_aluno, ...updateData } = formData;
+      
+      console.log('📤 Enviando dados para atualização:', updateData);
+      await updateCreditNote(creditNoteId, updateData);
+      router.push('/admin/finance-management/credit-notes');
     } catch (error) {
       console.error('Erro ao atualizar nota de crédito:', error);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -135,44 +101,48 @@ export default function EditCreditNote() {
 
   return (
     <Container>
-      {/* Header Fixo */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+      {/* Header */}
+      <div className="bg-background border-b shadow-sm mb-8 rounded-2xl">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBack}
-                className="flex items-center space-x-2"
+                className="flex items-center"
               >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Voltar</span>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
               </Button>
-              <div className="h-6 w-px bg-border" />
+              <div className="h-6 w-px bg-border"></div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Editar Nota de Crédito</h1>
-                <p className="text-sm text-muted-foreground">Atualizar informações da nota de crédito</p>
+                <h1 className="text-2xl font-bold text-foreground">Editar Nota de Crédito</h1>
+                <p className="text-sm text-muted-foreground">
+                  Atualizar informações da nota de crédito
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <Button
+                type="button"
                 variant="outline"
                 onClick={handleBack}
-                disabled={saving}
+                disabled={updating}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
               <Button
+                type="submit"
                 form="credit-note-form"
-                disabled={saving}
-                className="bg-[#3B6C4D] hover:bg-[#2d5016] text-white"
+                disabled={updating}
+                className="bg-[#3B6C4D] hover:bg-[#2d5016]"
               >
-                {saving ? (
+                {updating ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="w-4 h-4 mr-2" />
                 )}
                 Salvar Alterações
               </Button>
@@ -182,54 +152,75 @@ export default function EditCreditNote() {
       </div>
 
       {/* Formulário */}
-      <div className="max-w-4xl mx-auto py-8 space-y-8">
+      <div className="space-y-8">
         <form id="credit-note-form" onSubmit={handleSubmit} className="space-y-8">
-          {/* Informações do Estudante */}
+          {/* Informações Básicas */}
           <Card className="border-l-4 border-l-blue-500">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <User className="h-5 w-5 text-blue-600" />
-                <span>Informações do Estudante</span>
+                <FileText className="h-5 w-5 text-blue-600" />
+                <span>Informações Básicas</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Estudante *
+                    Designação *
                   </label>
-                  <select
-                    value={formData.estudante_id}
-                    onChange={(e) => setFormData({...formData, estudante_id: e.target.value})}
+                  <input
+                    type="text"
+                    value={formData.designacao}
+                    onChange={(e) => setFormData({...formData, designacao: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                    placeholder="Ex: NC-2024-001"
                     required
-                  >
-                    <option value="">Selecionar estudante</option>
-                    <option value="1">João Manuel Silva - 10ª A</option>
-                    <option value="2">Maria Santos Costa - 11ª B</option>
-                    <option value="3">Pedro António Neto - 9ª C</option>
-                    <option value="4">Ana Paula Francisco - 12ª A</option>
-                    <option value="5">Carlos Alberto Mendes - 10ª B</option>
-                  </select>
+                    maxLength={45}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Tipo de Crédito *
+                    Número da Fatura *
                   </label>
-                  <select
-                    value={formData.tipo_credito}
-                    onChange={(e) => setFormData({...formData, tipo_credito: e.target.value})}
+                  <input
+                    type="text"
+                    value={formData.fatura}
+                    onChange={(e) => setFormData({...formData, fatura: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                    placeholder="Ex: FT-2024-12345"
                     required
-                  >
-                    <option value="">Selecionar tipo</option>
-                    <option value="reembolso">Reembolso</option>
-                    <option value="desconto">Desconto</option>
-                    <option value="bolsa">Bolsa de Estudo</option>
-                    <option value="promocao">Promoção</option>
-                    <option value="compensacao">Compensação</option>
-                    <option value="outros">Outros</option>
-                  </select>
+                    maxLength={45}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Estudante * <span className="text-xs text-muted-foreground">(não pode ser alterado)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={creditNote?.tb_alunos?.nome || 'Carregando...'}
+                    disabled
+                    className="w-full h-12 px-4 border border-border rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Código do aluno: {formData.codigo_aluno}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Documento *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.documento}
+                    onChange={(e) => setFormData({...formData, documento: e.target.value})}
+                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-background text-foreground"
+                    placeholder="Ex: DOC-2024-001"
+                    required
+                    maxLength={45}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -250,36 +241,25 @@ export default function EditCreditNote() {
                     Valor do Crédito (AOA) *
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     value={formData.valor}
                     onChange={(e) => setFormData({...formData, valor: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
-                    placeholder="Ex: 10000"
-                    min="0"
-                    step="0.01"
+                    placeholder="Ex: 10000.00"
                     required
+                    maxLength={45}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Motivo *
+                    Data da Operação
                   </label>
-                  <select
-                    value={formData.motivo}
-                    onChange={(e) => setFormData({...formData, motivo: e.target.value})}
+                  <input
+                    type="date"
+                    value={formData.dataOperacao}
+                    onChange={(e) => setFormData({...formData, dataOperacao: e.target.value})}
                     className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
-                    required
-                  >
-                    <option value="">Selecionar motivo</option>
-                    <option value="pagamento_duplicado">Pagamento Duplicado</option>
-                    <option value="erro_cobranca">Erro na Cobrança</option>
-                    <option value="cancelamento_servico">Cancelamento de Serviço</option>
-                    <option value="desconto_promocional">Desconto Promocional</option>
-                    <option value="bolsa_merito">Bolsa por Mérito</option>
-                    <option value="bolsa_carencia">Bolsa por Carência</option>
-                    <option value="compensacao_problema">Compensação por Problema</option>
-                    <option value="outros">Outros</option>
-                  </select>
+                  />
                 </div>
               </div>
               <div>
@@ -291,101 +271,50 @@ export default function EditCreditNote() {
                   onChange={(e) => setFormData({...formData, descricao: e.target.value})}
                   rows={3}
                   className="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-background text-foreground"
-                  placeholder="Descrição detalhada do motivo do crédito..."
+                  placeholder="Descrição detalhada da nota de crédito..."
                   required
+                  maxLength={45}
                 />
-              </div>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="aplicar_automaticamente"
-                  checked={formData.aplicar_automaticamente}
-                  onChange={(e) => setFormData({...formData, aplicar_automaticamente: e.target.checked})}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-border rounded"
-                />
-                <label htmlFor="aplicar_automaticamente" className="text-sm font-medium text-foreground">
-                  Aplicar automaticamente nos próximos pagamentos
-                </label>
               </div>
             </CardContent>
           </Card>
 
-          {/* Datas e Validade */}
-          <Card className="border-l-4 border-l-purple-500">
+          {/* Informações Adicionais */}
+          <Card className="border-l-4 border-l-orange-500">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-purple-600" />
-                <span>Datas e Validade</span>
+                <FileText className="h-5 w-5 text-orange-600" />
+                <span>Informações Adicionais</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Data de Emissão *
+                    Next
                   </label>
                   <input
-                    type="date"
-                    value={formData.data_emissao}
-                    onChange={(e) => setFormData({...formData, data_emissao: e.target.value})}
-                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-background text-foreground"
-                    required
+                    type="text"
+                    value={formData.next}
+                    onChange={(e) => setFormData({...formData, next: e.target.value})}
+                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
+                    placeholder="Próximo documento"
+                    maxLength={45}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Data de Validade
+                    Hash
                   </label>
                   <input
-                    type="date"
-                    value={formData.data_validade}
-                    onChange={(e) => setFormData({...formData, data_validade: e.target.value})}
-                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-background text-foreground"
+                    type="text"
+                    value={formData.hash}
+                    onChange={(e) => setFormData({...formData, hash: e.target.value})}
+                    className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
+                    placeholder="Hash do documento"
+                    maxLength={555}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Deixe em branco se o crédito não tem data de validade
-                  </p>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Status *
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  className="w-full h-12 px-4 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-background text-foreground"
-                  required
-                >
-                  <option value="ativo">Ativo</option>
-                  <option value="utilizado">Utilizado</option>
-                  <option value="expirado">Expirado</option>
-                  <option value="cancelado">Cancelado</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Observações */}
-          <Card className="border-l-4 border-l-orange-500">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5 text-orange-600" />
-                <span>Observações Adicionais</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Observações
-                </label>
-                <textarea
-                  value={formData.observacoes}
-                  onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-background text-foreground"
-                  placeholder="Observações adicionais sobre a nota de crédito..."
-                />
               </div>
             </CardContent>
           </Card>

@@ -127,39 +127,48 @@ export const useStudent = (): UseStudentReturn => {
 
                 // Campos numéricos obrigatórios
                 codigo_Nacionalidade: Number(studentData.codigo_Nacionalidade) || 2,
-                codigo_Estado_Civil: 1, // SEMPRE 1 (SOLTEIRO) como padrão
+                codigo_Estado_Civil: Number(studentData.codigo_Estado_Civil) || 1, // Solteiro como padrão
                 codigo_Comuna: Number(studentData.codigo_Comuna) || 1,
                 codigoTipoDocumento: Number(studentData.codigoTipoDocumento) || 1,
-                codigo_Status: 1, // SEMPRE 1 (NORMAL) como padrão
-                escolaProveniencia: 1, // SEMPRE 1 como padrão
-                codigo_Utilizador: "1", // Usuário padrão como string para conversão BigInt
+                codigo_Status: 1, // Status ativo como padrão
+                saldo: Number(studentData.saldo) || 0,
 
-                // Campos de documento obrigatórios
+                // Campos de documento
                 n_documento_identificacao: studentData.n_documento_identificacao || `AUTO${Date.now()}`,
-                dataEmissao: new Date().toISOString(), // DATA ATUAL como padrão
-                provinciaEmissao: 'Luanda', // LUANDA como padrão
+                
+                // Campos opcionais do aluno
+                escolaProveniencia: studentData.escolaProveniencia !== undefined && studentData.escolaProveniencia !== null 
+                    ? Number(studentData.escolaProveniencia) 
+                    : undefined,
+                dataEmissao: studentData.dataEmissao ? formatDate(studentData.dataEmissao) : undefined,
+                provinciaEmissao: studentData.provinciaEmissao || undefined,
 
                 // Dados do encarregado como objeto aninhado (já vem estruturado do formulário)
                 encarregado: {
-                    nome: studentDataWithEncarregado.encarregado?.nome,
-                    telefone: studentDataWithEncarregado.encarregado?.telefone,
-                    email: studentDataWithEncarregado.encarregado?.email || '',
+                    nome: studentDataWithEncarregado.encarregado?.nome || '',
+                    telefone: studentDataWithEncarregado.encarregado?.telefone || '',
+                    email: studentDataWithEncarregado.encarregado?.email || undefined,
                     codigo_Profissao: (() => {
                         const profissaoId = Number(studentDataWithEncarregado.encarregado?.codigo_Profissao);
-                        // Se for 153 (que não existe), usar 1 (Professor)
-                        // Se for qualquer outro ID inválido, usar 1 como padrão
-                        if (profissaoId === 153 || !profissaoId || profissaoId < 1) {
-                            return 1; // Professor como padrão
+                        // Validação genérica - usar 1 como padrão se inválido
+                        if (!profissaoId || profissaoId < 1) {
+                            return 1; // Profissão padrão
                         }
                         return profissaoId;
                     })(),
-                    local_Trabalho: studentDataWithEncarregado.encarregado?.local_Trabalho || 'Não informado',
-                    codigo_Utilizador: "1", // String para conversão BigInt
+                    local_Trabalho: studentDataWithEncarregado.encarregado?.local_Trabalho || '',
                     status: Number(studentDataWithEncarregado.encarregado?.status) || 1
+                    // NOTA: codigo_Utilizador será adicionado pelo backend automaticamente
                 }
             };
 
+            console.log('📤 Enviando dados para backend:', JSON.stringify(payload, null, 2));
+            
             const newStudent = await StudentService.createStudent(payload as unknown as Student);
+            
+            console.log('✅ Aluno criado com sucesso:', newStudent);
+            
+            toast.success('Aluno criado com sucesso!');
 
             setState(prev => ({
                 ...prev,

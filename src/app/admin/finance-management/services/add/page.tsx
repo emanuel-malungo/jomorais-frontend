@@ -63,44 +63,48 @@ export default function AddService() {
 
   return (
     <Container>
-      {/* Header Fixo */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+      {/* Header */}
+      <div className="bg-background border-b shadow-sm mb-8 rounded-2xl">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBack}
-                className="flex items-center space-x-2"
+                className="flex items-center"
               >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Voltar</span>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
               </Button>
-              <div className="h-6 w-px bg-border" />
+              <div className="h-6 w-px bg-border"></div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Novo Serviço</h1>
-                <p className="text-sm text-muted-foreground">Criar novo serviço adicional</p>
+                <h1 className="text-2xl font-bold text-foreground">Novo Serviço</h1>
+                <p className="text-sm text-muted-foreground">
+                  Adicione um novo serviço ao sistema financeiro
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <Button
+                type="button"
                 variant="outline"
                 onClick={handleBack}
                 disabled={creating}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
               <Button
+                type="submit"
                 form="service-form"
                 disabled={creating}
-                className="bg-[#3B6C4D] hover:bg-[#2d5016] text-white"
+                className="bg-[#3B6C4D] hover:bg-[#2d5016]"
               >
                 {creating ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="w-4 h-4 mr-2" />
                 )}
                 Salvar Serviço
               </Button>
@@ -110,7 +114,7 @@ export default function AddService() {
       </div>
 
       {/* Formulário */}
-      <div className="max-w-4xl mx-auto py-8 space-y-8">
+      <div className="space-y-8">
         {createError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex">
@@ -131,11 +135,11 @@ export default function AddService() {
         
         <form id="service-form" onSubmit={handleSubmit} className="space-y-8">
           {/* Informações Básicas */}
-          <Card className="border-l-4 border-l-blue-500">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Briefcase className="h-5 w-5 text-blue-600" />
-                <span>Informações Básicas</span>
+              <CardTitle className="flex items-center text-xl">
+                <Briefcase className="w-6 h-6 mr-3 text-blue-500" />
+                Informações Básicas
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -189,11 +193,11 @@ export default function AddService() {
           </Card>
 
           {/* Configurações Financeiras */}
-          <Card className="border-l-4 border-l-green-500">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                <span>Configurações Financeiras</span>
+              <CardTitle className="flex items-center text-xl">
+                <DollarSign className="w-6 h-6 mr-3 text-green-500" />
+                Configurações Financeiras
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -278,11 +282,11 @@ export default function AddService() {
           </Card>
 
           {/* Configurações Adicionais */}
-          <Card className="border-l-4 border-l-orange-500">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Settings className="h-5 w-5 text-orange-600" />
-                <span>Configurações Adicionais</span>
+              <CardTitle className="flex items-center text-xl">
+                <Settings className="w-6 h-6 mr-3 text-orange-500" />
+                Configurações Adicionais
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">

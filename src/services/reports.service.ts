@@ -1,6 +1,7 @@
 import { paymentPrincipalService } from './paymentPrincipal.service';
 import studentService from './student.service';
 import turmaService from './turma.service';
+import api from '@/utils/api.utils';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -45,6 +46,14 @@ export interface IAcademicReport {
   gradesBySubject: { subject: string; average: number }[];
   performanceByClass: { class: string; average: number }[];
   teacherPerformance: { teacher: string; average: number }[];
+  resumo?: {
+    totalTiposAvaliacao: number;
+    totalTiposNota: number;
+    tiposNotaAtivos: number;
+    totalTiposNotaValor: number;
+    totalTiposPauta: number;
+    totalTrimestres: number;
+  };
 }
 
 class ReportsService {
@@ -440,55 +449,68 @@ class ReportsService {
 
   async generateAcademicReport(filters: IReportFilters = {}): Promise<IAcademicReport> {
     try {
-      // Buscar dados de turmas
-      const turmasResponse = await turmaService.getTurmas(1, 100);
-      const turmas = turmasResponse.data;
-
-      // Calcular estatísticas acadêmicas
-      const totalClasses = turmas.length;
+      console.log('📊 Gerando relatório acadêmico com dados reais da API...');
       
-      // Contar disciplinas únicas
-      const uniqueSubjects = new Set();
-      turmas.forEach(turma => {
-        if (turma.tb_cursos?.designacao) {
-          // Estimar disciplinas por curso
-          const courseSubjects = this.getSubjectsByCourse(turma.tb_cursos.designacao);
-          courseSubjects.forEach(subject => uniqueSubjects.add(subject));
-        }
-      });
+      let relatorioData = null;
+      let statsData = null;
+      
+      // Tentar buscar dados do relatório
+      try {
+        const response = await api.get('/api/academic-evaluation/relatorio');
+        relatorioData = response.data.data;
+        console.log('✅ Dados do relatório acadêmico recebidos:', relatorioData);
+      } catch (err) {
+        console.warn('⚠️ Erro ao buscar relatório de avaliação:', err);
+      }
 
-      const totalSubjects = uniqueSubjects.size;
+      // Tentar buscar estatísticas de notas
+      try {
+        const statsResponse = await api.get('/api/academic-evaluation/estatisticas/notas');
+        statsData = statsResponse.data.data;
+        console.log('✅ Estatísticas de notas recebidas:', statsData);
+      } catch (err) {
+        console.warn('⚠️ Erro ao buscar estatísticas de notas:', err);
+      }
 
-      // Estatísticas estimadas baseadas nos dados disponíveis
-      const averageGrade = 14.5; // Média estimada
-      const passRate = 85.2; // Taxa de aprovação estimada
-      const attendanceRate = 92.1; // Taxa de frequência estimada
+      // Calcular média geral baseado nos dados reais da API
+      const averageGrade = statsData?.distribuicaoValores?.length > 0
+        ? statsData.distribuicaoValores.reduce((sum: number, item: any) => sum + (item._avg?.valorNumerico || 0), 0) / statsData.distribuicaoValores.length
+        : 0;
 
-      // Performance por classe
-      const performanceByClass = turmas.map(turma => ({
-        class: turma.tb_classes?.designacao || 'N/A',
-        average: Math.random() * 5 + 10 // Nota entre 10-15
-      }));
+      // Calcular taxa de aprovação baseado nos valores numéricos
+      // Considerando aprovado >= 10
+      const passRate = statsData?.distribuicaoValores?.length > 0
+        ? (statsData.distribuicaoValores.filter((item: any) => (item._avg?.valorNumerico || 0) >= 10).length / statsData.distribuicaoValores.length) * 100
+        : 0;
 
-      // Disciplinas por curso (estimado)
-      const gradesBySubject = Array.from(uniqueSubjects).map(subject => ({
-        subject: subject as string,
-        average: Math.random() * 5 + 10 // Nota entre 10-15
-      }));
+      // Dados de disciplinas com médias reais da API
+      const gradesBySubject = statsData?.tiposNotaComValores?.slice(0, 10).map((tipo: any) => ({
+        subject: tipo.designacao || 'Tipo de Nota',
+        average: 0 // Será calculado quando houver dados de notas por disciplina
+      })) || [];
 
       return {
-        totalClasses,
-        totalSubjects,
-        averageGrade,
-        passRate,
-        attendanceRate,
+        totalClasses: relatorioData?.resumo?.totalTrimestres || 0, // Usando trimestres como proxy de turmas
+        totalSubjects: relatorioData?.resumo?.totalTiposAvaliacao || 0,
+        averageGrade: Number(averageGrade.toFixed(1)),
+        passRate: Number(passRate.toFixed(1)),
+        attendanceRate: 0, // Backend não tem dados de frequência ainda
         gradesBySubject,
-        performanceByClass,
-        teacherPerformance: [] // Será implementado quando houver dados de professores
+        performanceByClass: [], // Backend não tem dados de performance por classe ainda
+        teacherPerformance: [], // Backend não tem dados de performance de professores ainda
+        resumo: relatorioData?.resumo || {
+          totalTiposAvaliacao: 0,
+          totalTiposNota: 0,
+          tiposNotaAtivos: 0,
+          totalTiposNotaValor: 0,
+          totalTiposPauta: 0,
+          totalTrimestres: 0
+        }
       };
-    } catch (error) {
-      console.error('Erro ao gerar relatório acadêmico:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('❌ Erro ao gerar relatório acadêmico:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao gerar relatório acadêmico';
+      throw new Error(errorMessage);
     }
   }
 

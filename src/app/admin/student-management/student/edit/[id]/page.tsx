@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import useStudent from '@/hooks/useStudent';
+import { useCourses } from '@/hooks/useCourse';
+import { useProvincias } from '@/hooks/useGeographic';
+import { useDocumentTypes } from '@/hooks/useDocument';
+import { useProfessions } from '@/hooks/useProfession';
 import { Student } from '@/types/student.types';
 import { toast } from 'react-toastify';
 import {
@@ -44,34 +48,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
-// Dados mockados
-const documentTypes = [
-  { codigo: 1, designacao: "Bilhete de Identidade" },
-  { codigo: 2, designacao: "Passaporte" },
-  { codigo: 3, designacao: "Certidão de Nascimento" },
-];
-
-const provinces = [
-  "Luanda", "Benguela", "Huíla", "Namibe", "Cunene", "Quando Cubango",
-  "Moxico", "Lunda Norte", "Lunda Sul", "Malanje", "Uíge", "Zaire",
-  "Cabinda", "Kwanza Norte", "Kwanza Sul", "Bié", "Huambo"
-];
-
-const courses = [
-  { codigo: 1, designacao: "Informática de Gestão" },
-  { codigo: 2, designacao: "Contabilidade" },
-  { codigo: 3, designacao: "Administração" },
-  { codigo: 4, designacao: "Marketing" },
-];
-
-const professions = [
-  { codigo: 1, designacao: "Engenheiro Civil" },
-  { codigo: 2, designacao: "Professor" },
-  { codigo: 3, designacao: "Médico" },
-  { codigo: 4, designacao: "Advogado" },
-  { codigo: 5, designacao: "Comerciante" },
-  { codigo: 6, designacao: "Funcionário Público" },
-];
+// Dados da API serão carregados via hooks
 
 // Dados iniciais vazios
 const initialFormData = {
@@ -101,10 +78,20 @@ export default function EditStudentPage() {
   const params = useParams();
   const router = useRouter();
   const { student, loading, error, getStudentById, updateStudent } = useStudent();
+  
+  // Hooks da API para dados dos selects
+  const { courses, loading: coursesLoading } = useCourses(1, 100, "");
+  const { provincias, loading: provinciasLoading } = useProvincias();
+  const { documentTypes: tiposDocumento, loading: tiposDocLoading } = useDocumentTypes();
+  const { professions: profissoes, loading: profissoesLoading } = useProfessions();
+  
   const [activeTab, setActiveTab] = useState("personal");
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Loading combinado de todos os dados
+  const isDataLoading = loading || coursesLoading || provinciasLoading || tiposDocLoading || profissoesLoading;
 
   const studentId = Array.isArray(params.id) ? params.id[0] : params.id as string;
 
@@ -290,13 +277,13 @@ export default function EditStudentPage() {
   };
 
   // Loading state
-  if (loading) {
+  if (isDataLoading) {
     return (
       <Container>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#182F59]"></div>
-            <span className="text-lg">Carregando dados do aluno...</span>
+            <span className="text-lg">Carregando dados...</span>
           </div>
         </div>
       </Container>
@@ -528,11 +515,15 @@ export default function EditStudentPage() {
                       <SelectValue placeholder="Selecione o tipo de documento" />
                     </SelectTrigger>
                     <SelectContent>
-                      {documentTypes.map((doc) => (
-                        <SelectItem key={doc.codigo} value={doc.codigo.toString()}>
-                          {doc.designacao}
-                        </SelectItem>
-                      ))}
+                      {tiposDocumento && tiposDocumento.length > 0 ? (
+                        tiposDocumento.map((doc) => (
+                          <SelectItem key={doc.codigo} value={doc.codigo.toString()}>
+                            {doc.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhum tipo de documento disponível</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -553,11 +544,15 @@ export default function EditStudentPage() {
                       <SelectValue placeholder="Selecione a província" />
                     </SelectTrigger>
                     <SelectContent>
-                      {provinces.map((province) => (
-                        <SelectItem key={province} value={province}>
-                          {province}
-                        </SelectItem>
-                      ))}
+                      {provincias && provincias.length > 0 ? (
+                        provincias.map((provincia) => (
+                          <SelectItem key={provincia.codigo} value={provincia.designacao || ""}>
+                            {provincia.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhuma província disponível</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -611,11 +606,15 @@ export default function EditStudentPage() {
                       <SelectValue placeholder="Selecione a profissão" />
                     </SelectTrigger>
                     <SelectContent>
-                      {professions.map((prof) => (
-                        <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
-                          {prof.designacao}
-                        </SelectItem>
-                      ))}
+                      {profissoes && profissoes.length > 0 ? (
+                        profissoes.map((prof) => (
+                          <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
+                            {prof.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhuma profissão disponível</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -650,11 +649,15 @@ export default function EditStudentPage() {
                       <SelectValue placeholder="Selecione o curso" />
                     </SelectTrigger>
                     <SelectContent>
-                      {courses.map((course) => (
-                        <SelectItem key={course.codigo} value={course.codigo.toString()}>
-                          {course.designacao}
-                        </SelectItem>
-                      ))}
+                      {courses && courses.length > 0 ? (
+                        courses.map((course) => (
+                          <SelectItem key={course.codigo} value={course.codigo.toString()}>
+                            {course.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhum curso disponível</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

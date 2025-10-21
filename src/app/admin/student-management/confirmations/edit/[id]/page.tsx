@@ -31,81 +31,12 @@ import {
   Edit,
 } from 'lucide-react';
 import { useConfirmation, useUpdateConfirmation } from '@/hooks/useConfirmation';
+import { useMatriculas } from '@/hooks/useMatricula';
+import { useAllTurmas } from '@/hooks/useTurma';
+import { useAnosLectivos } from '@/hooks/useAnoLectivo';
 import { useToast, ToastContainer } from '@/components/ui/toast';
 
-// Dados mockados
-const mockEnrollments = [
-  { 
-    codigo: 1, 
-    tb_alunos: { nome: "Ana Silva Santos", email: "ana.santos@email.com" },
-    tb_cursos: { designacao: "Informática de Gestão" },
-    data_Matricula: "2024-02-01"
-  },
-  { 
-    codigo: 2, 
-    tb_alunos: { nome: "Carlos Manuel Pereira", email: "carlos.pereira@email.com" },
-    tb_cursos: { designacao: "Contabilidade" },
-    data_Matricula: "2024-02-03"
-  },
-  { 
-    codigo: 3, 
-    tb_alunos: { nome: "Maria João Francisco", email: "maria.francisco@email.com" },
-    tb_cursos: { designacao: "Informática de Gestão" },
-    data_Matricula: "2024-01-28"
-  },
-];
-
-const mockClasses = [
-  { 
-    codigo: 1, 
-    designacao: "IG-2024-M",
-    tb_classes: { designacao: "10ª Classe" },
-    tb_salas: { designacao: "Sala 101" },
-    tb_periodos: { designacao: "Manhã" }
-  },
-  { 
-    codigo: 2, 
-    designacao: "IG-2024-T",
-    tb_classes: { designacao: "10ª Classe" },
-    tb_salas: { designacao: "Sala 102" },
-    tb_periodos: { designacao: "Tarde" }
-  },
-  { 
-    codigo: 3, 
-    designacao: "CONT-2024-M",
-    tb_classes: { designacao: "11ª Classe" },
-    tb_salas: { designacao: "Sala 201" },
-    tb_periodos: { designacao: "Manhã" }
-  },
-];
-
-const academicYears = [
-  { value: "2024", label: "2024" },
-  { value: "2023", label: "2023" },
-];
-
-// Dados mockados da confirmação para edição
-const mockConfirmationData = {
-  codigo: 1,
-  codigo_Matricula: "1",
-  codigo_Turma: "1",
-  data_Confirmacao: "2024-02-15",
-  classificacao: "Aprovado",
-  codigo_Ano_lectivo: "2024",
-  codigo_Status: "1",
-  tb_matriculas: {
-    codigo: 1,
-    tb_alunos: { nome: "Ana Silva Santos", email: "ana.santos@email.com" },
-    tb_cursos: { designacao: "Informática de Gestão" }
-  },
-  tb_turmas: {
-    codigo: 1,
-    designacao: "IG-2024-M",
-    tb_classes: { designacao: "10ª Classe" },
-    tb_salas: { designacao: "Sala 101" },
-    tb_periodos: { designacao: "Manhã" }
-  }
-};
+// Dados mockados removidos - usando API real
 
 export default function EditConfirmationPage() {
   const params = useParams();
@@ -117,41 +48,63 @@ export default function EditConfirmationPage() {
   const { confirmation, loading: loadingConfirmation } = useConfirmation(confirmationId);
   const { updateConfirmation, loading: updatingConfirmation } = useUpdateConfirmation(confirmationId);
   
+  // Hooks para dados dos selects
+  const { matriculas, loading: loadingMatriculas } = useMatriculas(1, 100, "");
+  const { turmas, isLoading: loadingTurmas, fetchAllTurmas } = useAllTurmas();
+  const { anosLectivos, isLoading: loadingAnos, fetchAnosLectivos } = useAnosLectivos();
+  
   // Hook para toasts
   const { toasts, removeToast, success, error: showError } = useToast();
   const [enrollmentSearch, setEnrollmentSearch] = useState("");
-  const [filteredEnrollments, setFilteredEnrollments] = useState(mockEnrollments);
+  const [filteredEnrollments, setFilteredEnrollments] = useState<typeof matriculas>([]);
 
   // Estados do formulário
   const [formData, setFormData] = useState({
-    codigo_Matricula: mockConfirmationData.codigo_Matricula,
-    codigo_Turma: mockConfirmationData.codigo_Turma,
-    data_Confirmacao: mockConfirmationData.data_Confirmacao,
-    classificacao: mockConfirmationData.classificacao,
-    codigo_Ano_lectivo: mockConfirmationData.codigo_Ano_lectivo,
-    codigo_Status: mockConfirmationData.codigo_Status,
+    codigo_Matricula: "",
+    codigo_Turma: "",
+    data_Confirmacao: "",
+    classificacao: "",
+    codigo_Ano_lectivo: "",
+    codigo_Status: "1",
+    mes_Comecar: "", // Campo opcional para mês de início
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Carregar dados da confirmação quando disponível
   useEffect(() => {
-    // Em produção, buscar dados da confirmação pela API
-    console.log("Carregando dados da confirmação:", confirmationId);
-  }, [confirmationId]);
+    if (confirmation) {
+      console.log("📄 Dados da confirmação carregados:", confirmation);
+      setFormData({
+        codigo_Matricula: confirmation.codigo_Matricula?.toString() || "",
+        codigo_Turma: confirmation.codigo_Turma?.toString() || "",
+        data_Confirmacao: confirmation.data_Confirmacao ? new Date(confirmation.data_Confirmacao).toISOString().split('T')[0] : "",
+        classificacao: confirmation.classificacao || "",
+        codigo_Ano_lectivo: confirmation.codigo_Ano_lectivo?.toString() || "",
+        codigo_Status: confirmation.codigo_Status?.toString() || "1",
+        mes_Comecar: confirmation.mes_Comecar ? new Date(confirmation.mes_Comecar).toISOString().split('T')[0] : "",
+      });
+    }
+  }, [confirmation]);
+
+  // Carregar dados dos selects na inicialização
+  useEffect(() => {
+    fetchAllTurmas();
+    fetchAnosLectivos(1, 100);
+  }, []);
 
   // Filtrar matrículas baseado na busca
   useEffect(() => {
-    if (enrollmentSearch) {
-      const filtered = mockEnrollments.filter(enrollment =>
-        enrollment.tb_alunos.nome.toLowerCase().includes(enrollmentSearch.toLowerCase()) ||
-        enrollment.tb_alunos.email.toLowerCase().includes(enrollmentSearch.toLowerCase()) ||
-        enrollment.tb_cursos.designacao.toLowerCase().includes(enrollmentSearch.toLowerCase())
+    if (enrollmentSearch && matriculas) {
+      const filtered = matriculas.filter(enrollment =>
+        enrollment.tb_alunos?.nome?.toLowerCase().includes(enrollmentSearch.toLowerCase()) ||
+        enrollment.tb_cursos?.designacao?.toLowerCase().includes(enrollmentSearch.toLowerCase())
       );
       setFilteredEnrollments(filtered);
     } else {
-      setFilteredEnrollments(mockEnrollments);
+      setFilteredEnrollments(matriculas || []);
     }
-  }, [enrollmentSearch]);
+  }, [enrollmentSearch, matriculas]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -198,16 +151,23 @@ export default function EditConfirmationPage() {
     setIsLoading(true);
     
     try {
-      // Preparar dados para envio com conversão de datas para ISO
+      // Preparar dados para envio no formato correto do backend
       const dataToSend: any = {
-        ...formData,
+        codigo_Matricula: parseInt(formData.codigo_Matricula),
+        codigo_Turma: parseInt(formData.codigo_Turma),
         data_Confirmacao: new Date(formData.data_Confirmacao + 'T00:00:00.000Z').toISOString(),
+        classificacao: formData.classificacao,
+        codigo_Ano_lectivo: parseInt(formData.codigo_Ano_lectivo),
+        codigo_Status: parseInt(formData.codigo_Status),
+        codigo_Utilizador: 1, // Usuário logado (temporário)
       };
       
-      // Só adicionar mes_Comecar se tiver valor
+      // Só adicionar mes_Comecar se tiver valor (campo opcional)
       if (formData.mes_Comecar && formData.mes_Comecar.trim() !== '') {
         dataToSend.mes_Comecar = new Date(formData.mes_Comecar + 'T00:00:00.000Z').toISOString();
       }
+      
+      console.log('📤 Enviando dados para backend:', dataToSend);
       
       // Usar o hook real para atualizar confirmação
       await updateConfirmation(dataToSend);
@@ -236,8 +196,45 @@ export default function EditConfirmationPage() {
     }
   };
 
-  const selectedEnrollment = mockEnrollments.find(e => e.codigo.toString() === formData.codigo_Matricula);
-  const selectedClass = mockClasses.find(c => c.codigo.toString() === formData.codigo_Turma);
+  const selectedEnrollment = matriculas?.find(e => e.codigo.toString() === formData.codigo_Matricula);
+  const selectedClass = turmas?.find(c => c.codigo.toString() === formData.codigo_Turma);
+
+  // Loading state combinado
+  const isLoadingData = loadingConfirmation || loadingMatriculas || loadingTurmas || loadingAnos;
+  
+  if (isLoadingData) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando dados da confirmação...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  // Error state
+  if (!confirmation && !loadingConfirmation) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-gray-600">Confirmação não encontrada</p>
+            <Button
+              onClick={() => router.back()}
+              className="mt-4"
+              variant="outline"
+            >
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -262,7 +259,7 @@ export default function EditConfirmationPage() {
                   <h1 className="text-4xl font-bold text-gray-900">
                     Editar Confirmação
                   </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">#{mockConfirmationData.codigo}</p>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">#{confirmation?.codigo || confirmationId}</p>
                 </div>
               </div>
               <p className="text-gray-600 text-sm max-w-2xl">
@@ -311,18 +308,18 @@ export default function EditConfirmationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-blue-700">Aluno Atual</label>
-                  <p className="text-sm font-semibold text-blue-900">{mockConfirmationData.tb_matriculas.tb_alunos.nome}</p>
-                  <p className="text-xs text-blue-600">{mockConfirmationData.tb_matriculas.tb_cursos.designacao}</p>
+                  <p className="text-sm font-semibold text-blue-900">{confirmation?.tb_matriculas?.tb_alunos?.nome || 'N/A'}</p>
+                  <p className="text-xs text-blue-600">{confirmation?.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-blue-700">Turma Atual</label>
-                  <p className="text-sm font-semibold text-blue-900">{mockConfirmationData.tb_turmas.designacao}</p>
-                  <p className="text-xs text-blue-600">{mockConfirmationData.tb_turmas.tb_classes.designacao}</p>
+                  <p className="text-sm font-semibold text-blue-900">{confirmation?.tb_turmas?.designacao || 'N/A'}</p>
+                  <p className="text-xs text-blue-600">{confirmation?.tb_turmas?.tb_classes?.designacao || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-blue-700">Data de Confirmação</label>
                   <p className="text-sm font-semibold text-blue-900">
-                    {new Date(mockConfirmationData.data_Confirmacao).toLocaleDateString('pt-AO')}
+                    {confirmation?.data_Confirmacao ? new Date(confirmation.data_Confirmacao).toLocaleDateString('pt-AO') : 'N/A'}
                   </p>
                 </div>
                 <div>
@@ -331,7 +328,7 @@ export default function EditConfirmationPage() {
                     variant="default"
                     className="bg-blue-100 text-blue-800"
                   >
-                    {mockConfirmationData.classificacao}
+                    {confirmation?.classificacao || 'N/A'}
                   </Badge>
                 </div>
               </div>
@@ -374,16 +371,22 @@ export default function EditConfirmationPage() {
                     <SelectValue placeholder="Selecione a matrícula" />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredEnrollments.map((enrollment) => (
-                      <SelectItem key={enrollment.codigo} value={enrollment.codigo.toString()}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{enrollment.tb_alunos.nome}</span>
-                          <span className="text-xs text-gray-500">
-                            {enrollment.tb_cursos.designacao} • Matrícula: {new Date(enrollment.data_Matricula).toLocaleDateString('pt-AO')}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {filteredEnrollments.length > 0 ? (
+                      filteredEnrollments.map((enrollment) => (
+                        <SelectItem key={enrollment.codigo} value={enrollment.codigo.toString()}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{enrollment.tb_alunos?.nome || 'N/A'}</span>
+                            <span className="text-xs text-gray-500">
+                              {enrollment.tb_cursos?.designacao || 'N/A'} • Matrícula: {enrollment.data_Matricula ? new Date(enrollment.data_Matricula).toLocaleDateString('pt-AO') : 'N/A'}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-sm text-gray-500 text-center">
+                        {loadingMatriculas ? 'Carregando...' : 'Nenhuma matrícula encontrada'}
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.codigo_Matricula && (
@@ -418,16 +421,22 @@ export default function EditConfirmationPage() {
                       <SelectValue placeholder="Selecione a turma" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockClasses.map((turma) => (
-                        <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{turma.designacao}</span>
-                            <span className="text-xs text-gray-500">
-                              {turma.tb_classes.designacao} • {turma.tb_salas.designacao} • {turma.tb_periodos.designacao}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {turmas && turmas.length > 0 ? (
+                        turmas.map((turma) => (
+                          <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{turma.designacao}</span>
+                              <span className="text-xs text-gray-500">
+                                {turma.tb_classes?.designacao || 'N/A'} • {turma.tb_salas?.designacao || 'N/A'} • {turma.tb_periodos?.designacao || 'N/A'}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-sm text-gray-500 text-center">
+                          {loadingTurmas ? 'Carregando...' : 'Nenhuma turma encontrada'}
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   {errors.codigo_Turma && (
@@ -493,11 +502,17 @@ export default function EditConfirmationPage() {
                       <SelectValue placeholder="Selecione o ano letivo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {academicYears.map((year) => (
-                        <SelectItem key={year.value} value={year.value}>
-                          {year.label}
-                        </SelectItem>
-                      ))}
+                      {anosLectivos && anosLectivos.length > 0 ? (
+                        anosLectivos.map((ano) => (
+                          <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
+                            {ano.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-sm text-gray-500 text-center">
+                          {loadingAnos ? 'Carregando...' : 'Nenhum ano letivo encontrado'}
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   {errors.codigo_Ano_lectivo && (
@@ -540,9 +555,9 @@ export default function EditConfirmationPage() {
               {selectedEnrollment ? (
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h4 className="font-medium text-blue-900 mb-2">Nova Matrícula</h4>
-                  <p className="text-sm font-semibold text-blue-800">{selectedEnrollment.tb_alunos.nome}</p>
-                  <p className="text-xs text-blue-600">{selectedEnrollment.tb_cursos.designacao}</p>
-                  {selectedEnrollment.codigo.toString() !== mockConfirmationData.codigo_Matricula && (
+                  <p className="text-sm font-semibold text-blue-800">{selectedEnrollment.tb_alunos?.nome || 'N/A'}</p>
+                  <p className="text-xs text-blue-600">{selectedEnrollment.tb_cursos?.designacao || 'N/A'}</p>
+                  {selectedEnrollment.codigo.toString() !== confirmation?.codigo_Matricula?.toString() && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -558,8 +573,8 @@ export default function EditConfirmationPage() {
                 <div className="p-4 bg-green-50 rounded-lg">
                   <h4 className="font-medium text-green-900 mb-2">Nova Turma</h4>
                   <p className="text-sm font-semibold text-green-800">{selectedClass.designacao}</p>
-                  <p className="text-xs text-green-600">{selectedClass.tb_classes.designacao}</p>
-                  {selectedClass.codigo.toString() !== mockConfirmationData.codigo_Turma && (
+                  <p className="text-xs text-green-600">{selectedClass.tb_classes?.designacao || 'N/A'}</p>
+                  {selectedClass.codigo.toString() !== confirmation?.codigo_Turma?.toString() && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -577,7 +592,7 @@ export default function EditConfirmationPage() {
                   <p className="text-sm font-semibold text-yellow-800">
                     {new Date(formData.data_Confirmacao).toLocaleDateString('pt-AO')}
                   </p>
-                  {formData.data_Confirmacao !== mockConfirmationData.data_Confirmacao && (
+                  {formData.data_Confirmacao !== (confirmation?.data_Confirmacao ? new Date(confirmation.data_Confirmacao).toISOString().split('T')[0] : '') && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -601,7 +616,7 @@ export default function EditConfirmationPage() {
                 >
                   {formData.classificacao}
                 </Badge>
-                {formData.classificacao !== mockConfirmationData.classificacao && (
+                {formData.classificacao !== confirmation?.classificacao && (
                   <Badge variant="outline" className="mt-2 ml-2 text-xs border-orange-300 text-orange-700">
                     Alterado
                   </Badge>

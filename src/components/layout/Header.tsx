@@ -1,22 +1,13 @@
 "use client"
 
-import React from 'react'
+import React, { useContext } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { 
-  LogOut, 
   Menu,
   Shield,
 } from 'lucide-react'
-
-// Mock user data - replace with actual user data
-const currentUser = {
-  name: "João Morais",
-  email: "joao.morais@JOMORAIS.edu.ao",
-  avatar: "/api/placeholder/40/40",
-  role: "Administrador",
-  initials: "JM"
-}
+import { AuthContext } from '@/contexts/auth.context'
 
 interface HeaderProps {
   onToggleMobileSidebar?: () => void;
@@ -24,6 +15,25 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, onLogout }) => {
+  const authContext = useContext(AuthContext);
+  const user = authContext?.user;
+
+  // Função para gerar iniciais do nome
+  const getInitials = (name: string) => {
+    const names = name.split(' ');
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const currentUser = {
+    name: user?.nome || "Usuário",
+    username: user?.username || "",
+    avatar: "/api/placeholder/40/40",
+    role: user?.tipoDesignacao || "Usuário",
+    initials: user?.nome ? getInitials(user.nome) : "U"
+  };
   return (
     <header className="bg-gradient-to-r from-white via-gray-50/80 to-white backdrop-blur-md border-b border-gray-200 h-20 px-6 flex items-center justify-between ">
       {/* Left Section - Search and Menu */}
@@ -70,16 +80,6 @@ const Header: React.FC<HeaderProps> = ({ onToggleMobileSidebar, onLogout }) => {
             </p>
             <p className="text-xs text-gray-600 font-medium">{currentUser.role}</p>
           </div>
-
-          {/* Logout Button */}
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 ml-2"
-            onClick={onLogout}
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </header>

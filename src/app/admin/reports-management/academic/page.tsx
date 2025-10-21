@@ -17,6 +17,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   BookOpen,
   Download,
   BarChart3,
@@ -26,7 +32,11 @@ import {
   FileText,
   Award,
   Users,
+  ChevronDown,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import { useAcademicReports } from '@/hooks/useReports';
 
 export default function AcademicReportsPage() {
   const [reportType, setReportType] = useState("");
@@ -35,6 +45,8 @@ export default function AcademicReportsPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+
+  const { report, isLoading, error, generateReport, exportToPDF, exportToExcel } = useAcademicReports();
 
   const reportTypes = [
     { value: "notas", label: "Relatório de Notas" },
@@ -68,49 +80,15 @@ export default function AcademicReportsPage() {
 
   const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
 
+  // Carregar relatório inicial
+  React.useEffect(() => {
+    console.log('🔄 Carregando relatório acadêmico inicial...');
+    generateReport();
+  }, [generateReport]);
+
   const handleGenerateReport = () => {
-    if (!reportType) {
-      alert("Por favor, selecione um tipo de relatório");
-      return;
-    }
-
-    let startDate, endDate;
-    const now = new Date();
-
-    switch (dateRange) {
-      case "current_month":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case "previous_month":
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case "specific_month":
-        startDate = new Date(selectedYear, selectedMonth - 1, 1);
-        endDate = new Date(selectedYear, selectedMonth, 0);
-        break;
-      case "custom":
-        if (!customStartDate || !customEndDate) {
-          alert("Por favor, selecione as datas de início e fim");
-          return;
-        }
-        startDate = new Date(customStartDate);
-        endDate = new Date(customEndDate);
-        break;
-      default:
-        alert("Por favor, selecione um período");
-        return;
-    }
-
-    console.log("Gerando relatório:", {
-      type: reportType,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-    });
-
-    // Aqui você implementaria a lógica real de geração do relatório
-    alert(`Relatório ${reportTypes.find(r => r.value === reportType)?.label} gerado para o período de ${startDate.toLocaleDateString()} a ${endDate.toLocaleDateString()}`);
+    console.log('📊 Gerando relatório acadêmico...');
+    generateReport();
   };
 
   return (
@@ -145,71 +123,78 @@ export default function AcademicReportsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
-              <BookOpen className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-blue-500" />
-              <span className="font-bold text-xs text-blue-600">Ativas</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#182F59]">Disciplinas Ativas</p>
-            <p className="text-3xl font-bold text-gray-900">42</p>
+      {isLoading && !report ? (
+        <div className="flex items-center justify-center py-12 mb-8">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-[#F9CD1D] mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando estatísticas acadêmicas...</p>
           </div>
         </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Erro ao carregar relatório</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      ) : report ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                <Activity className="h-3 w-3 text-blue-500" />
+                <span className="font-bold text-xs text-blue-600">Ativas</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-2 text-[#182F59]">Disciplinas Ativas</p>
+              <p className="text-3xl font-bold text-gray-900">{report.totalSubjects}</p>
+            </div>
+          </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
-              <Award className="h-6 w-6 text-white" />
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
+                <Award className="h-6 w-6 text-white" />
+              </div>
             </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="font-bold text-xs text-emerald-600">+3.2%</span>
+            <div>
+              <p className="text-sm font-semibold mb-2 text-emerald-600">Taxa de Aprovação</p>
+              <p className="text-3xl font-bold text-gray-900">{report.passRate.toFixed(1)}%</p>
             </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-emerald-600">Taxa de Aprovação</p>
-            <p className="text-3xl font-bold text-gray-900">94.8%</p>
-          </div>
-        </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#FFC107] shadow-sm">
-              <Users className="h-6 w-6 text-white" />
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#FFC107] shadow-sm">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
             </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <Activity className="h-3 w-3 text-yellow-500" />
-              <span className="font-bold text-xs text-yellow-600">87.5%</span>
+            <div>
+              <p className="text-sm font-semibold mb-2 text-[#FFD002]">Trimestres</p>
+              <p className="text-3xl font-bold text-gray-900">{report.resumo?.totalTrimestres || 0}</p>
             </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Taxa de Frequência</p>
-            <p className="text-3xl font-bold text-gray-900">87.5%</p>
-          </div>
-        </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
-              <GraduationCap className="h-6 w-6 text-white" />
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
+                <GraduationCap className="h-6 w-6 text-white" />
+              </div>
             </div>
-            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-              <TrendingUp className="h-3 w-3 text-purple-500" />
-              <span className="font-bold text-xs text-purple-600">15.2</span>
+            <div>
+              <p className="text-sm font-semibold mb-2 text-purple-600">Média Geral</p>
+              <p className="text-3xl font-bold text-gray-900">{report.averageGrade.toFixed(1)}</p>
             </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold mb-2 text-purple-600">Média Geral</p>
-            <p className="text-3xl font-bold text-gray-900">15.2</p>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Gerador de Relatórios */}
       <Card className="mb-8">
@@ -258,78 +243,80 @@ export default function AcademicReportsPage() {
           </div>
 
           <div className="flex gap-4">
-            <Button className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Gerar Relatório
+            <Button 
+              onClick={handleGenerateReport}
+              disabled={isLoading}
+              className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <BarChart3 className="w-4 h-4 mr-2" />
+              )}
+              {isLoading ? 'Gerando...' : 'Gerar Relatório'}
             </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Exportar PDF
-            </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Exportar Excel
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exportar como PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exportar como Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       </Card>
 
-      {/* Relatórios Rápidos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+      {/* Dados Adicionais da API */}
+      {report?.resumo && (
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <Award className="h-5 w-5 text-[#F9CD1D]" />
-              <span>Relatório de Notas</span>
+            <CardTitle className="flex items-center space-x-2">
+              <BarChart3 className="h-5 w-5" />
+              <span>Estatísticas Detalhadas do Sistema</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 text-sm mb-4">
-              Análise completa das notas por disciplina e turma.
-            </p>
-            <Button variant="outline" size="sm" className="w-full">
-              <Download className="w-4 h-4 mr-2" />
-              Gerar Agora
-            </Button>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Tipos de Avaliação</p>
+                <p className="text-2xl font-bold text-blue-600">{report.resumo.totalTiposAvaliacao}</p>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Tipos de Nota</p>
+                <p className="text-2xl font-bold text-green-600">{report.resumo.totalTiposNota}</p>
+              </div>
+              <div className="text-center p-4 bg-emerald-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Tipos Nota Ativos</p>
+                <p className="text-2xl font-bold text-emerald-600">{report.resumo.tiposNotaAtivos}</p>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Valores de Nota</p>
+                <p className="text-2xl font-bold text-purple-600">{report.resumo.totalTiposNotaValor}</p>
+              </div>
+              <div className="text-center p-4 bg-amber-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Tipos de Pauta</p>
+                <p className="text-2xl font-bold text-amber-600">{report.resumo.totalTiposPauta}</p>
+              </div>
+              <div className="text-center p-4 bg-indigo-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Trimestres</p>
+                <p className="text-2xl font-bold text-indigo-600">{report.resumo.totalTrimestres}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <Users className="h-5 w-5 text-[#F9CD1D]" />
-              <span>Relatório de Frequência</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 text-sm mb-4">
-              Controle de presenças e faltas por disciplina.
-            </p>
-            <Button variant="outline" size="sm" className="w-full">
-              <Download className="w-4 h-4 mr-2" />
-              Gerar Agora
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <GraduationCap className="h-5 w-5 text-[#F9CD1D]" />
-              <span>Relatório de Aprovação</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 text-sm mb-4">
-              Análise de taxas de aprovação e reprovação.
-            </p>
-            <Button variant="outline" size="sm" className="w-full">
-              <Download className="w-4 h-4 mr-2" />
-              Gerar Agora
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </Container>
   );
 }

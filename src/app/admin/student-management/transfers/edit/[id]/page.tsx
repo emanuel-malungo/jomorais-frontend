@@ -31,6 +31,7 @@ import {
   GraduationCap,
   Edit,
 } from 'lucide-react';
+import { useTransfer, useUpdateTransfer } from '@/hooks/useTransfer';
 
 // Dados mockados
 const mockStudents = [
@@ -94,28 +95,42 @@ const mockTransferData = {
 export default function EditTransferPage() {
   const params = useParams();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const transferId = parseInt(params.id as string);
   const [studentSearch, setStudentSearch] = useState("");
   const [filteredStudents, setFilteredStudents] = useState(mockStudents);
 
-  const transferId = params.id;
+  // Hooks para dados reais
+  const { transfer, loading: loadingTransfer } = useTransfer(transferId);
+  const { updateTransfer, loading: updatingTransfer } = useUpdateTransfer(transferId);
 
   // Estados do formulário
   const [formData, setFormData] = useState({
-    codigoAluno: mockTransferData.codigoAluno,
-    dataTransferencia: mockTransferData.dataTransferencia,
-    escolaDestino: mockTransferData.escolaDestino,
-    motivoTransferencia: mockTransferData.motivoTransferencia,
-    obs: mockTransferData.obs,
-    status: mockTransferData.status,
+    codigoAluno: "",
+    dataTransferencia: "",
+    escolaDestino: "",
+    motivoTransferencia: "",
+    obs: "",
+    status: "Pendente",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Carregar dados da transferência quando disponível
   useEffect(() => {
-    // Em produção, buscar dados da transferência pela API
-    console.log("Carregando dados da transferência:", transferId);
-  }, [transferId]);
+    if (transfer) {
+      console.log("📄 Dados da transferência carregados:", transfer);
+      setFormData({
+        codigoAluno: transfer.codigoAluno?.toString() || "",
+        dataTransferencia: transfer.dataTransferencia && typeof transfer.dataTransferencia === 'string' 
+          ? new Date(transfer.dataTransferencia).toISOString().split('T')[0] 
+          : "",
+        escolaDestino: transfer.codigoEscola?.toString() || "",
+        motivoTransferencia: transfer.codigoMotivo?.toString() || "",
+        obs: transfer.obs || "",
+        status: "Aprovada", // Status fixo por enquanto
+      });
+    }
+  }, [transfer]);
 
   // Filtrar alunos baseado na busca
   useEffect(() => {
@@ -162,9 +177,9 @@ export default function EditTransferPage() {
       newErrors.dataTransferencia = "Data de transferência não pode ser futura";
     }
 
-    // Validar escola destino
-    if (formData.escolaDestino && formData.escolaDestino.trim().length < 5) {
-      newErrors.escolaDestino = "Nome da escola deve ter pelo menos 5 caracteres";
+    // Validar código da escola (deve ser número)
+    if (formData.escolaDestino && isNaN(parseInt(formData.escolaDestino))) {
+      newErrors.escolaDestino = "Código da escola inválido";
     }
 
     setErrors(newErrors);
@@ -175,25 +190,77 @@ export default function EditTransferPage() {
     if (!validateForm()) {
       return;
     }
-
-    setIsLoading(true);
     
     try {
-      // Simular chamada à API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Preparar dados para envio no formato correto do backend
+      const dataToSend: any = {
+        codigoAluno: parseInt(formData.codigoAluno),
+        codigoEscola: parseInt(formData.escolaDestino),
+        codigoMotivo: parseInt(formData.motivoTransferencia),
+        dataTransferencia: new Date(formData.dataTransferencia + 'T00:00:00.000Z').toISOString(),
+        codigoUtilizador: 1, // Usuário logado (temporário)
+      };
       
-      console.log("Dados atualizados da transferência:", formData);
+      // Adicionar observações se houver (campo opcional)
+      if (formData.obs && formData.obs.trim() !== '') {
+        dataToSend.obs = formData.obs.trim();
+      }
+      
+      // Campo dataActualizacao será adicionado automaticamente pelo backend
+      
+      console.log('📤 Enviando dados para backend:', dataToSend);
+      
+      // Usar o hook real para atualizar transferência
+      await updateTransfer(dataToSend);
+      
+      console.log("Dados atualizados da transferência:", dataToSend);
       
       // Redirecionar para lista após sucesso
-      router.push('/admin/student-management/transfers');
+      setTimeout(() => {
+        router.push('/admin/student-management/transfers?success=updated');
+      }, 1500);
+      
     } catch (error) {
       console.error("Erro ao atualizar transferência:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const selectedStudent = mockStudents.find(s => s.codigo.toString() === formData.codigoAluno);
+
+  // Loading state
+  if (loadingTransfer) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando dados da transferência...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  // Error state
+  if (!transfer && !loadingTransfer) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-gray-600">Transferência não encontrada</p>
+            <Button
+              onClick={() => router.back()}
+              className="mt-4"
+              variant="outline"
+            >
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   const calculateAge = (birthDate: string) => {
     const today = new Date();
@@ -229,7 +296,7 @@ export default function EditTransferPage() {
                   <h1 className="text-4xl font-bold text-gray-900">
                     Editar Transferência
                   </h1>
-                  <p className="text-[#F9CD1D] font-semibold text-lg">#{mockTransferData.codigo}</p>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">#{transfer?.codigo || transferId}</p>
                 </div>
               </div>
               <p className="text-gray-600 text-sm max-w-2xl">
@@ -248,11 +315,11 @@ export default function EditTransferPage() {
 
               <Button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={updatingTransfer}
                 className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
               >
                 <Save className="w-5 h-5 mr-2" />
-                {isLoading ? "Salvando..." : "Salvar Alterações"}
+                {updatingTransfer ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </div>
           </div>
@@ -278,17 +345,19 @@ export default function EditTransferPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-blue-700">Aluno Atual</label>
-                  <p className="text-sm font-semibold text-blue-900">{mockTransferData.tb_alunos.nome}</p>
-                  <p className="text-xs text-blue-600">{mockTransferData.tb_alunos.tb_matriculas.tb_cursos.designacao}</p>
+                  <p className="text-sm font-semibold text-blue-900">{transfer?.tb_alunos?.nome || 'N/A'}</p>
+                  <p className="text-xs text-blue-600">{(transfer?.tb_alunos as any)?.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-blue-700">Escola Destino Atual</label>
-                  <p className="text-sm font-semibold text-blue-900">{mockTransferData.escolaDestino}</p>
+                  <p className="text-sm font-semibold text-blue-900">{(transfer as any)?.tb_escolas?.designacao || transfer?.codigoEscola || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-blue-700">Data de Transferência</label>
                   <p className="text-sm font-semibold text-blue-900">
-                    {new Date(mockTransferData.dataTransferencia).toLocaleDateString('pt-AO')}
+                    {transfer?.dataTransferencia && typeof transfer.dataTransferencia === 'string' 
+                      ? new Date(transfer.dataTransferencia).toLocaleDateString('pt-AO') 
+                      : 'N/A'}
                   </p>
                 </div>
                 <div>
@@ -297,7 +366,7 @@ export default function EditTransferPage() {
                     variant="default"
                     className="bg-blue-100 text-blue-800"
                   >
-                    {mockTransferData.status}
+                    Aprovada
                   </Badge>
                 </div>
               </div>
@@ -392,33 +461,23 @@ export default function EditTransferPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Status da Transferência
+                    Observações sobre Status
                   </label>
-                  <Select 
-                    value={formData.status} 
-                    onValueChange={(value) => handleInputChange('status', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pendente">Pendente</SelectItem>
-                      <SelectItem value="Aprovada">Aprovada</SelectItem>
-                      <SelectItem value="Rejeitada">Rejeitada</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <p className="text-xs text-gray-500 italic">O status da transferência é gerenciado automaticamente pelo sistema</p>
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Escola Destino *
+                    Código da Escola Destino *
                   </label>
                   <Input
-                    placeholder="Digite o nome da escola destino..."
+                    type="number"
+                    placeholder="Digite o código da escola destino..."
                     value={formData.escolaDestino}
                     onChange={(e) => handleInputChange('escolaDestino', e.target.value)}
                     className={errors.escolaDestino ? "border-red-500" : ""}
                   />
+                  <p className="text-xs text-gray-500">Informe o código numérico da escola de destino</p>
                   {errors.escolaDestino && (
                     <p className="text-sm text-red-500 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
@@ -429,23 +488,16 @@ export default function EditTransferPage() {
 
                 <div className="md:col-span-2 space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Motivo da Transferência *
+                    Código do Motivo da Transferência *
                   </label>
-                  <Select 
-                    value={formData.motivoTransferencia} 
-                    onValueChange={(value) => handleInputChange('motivoTransferencia', value)}
-                  >
-                    <SelectTrigger className={errors.motivoTransferencia ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione o motivo da transferência" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {transferReasons.map((reason) => (
-                        <SelectItem key={reason} value={reason}>
-                          {reason}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    type="number"
+                    placeholder="Digite o código do motivo..."
+                    value={formData.motivoTransferencia}
+                    onChange={(e) => handleInputChange('motivoTransferencia', e.target.value)}
+                    className={errors.motivoTransferencia ? "border-red-500" : ""}
+                  />
+                  <p className="text-xs text-gray-500">Informe o código numérico do motivo (1-7)</p>
                   {errors.motivoTransferencia && (
                     <p className="text-sm text-red-500 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
@@ -482,7 +534,7 @@ export default function EditTransferPage() {
                   <h4 className="font-medium text-blue-900 mb-2">Novo Aluno</h4>
                   <p className="text-sm font-semibold text-blue-800">{selectedStudent.nome}</p>
                   <p className="text-xs text-blue-600">{selectedStudent.tb_matriculas.tb_cursos.designacao}</p>
-                  {selectedStudent.codigo.toString() !== mockTransferData.codigoAluno && (
+                  {selectedStudent.codigo.toString() !== transfer?.codigoAluno?.toString() && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -498,7 +550,7 @@ export default function EditTransferPage() {
                 <div className="p-4 bg-green-50 rounded-lg">
                   <h4 className="font-medium text-green-900 mb-2">Nova Escola Destino</h4>
                   <p className="text-sm font-semibold text-green-800">{formData.escolaDestino}</p>
-                  {formData.escolaDestino !== mockTransferData.escolaDestino && (
+                  {formData.escolaDestino !== transfer?.codigoEscola?.toString() && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -512,7 +564,7 @@ export default function EditTransferPage() {
                   <p className="text-sm font-semibold text-yellow-800">
                     {new Date(formData.dataTransferencia).toLocaleDateString('pt-AO')}
                   </p>
-                  {formData.dataTransferencia !== mockTransferData.dataTransferencia && (
+                  {formData.dataTransferencia !== (transfer?.dataTransferencia && typeof transfer.dataTransferencia === 'string' ? new Date(transfer.dataTransferencia).toISOString().split('T')[0] : '') && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>
@@ -536,7 +588,7 @@ export default function EditTransferPage() {
                 >
                   {formData.status}
                 </Badge>
-                {formData.status !== mockTransferData.status && (
+                {formData.status !== 'Aprovada' && (
                   <Badge variant="outline" className="mt-2 ml-2 text-xs border-orange-300 text-orange-700">
                     Alterado
                   </Badge>
@@ -547,7 +599,7 @@ export default function EditTransferPage() {
                 <div className="p-4 bg-indigo-50 rounded-lg">
                   <h4 className="font-medium text-indigo-900 mb-2">Novo Motivo</h4>
                   <p className="text-sm font-semibold text-indigo-800">{formData.motivoTransferencia}</p>
-                  {formData.motivoTransferencia !== mockTransferData.motivoTransferencia && (
+                  {formData.motivoTransferencia !== transfer?.codigoMotivo?.toString() && (
                     <Badge variant="outline" className="mt-2 text-xs border-orange-300 text-orange-700">
                       Alterado
                     </Badge>

@@ -26,6 +26,7 @@ export interface Student {
   codigoTipoDocumento: number;
   morada?: string;
   dataEmissao: string | Record<string, unknown>; // Pode ser objeto ou string
+  provinciaEmissao?: string;
   motivo_Desconto?: string;
   user_id: string;
   tb_encarregados?: {
@@ -116,18 +117,17 @@ export interface CreateStudentPayload {
   codigo_Comuna: number;
   codigoTipoDocumento: number;
   codigo_Status: number;
-  escolaProveniencia: number;
-  codigo_Utilizador: string;
+  saldo: number;
+  escolaProveniencia?: number;
   n_documento_identificacao: string;
-  dataEmissao: string;
-  provinciaEmissao: string;
+  dataEmissao?: string;
+  provinciaEmissao?: string;
   encarregado: {
     nome?: string;
     telefone?: string;
-    email: string;
+    email?: string;
     codigo_Profissao: number;
     local_Trabalho: string;
-    codigo_Utilizador: string;
     status: number;
   };
 }

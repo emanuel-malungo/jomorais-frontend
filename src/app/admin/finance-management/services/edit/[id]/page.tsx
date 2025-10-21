@@ -116,36 +116,40 @@ export default function EditService() {
 
   return (
     <Container>
-      {/* Header Fixo */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+      {/* Header */}
+      <div className="bg-background border-b shadow-sm mb-8 rounded-2xl">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBack}
-                className="flex items-center space-x-2"
+                className="flex items-center"
               >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Voltar</span>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
               </Button>
-              <div className="h-6 w-px bg-border" />
+              <div className="h-6 w-px bg-border"></div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Editar Serviço</h1>
-                <p className="text-sm text-muted-foreground">Atualizar informações do serviço</p>
+                <h1 className="text-2xl font-bold text-foreground">Editar Serviço</h1>
+                <p className="text-sm text-muted-foreground">
+                  Atualizar informações do serviço
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <Button
+                type="button"
                 variant="outline"
                 onClick={handleBack}
                 disabled={updating}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
               <Button
+                type="submit"
                 form="service-form"
                 disabled={updating}
                 className="bg-[#3B6C4D] hover:bg-[#2d5016] text-white"
@@ -163,7 +167,7 @@ export default function EditService() {
       </div>
 
       {/* Formulário */}
-      <div className="max-w-4xl mx-auto py-8 space-y-8">
+      <div className="space-y-8">
         {updateError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex">

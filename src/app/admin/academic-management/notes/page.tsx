@@ -292,20 +292,9 @@ export default function NotesPage() {
                           {trimestre.designacao || `Trimestre ${trimestre.codigo}`}
                         </TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => window.location.href = `/admin/academic-management/notes/edit/${trimestre.codigo}`}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button variant="ghost" className="h-8 w-8 p-0" disabled>
+                            <MoreHorizontal className="h-4 w-4 text-gray-400" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

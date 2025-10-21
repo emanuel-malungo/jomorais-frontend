@@ -18,6 +18,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   DollarSign,
   Download,
   BarChart3,
@@ -30,6 +36,7 @@ import {
   Loader2,
   AlertCircle,
   Calendar,
+  ChevronDown,
 } from 'lucide-react';
 import { useFinancialReports } from '@/hooks/useReports';
 
@@ -245,22 +252,28 @@ export default function FinancialReportsPage() {
               )}
               {isLoading ? 'Gerando...' : 'Gerar Relatório'}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={exportToPDF}
-              disabled={!report || isLoading}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Exportar PDF
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={exportToExcel}
-              disabled={!report || isLoading}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Exportar Excel
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline"
+                  disabled={!report || isLoading}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportToPDF}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exportar como PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToExcel}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Exportar como Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       </Card>
