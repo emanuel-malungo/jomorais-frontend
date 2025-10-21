@@ -22,39 +22,6 @@ export interface UseFilterOptionsReturn {
     loadingCourses: boolean;
 }
 
-/**
- * Hook personalizado para criar opções de filtros de status e cursos
- * 
- * @param page - Página para carregar (padrão: 1)
- * @param limit - Limite de itens por página (padrão: 100)
- * @param search - Termo de busca (padrão: "")
- * @returns Objeto contendo opções de status, cursos e estados de loading
- * 
- * @example
- * ```tsx
- * const { statusOptions, courseOptions, loadingStatus, loadingCourses } = useFilterOptions();
- * 
- * // Usar nos filtros
- * <FilterSearchCard
- *   filters={[
- *     {
- *       label: "Status",
- *       value: statusFilter,
- *       onChange: setStatusFilter,
- *       options: statusOptions,
- *       width: "w-48"
- *     },
- *     {
- *       label: "Curso",
- *       value: courseFilter,
- *       onChange: setCourseFilter,
- *       options: courseOptions,
- *       width: "w-48"
- *     }
- *   ]}
- * />
- * ```
- */
 export const useFilterOptions = (
     page: number = 1,
     limit: number = 100,

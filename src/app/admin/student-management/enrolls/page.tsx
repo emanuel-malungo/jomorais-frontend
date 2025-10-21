@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,18 +27,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   Plus,
   MoreHorizontal,
   Edit,
-  Trash2,
   Users,
   BookOpen,
   Calendar,
@@ -49,15 +40,14 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { useMatriculas, useDeleteMatricula } from '@/hooks/useMatricula';
+import { useMatriculas } from '@/hooks/useMatricula';
 
-import { WelcomeHeader } from '@/components/dashboard';
+import { useRouter } from 'next/navigation';
 import StatCard from '@/components/layout/StatCard';
+import { WelcomeHeader } from '@/components/dashboard';
+import { calculateAge } from '@/utils/calculateAge.utils';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
-
-
-import { useStatus } from '@/hooks/useStatusControl';
-import { useCourses } from '@/hooks/useCourse';
 
 export default function EnrollmentsListPage() {
   // Hooks da API
@@ -66,46 +56,13 @@ export default function EnrollmentsListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const { matriculas, pagination, loading, error, refetch } = useMatriculas(currentPage, itemsPerPage, debouncedSearchTerm);
-  const { deleteMatricula } = useDeleteMatricula();
 
-
-  const { status } = useStatus(1, 100, "");
-  const { courses } = useCourses(1, 100, "");
-
-  const statusOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Status" }];
-    if (status && status.length > 0) {
-      status.forEach((s) => {
-        options.push({
-          value: s.codigo.toString(),
-          label: s.designacao
-        });
-      });
-    }
-    return options;
-  }, [status]);
-
-  const courseOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Cursos" }];
-    if (courses && courses.length > 0) {
-      courses.forEach((c) => {
-        options.push({
-          value: c.codigo.toString(),
-          label: c.designacao
-        });
-      });
-    }
-    return options;
-  }, [courses]);
+  const router = useRouter();
+  const { statusOptions, courseOptions } = useFilterOptions();
 
   // Estados para filtros
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");
-
-  // Estados para modal de confirmação de exclusão
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number, nome: string } | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Debounce para busca
   useEffect(() => {
@@ -138,69 +95,14 @@ export default function EnrollmentsListPage() {
     setCurrentPage(1);
   }, [statusFilter, courseFilter]);
 
-  // Funções para gerenciar matrículas
-  const handleDeleteClick = (matricula: any) => {
-    setItemToDelete({ id: matricula.codigo, nome: matricula.tb_alunos.nome });
-    setShowDeleteModal(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
-
-    setDeletingId(itemToDelete.id);
-    setShowDeleteModal(false);
-
-    try {
-      await deleteMatricula(itemToDelete.id);
-      await refetch();
-    } catch (error: any) {
-      console.error('Erro ao excluir matrícula:', error);
-      alert(`Erro ao excluir matrícula: ${error.message || 'Erro desconhecido'}`);
-    } finally {
-      setDeletingId(null);
-      setItemToDelete(null);
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
-    setItemToDelete(null);
-  };
-
-  const handleViewEnrollment = (enrollmentId: number) => {
-    window.location.href = `/admin/student-management/enrolls/details/${enrollmentId}`;
-  };
-
-  const handleEditEnrollment = (enrollmentId: number) => {
-    window.location.href = `/admin/student-management/enrolls/edit/${enrollmentId}`;
-  };
-
-  const handleDeleteEnrollment = (enrollmentId: number) => {
-    const matricula = matriculas.find(m => m.codigo === enrollmentId);
-    if (matricula) {
-      handleDeleteClick(matricula);
-    }
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-AO');
   };
 
-  const calculateAge = (birthDate: string) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
   return (
     <Container>
-      {/* Header seguindo padrão do Dashboard */}
 
+      {/* Header seguindo padrão do Dashboard */}
       <WelcomeHeader
         title="Gestão de Matrículas"
         description="erencie todas as matrículas dos alunos. Visualize informações detalhadas, acompanhe confirmações e mantenha os registros sempre atualizados."
@@ -252,7 +154,7 @@ export default function EnrollmentsListPage() {
           change="Atenção"
           changeType="up"
           icon={Clock}
-          color="text-[#FFD002]"
+          color="text-[#FF4D4D]"
           bgColor="bg-gradient-to-br from-red-50 via-white to-red-50/50"
           accentColor="bg-gradient-to-br from-red-500 to-red-600 "
         />
@@ -408,7 +310,7 @@ export default function EnrollmentsListPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleEditEnrollment(enrollment.codigo)}>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/student-management/enrolls/edit/${enrollment.codigo}`)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
@@ -515,58 +417,6 @@ export default function EnrollmentsListPage() {
         </CardContent>
       </Card>
 
-      {/* Modal de Confirmação de Exclusão */}
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="h-5 w-5 text-red-600" />
-              </div>
-              <span>Confirmar Exclusão</span>
-            </DialogTitle>
-            <DialogDescription className="text-left">
-              Tem certeza que deseja excluir a matrícula de{' '}
-              <span className="font-semibold text-gray-900">
-                {itemToDelete?.nome}
-              </span>
-              ?
-              <br />
-              <br />
-              <span className="text-red-600 font-medium">
-                Esta ação não pode ser desfeita.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex space-x-2">
-            <Button
-              variant="outline"
-              onClick={handleCancelDelete}
-              disabled={deletingId !== null}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deletingId !== null}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deletingId === itemToDelete?.id ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Excluindo...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Excluir
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Container>
   );
 }

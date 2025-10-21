@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from "react"
 import MatriculaService from "@/services/matricula.service"
-import { 
-  IMatricula, 
-  IMatriculaInput, 
-  IMatriculaListResponse, 
+import {
+  IMatricula,
+  IMatriculaInput,
+  IMatriculaListResponse,
   IMatriculaDetailed,
   IMatriculasByAnoLectivo,
   IMatriculasWithoutConfirmation,
-  IBatchResponse
 } from "@/types/matricula.types"
+import { toast } from "react-toastify"
+import { getErrorMessage } from "@/utils/getErrorMessage.utils"
 
 // Listagem com paginação e busca via API
 export function useMatriculas(page = 1, limit = 10, search = "") {
@@ -23,11 +24,12 @@ export function useMatriculas(page = 1, limit = 10, search = "") {
       setError(null)
       // Buscar com filtro no backend
       const { data, pagination } = await MatriculaService.getMatriculas(page, limit, search)
-      
+
       setMatriculas(data)
       setPagination(pagination)
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar matrículas")
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar receita mensal");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -53,8 +55,9 @@ export function useMatricula(id?: number) {
       setError(null)
       const data = await MatriculaService.getMatriculaById(id)
       setMatricula(data)
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar matrícula")
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar receita mensal");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -77,10 +80,10 @@ export function useCreateMatricula() {
       setLoading(true)
       setError(null)
       return await MatriculaService.createMatricula(payload)
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Erro ao criar matrícula"
-      setError(errorMessage)
-      throw new Error(errorMessage)
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao criar matrícula");
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -99,10 +102,10 @@ export function useUpdateMatricula(id: number) {
       setLoading(true)
       setError(null)
       return await MatriculaService.updateMatricula(id, payload)
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Erro ao atualizar matrícula"
-      setError(errorMessage)
-      throw new Error(errorMessage)
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao atualizar matrícula");
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -121,14 +124,9 @@ export function useDeleteMatricula() {
       setLoading(true)
       setError(null)
       await MatriculaService.deleteMatricula(id)
-    } catch (err: any) {
-      const errorMessage = err.response?.status === 404
-        ? "Matrícula não encontrada"
-        : err.response?.status === 400
-        ? "Não é possível excluir matrícula com confirmações associadas"
-        : err.message || "Erro ao deletar matrícula"
-      setError(errorMessage)
-      throw new Error(errorMessage)
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar receita mensal");
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -147,9 +145,9 @@ export function useBatchMatricula() {
       setLoading(true)
       setError(null)
       return await MatriculaService.batchMatricula(payload)
-    } catch (err: any) {
-      setError(err.message || "Erro ao criar matrículas em lote")
-      throw err
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao criar matrículas em lote");
+      setError(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -171,19 +169,19 @@ export function useMatriculasByAnoLectivo() {
       const data = await MatriculaService.getMatriculasByAnoLectivo(params)
       setMatriculas(data)
       return data
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar matrículas por ano letivo")
-      throw err
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar matrículas por ano letivo");
+      setError(errorMessage);
     } finally {
       setLoading(false)
     }
   }, [])
 
-  return { 
-    matriculas, 
-    loading, 
-    error, 
-    fetchMatriculasByAnoLectivo 
+  return {
+    matriculas,
+    loading,
+    error,
+    fetchMatriculasByAnoLectivo
   }
 }
 
@@ -200,9 +198,9 @@ export function useMatriculasWithoutConfirmacao() {
       const data = await MatriculaService.getMatriculasWithoutConfirmacao()
       setMatriculas(data)
       return data
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar matrículas sem confirmação")
-      throw err
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar matrículas sem confirmação");
+      setError(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -213,10 +211,10 @@ export function useMatriculasWithoutConfirmacao() {
     fetchMatriculasWithoutConfirmacao()
   }, [fetchMatriculasWithoutConfirmacao])
 
-  return { 
-    matriculas, 
-    loading, 
-    error, 
-    refetch: fetchMatriculasWithoutConfirmacao 
+  return {
+    matriculas,
+    loading,
+    error,
+    refetch: fetchMatriculasWithoutConfirmacao
   }
 }
