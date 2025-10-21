@@ -7,6 +7,7 @@ import {
   IMatriculaDetailed,
   IMatriculasByAnoLectivo,
   IMatriculasWithoutConfirmation,
+  IMatriculaStatistics
 } from "@/types/matricula.types"
 import { toast } from "react-toastify"
 import { getErrorMessage } from "@/utils/getErrorMessage.utils"
@@ -217,5 +218,40 @@ export function useMatriculasWithoutConfirmacao() {
     loading,
     error,
     refetch: fetchMatriculasWithoutConfirmacao
+  }
+}
+
+// Estatísticas de matrículas
+export function useMatriculasStatistics(statusFilter?: string | null, cursoFilter?: string | null) {
+  const [statistics, setStatistics] = useState<IMatriculaStatistics | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchStatistics = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await MatriculaService.getMatriculasStatistics(statusFilter, cursoFilter)
+      setStatistics(data)
+      return data
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar estatísticas de matrículas");
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false)
+    }
+  }, [statusFilter, cursoFilter])
+
+  // Auto fetch on mount and when filters change
+  useEffect(() => {
+    fetchStatistics()
+  }, [fetchStatistics])
+
+  return {
+    statistics,
+    loading,
+    error,
+    refetch: fetchStatistics
   }
 }

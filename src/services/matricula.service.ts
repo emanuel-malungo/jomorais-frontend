@@ -6,7 +6,8 @@ import {
   IMatriculaDetailed,
   IMatriculasByAnoLectivo,
   IMatriculasWithoutConfirmation,
-  IBatchResponse
+  IBatchResponse,
+  IMatriculaStatistics
 } from "@/types/matricula.types"
 
 
@@ -64,6 +65,22 @@ export default class MatriculaService {
 
   static async getMatriculasWithoutConfirmacao(): Promise<IMatriculasWithoutConfirmation[]> {
     const response = await api.get("/api/student-management/matriculas/sem-confirmacao")
+    const apiResponse = response.data;
+    return apiResponse.data;
+  }
+
+  static async getMatriculasStatistics(statusFilter?: string | null, cursoFilter?: string | null): Promise<IMatriculaStatistics> {
+    const params: Record<string, string> = {};
+    
+    // Adicionar filtros apenas se forem fornecidos e não forem "all"
+    if (statusFilter && statusFilter !== "all") {
+      params.status = statusFilter;
+    }
+    if (cursoFilter && cursoFilter !== "all") {
+      params.curso = cursoFilter;
+    }
+    
+    const response = await api.get("/api/student-management/statistics/matriculas", { params })
     const apiResponse = response.data;
     return apiResponse.data;
   }

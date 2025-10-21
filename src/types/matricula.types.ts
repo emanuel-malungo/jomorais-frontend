@@ -154,3 +154,18 @@ export interface IBatchResponse<T> {
     failed: number
   }
 }
+
+// Types for statistics
+export interface IMatriculaStatistics {
+  total: number
+  ativas: number
+  inativas: number
+  comConfirmacao: number
+  semConfirmacao: number
+  percentualAtivas: string
+  percentualComConfirmacao: string
+  distribuicaoPorCurso: Array<{
+    curso: string
+    total: number
+  }>
+}

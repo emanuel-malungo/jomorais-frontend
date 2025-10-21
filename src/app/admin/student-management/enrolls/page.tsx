@@ -40,7 +40,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { useMatriculas } from '@/hooks/useMatricula';
+import { useMatriculas, useMatriculasStatistics } from '@/hooks/useMatricula';
 
 import { useRouter } from 'next/navigation';
 import StatCard from '@/components/layout/StatCard';
@@ -68,6 +68,9 @@ export default function EnrollmentsListPage() {
     statusFilter,
     courseFilter
   );
+
+  // Hook para estatísticas - também filtra no backend
+  const { statistics, loading: statsLoading } = useMatriculasStatistics(statusFilter, courseFilter);
 
   const router = useRouter();
   const { statusOptions, courseOptions } = useFilterOptions();
@@ -109,7 +112,7 @@ export default function EnrollmentsListPage() {
 
         <StatCard
           title="Total de Matrículas"
-          value={(pagination?.totalItems || 0).toString()}
+          value={statsLoading ? "..." : (statistics?.total || pagination?.totalItems || 0).toString()}
           change="Total"
           changeType="up"
           icon={Users}
@@ -119,8 +122,8 @@ export default function EnrollmentsListPage() {
         />
 
         <StatCard
-          title="Matrículas Ativos"
-          value={matriculas.filter(s => s.codigoStatus === 1).length.toString()}
+          title="Matrículas Ativas"
+          value={statsLoading ? "..." : (statistics?.ativas || 0).toString()}
           change="Ativos"
           changeType="up"
           icon={CheckCircle}
@@ -131,7 +134,7 @@ export default function EnrollmentsListPage() {
 
         <StatCard
           title="Matrículas Com Confirmação"
-          value={matriculas.filter(s => s.codigoStatus === 1).length.toString()}
+          value={statsLoading ? "..." : (statistics?.comConfirmacao || 0).toString()}
           change="Confirmação"
           changeType="up"
           icon={BookOpen}
@@ -142,7 +145,7 @@ export default function EnrollmentsListPage() {
 
         <StatCard
           title="Matrículas Sem Confirmação"
-          value={matriculas.filter(e => !e.tb_confirmacoes || e.tb_confirmacoes.length === 0).length.toString()}
+          value={statsLoading ? "..." : (statistics?.semConfirmacao || 0).toString()}
           change="Atenção"
           changeType="up"
           icon={Clock}
