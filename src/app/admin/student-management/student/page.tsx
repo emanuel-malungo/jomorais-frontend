@@ -28,15 +28,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-
-import {
   Users,
   Plus,
   MoreHorizontal,
@@ -56,13 +47,12 @@ import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
 import { useRouter } from 'next/navigation';
 import useStudent from '@/hooks/useStudent';
-import { Student } from '@/types/student.types';
 import { calculateAge } from '@/utils/calculateAge.utils';
 import useFilterOptions from '@/hooks/useFilterOptions';
 
 export default function ListStudentPage() {
 
-  const { students, loading, pagination, getAllStudents, deleteStudent } = useStudent();
+  const { students, loading, pagination, getAllStudents } = useStudent();
   const router = useRouter();
 
   // Usar hook de opções de filtros
@@ -73,11 +63,6 @@ export default function ListStudentPage() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-
-  // Estados para modal de confirmação de exclusão
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Carregar estudantes do backend quando filtros mudarem
   useEffect(() => {
@@ -108,35 +93,6 @@ export default function ListStudentPage() {
   // Cálculos para exibição
   const startIndex = ((serverPagination.currentPage - 1) * serverPagination.itemsPerPage) + 1;
   const endIndex = Math.min(serverPagination.currentPage * serverPagination.itemsPerPage, serverPagination.totalItems);
-
-  const confirmDeleteStudent = async () => {
-    if (!studentToDelete) return;
-
-    try {
-      setDeleting(true);
-      await deleteStudent(studentToDelete.codigo!);
-      setDeleteModalOpen(false);
-      setStudentToDelete(null);
-      // Recarregar TODOS os alunos após exclusão (mesmo comportamento do carregamento inicial)
-      await getAllStudents(1, 1000);
-      // Resetar para primeira página se a página atual ficar vazia
-      const totalStudentsAfterDelete = students.length - 1;
-      const totalPagesAfterDelete = Math.ceil(totalStudentsAfterDelete / itemsPerPage);
-      if (currentPage > totalPagesAfterDelete && totalPagesAfterDelete > 0) {
-        setCurrentPage(totalPagesAfterDelete);
-      }
-      // Toast de sucesso já é exibido pelo StudentService.deleteStudent
-    } catch (error) {
-      console.error('Erro ao excluir aluno:', error);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const cancelDeleteStudent = () => {
-    setDeleteModalOpen(false);
-    setStudentToDelete(null);
-  };
 
   return (
     <Container>
@@ -224,10 +180,15 @@ export default function ListStudentPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Alunos da Página {currentPage} ({displayStudents.length} alunos)
+            Lista de Alunos ({displayStudents.length} na página)
           </CardTitle>
           <CardDescription>
-            Página {currentPage} de {serverPagination.totalPages} - Total: {serverPagination.totalItems} alunos
+            Página {serverPagination.currentPage} de {serverPagination.totalPages} - Total: {serverPagination.totalItems} alunos
+            {(statusFilter !== 'all' || courseFilter !== 'all' || searchTerm) && (
+              <span className="text-blue-600 ml-2">
+                (filtrado{statusFilter !== 'all' ? ' por status' : ''}{courseFilter !== 'all' ? ' por curso' : ''}{searchTerm ? ' por busca' : ''})
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -332,13 +293,6 @@ export default function ListStudentPage() {
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {/* <DropdownMenuItem 
-                              onClick={() => handleDeleteStudent(student.codigo || 0)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem> */}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -443,45 +397,6 @@ export default function ListStudentPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Modal de Confirmação de Exclusão */}
-      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Exclusão</DialogTitle>
-            <DialogDescription>
-              Tem certeza de que deseja excluir o aluno <strong>{studentToDelete?.nome}</strong>?
-              <br />
-              <span className="text-red-600 text-sm mt-2 block">
-                Esta ação não pode ser desfeita. Todos os dados relacionados ao aluno serão removidos.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={cancelDeleteStudent}
-              disabled={deleting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDeleteStudent}
-              disabled={deleting}
-            >
-              {deleting ? (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Excluindo...</span>
-                </div>
-              ) : (
-                'Excluir Aluno'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Container>
   );
 }

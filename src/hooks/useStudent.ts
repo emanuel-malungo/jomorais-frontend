@@ -60,8 +60,20 @@ export const useStudent = (): UseStudentReturn => {
             setLoading(true);
             clearError();
 
+            console.log('[useStudent] Buscando alunos com filtros:', { 
+                page, 
+                limit, 
+                search, 
+                statusFilter, 
+                cursoFilter 
+            });
+
             const response = await StudentService.getAllStudents(page, limit, search, statusFilter, cursoFilter);
 
+            console.log('[useStudent] Resposta recebida:', {
+                totalStudents: response.students.length,
+                pagination: response.pagination
+            });
 
             setState(prev => ({
                 ...prev,
