@@ -70,11 +70,6 @@ export const useStudent = (): UseStudentReturn => {
 
             const response = await StudentService.getAllStudents(page, limit, search, statusFilter, cursoFilter);
 
-            console.log('[useStudent] Resposta recebida:', {
-                totalStudents: response.students.length,
-                pagination: response.pagination
-            });
-
             setState(prev => ({
                 ...prev,
                 students: response.students,
