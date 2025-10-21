@@ -48,7 +48,6 @@ interface CourseWithRelations extends ICourse {
   };
 }
 
-
 type MatriculaFormData = yup.InferType<typeof matriculaSchema>;
 
 export default function AddEnrollmentPage() {
@@ -62,11 +61,11 @@ export default function AddEnrollmentPage() {
 
   // Hooks da API
   const { createMatricula, loading: createLoading } = useCreateMatricula();
-  const { 
-    courses, 
-    statusOptions, 
+  const {
+    courses,
+    statusOptions,
     loadingCourses: coursesLoading,
-    loadingStatus: statusLoading 
+    loadingStatus: statusLoading
   } = useFilterOptions(1, 100);
   const { students, loading: loadingSearch, getAllStudents } = useStudent();
 
@@ -106,43 +105,31 @@ export default function AddEnrollmentPage() {
 
   // Handler para submissão do formulário
   const onSubmit = async (data: MatriculaFormData) => {
-    try {
-      setSubmitError("");
 
-      // Validações adicionais
-      if (!selectedStudent) {
-        setSubmitError('Nenhum aluno foi selecionado');
-        return;
-      }
+    setSubmitError("");
 
-      // Converter data para formato ISO datetime
-      const dataMatricula = new Date(data.data_Matricula + 'T00:00:00.000Z').toISOString();
-
-      const matriculaData: IMatriculaInput = {
-        codigo_Aluno: parseInt(data.codigo_Aluno),
-        codigo_Curso: parseInt(data.codigo_Curso),
-        data_Matricula: dataMatricula,
-        codigo_Utilizador: 49, // Usando usuário existente (Emanuel Malungo224)
-        codigoStatus: parseInt(data.codigoStatus)
-      };
-
-      const result = await createMatricula(matriculaData);
-
-      if (result) {
-        // Redirecionar para a lista de matrículas
-        router.push('/admin/student-management/enrolls');
-      }
-
-    } catch (error: unknown) {
-      console.error('Erro ao criar matrícula:', error);
-
-      // Tratar erros específicos
-      if (error instanceof Error && error.message) {
-        setSubmitError(error.message);
-      } else {
-        setSubmitError('Erro interno do servidor. Tente novamente.');
-      }
+    // Validações adicionais
+    if (!selectedStudent) {
+      setSubmitError('Nenhum aluno foi selecionado');
+      return;
     }
+
+    const dataMatricula = new Date(data.data_Matricula + 'T00:00:00.000Z').toISOString();
+
+    const matriculaData: IMatriculaInput = {
+      codigo_Aluno: parseInt(data.codigo_Aluno),
+      codigo_Curso: parseInt(data.codigo_Curso),
+      data_Matricula: dataMatricula,
+      codigo_Utilizador: 49, // Usando usuário existente (Emanuel Malungo224)
+      codigoStatus: parseInt(data.codigoStatus)
+    };
+
+    const result = await createMatricula(matriculaData);
+
+    if (result) {
+      router.push('/admin/student-management/enrolls');
+    }
+
   };
 
   // Selecionar aluno
@@ -160,7 +147,7 @@ export default function AddEnrollmentPage() {
     <Container>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between bg-white py-8 px-4 rounded-md shadow">
           <div className="flex items-center space-x-4">
             <Button
               variant="ghost"
@@ -176,6 +163,29 @@ export default function AddEnrollmentPage() {
               <h1 className="text-2xl font-bold text-gray-900">Nova Matrícula</h1>
             </div>
           </div>
+          {/* Botões */}
+          <div className="flex justify-end space-x-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="matricula-form"
+              disabled={createLoading}
+              className="flex items-center space-x-2"
+            >
+              {createLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              <span>{createLoading ? 'Criando...' : 'Criar Matrícula'}</span>
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -189,7 +199,7 @@ export default function AddEnrollmentPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <form id="matricula-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   {/* Busca de Aluno */}
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -378,39 +388,6 @@ export default function AddEnrollmentPage() {
                         </Select>
                       )}
                     />
-                  </div>
-
-                  {/* Erro de submissão */}
-                  {submitError && (
-                    <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                        <p className="text-sm text-red-600">{submitError}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Botões */}
-                  <div className="flex justify-end space-x-4 pt-6">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => router.back()}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createLoading}
-                      className="flex items-center space-x-2"
-                    >
-                      {createLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      <span>{createLoading ? 'Criando...' : 'Criar Matrícula'}</span>
-                    </Button>
                   </div>
                 </form>
               </CardContent>

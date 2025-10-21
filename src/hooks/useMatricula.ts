@@ -84,8 +84,7 @@ export function useCreateMatricula() {
       return await MatriculaService.createMatricula(payload)
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao criar matrícula");
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -106,8 +105,7 @@ export function useUpdateMatricula(id: number) {
       return await MatriculaService.updateMatricula(id, payload)
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao atualizar matrícula");
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -149,7 +147,7 @@ export function useBatchMatricula() {
       return await MatriculaService.batchMatricula(payload)
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao criar matrículas em lote");
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -173,7 +171,7 @@ export function useMatriculasByAnoLectivo() {
       return data
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao carregar matrículas por ano letivo");
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -202,7 +200,7 @@ export function useMatriculasWithoutConfirmacao() {
       return data
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao carregar matrículas sem confirmação");
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false)
     }
@@ -236,7 +234,6 @@ export function useMatriculasStatistics(statusFilter?: string | null, cursoFilte
       return data
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao carregar estatísticas de matrículas");
-      setError(errorMessage);
       toast.error(errorMessage);
     } finally {
       setLoading(false)
