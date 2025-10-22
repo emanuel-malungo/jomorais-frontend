@@ -1,27 +1,4 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import api from '@/utils/api.utils';
-import { toast } from 'react-toastify';
-import { getErrorMessage } from '@/utils/getErrorMessage.utils';
-
-// Estender o tipo jsPDF para incluir autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: {
-      head?: unknown[][];
-      body?: unknown[][];
-      startY?: number;
-      margin?: { left?: number; right?: number; top?: number; bottom?: number };
-      styles?: Record<string, unknown>;
-      headStyles?: Record<string, unknown>;
-      alternateRowStyles?: Record<string, unknown>;
-      columnStyles?: Record<string, unknown>;
-    }) => jsPDF;
-    lastAutoTable?: {
-      finalY: number;
-    };
-  }
-}
 
 export interface StudentData {
   codigo: number;
@@ -49,9 +26,12 @@ export interface TurmaReportData {
 export class TurmaReportService {
   
   /**
-   * Adiciona o logo ao cabeçalho do PDF
+   * Adiciona o cabeçalho padrão Jomorais ao PDF
    */
-  private static async addLogo(doc: jsPDF, pageWidth: number, yPosition: number): Promise<number> {
+  private static async addHeader(doc: any, pageWidth: number, startY: number, title: string): Promise<number> {
+    let yPosition = startY;
+    
+    // Logo centralizado
     try {
       const logoUrl = '/icon.png';
       const response = await fetch(logoUrl);
@@ -61,21 +41,39 @@ export class TurmaReportService {
       await new Promise((resolve) => {
         reader.onloadend = () => {
           const base64data = reader.result as string;
-          // Adicionar logo centralizado (40px = ~14mm)
           const logoWidth = 14;
-          const logoHeight = 14; // Manter proporção
+          const logoHeight = 14;
           doc.addImage(base64data, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
           resolve(null);
         };
         reader.readAsDataURL(blob);
       });
       
-      return yPosition + 22; // Retornar nova posição Y (logo + margem maior)
+      yPosition += 22;
     } catch (error) {
-      const errorMessage = getErrorMessage(error, "Erro ao carregar logo");
-      toast.error(`Erro ao carregar logo: ${errorMessage}`);
-      return yPosition; // Retornar posição original se falhar
+      console.warn('Erro ao carregar logo:', error);
     }
+    
+    // Título do instituto centralizado
+    doc.setFontSize(18);
+    doc.setTextColor(249, 205, 29); // Amarelo JOMORAIS
+    doc.text('INSTITUTO MÉDIO POLITÉCNICO JOMORAIS', pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 12;
+    
+    // Título do relatório
+    doc.setFontSize(14);
+    doc.setTextColor(59, 108, 77); // Verde JOMORAIS
+    doc.text(title, pageWidth / 2, yPosition, { align: 'center' });
+    
+    yPosition += 10;
+    
+    // Data e hora
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-AO')} às ${new Date().toLocaleTimeString('pt-AO')}`, pageWidth / 2, yPosition, { align: 'center' });
+    
+    return yPosition + 10;
   }
   
   /**
@@ -141,106 +139,126 @@ export class TurmaReportService {
   /**
    * Gera PDF para uma turma específica
    */
-  static async generateSingleTurmaPDF(turma: {
-    codigo: number;
-    designacao: string;
-    tb_classes?: { designacao: string };
-    tb_cursos?: { designacao: string };
-    tb_salas?: { designacao: string };
-    tb_periodos?: { designacao: string };
-  }): Promise<void> {
-    const alunos = await this.getStudentsByTurma(turma.codigo);
-    
-    const doc = new jsPDF();
-    
-    // Configurações do documento
-    const pageWidth = doc.internal.pageSize.width;
-    const margin = 20;
-    
-    // Adicionar logo
-    let yPosition = await this.addLogo(doc, pageWidth, 15);
-    
-    // Cabeçalho da escola/instituição
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INSTITUTO MÉDIO POLITÉCNICO JO MORAIS', pageWidth / 2, yPosition, { align: 'center' });
-    
-    yPosition += 10;
-    doc.setFontSize(14);
-    doc.text('LISTA NOMINAL DE ALUNOS', pageWidth / 2, yPosition, { align: 'center' });
-    
-    // Informações da turma
-    yPosition += 10;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    
-    const turmaInfo = [
-      `Turma: ${turma.designacao}`,
-      `Classe: ${turma.tb_classes?.designacao || 'N/A'}`,
-      `Curso: ${turma.tb_cursos?.designacao || 'N/A'}`,
-      `Sala: ${turma.tb_salas?.designacao || 'N/A'}`,
-      `Período: ${turma.tb_periodos?.designacao || 'N/A'}`
-    ];
-    turmaInfo.forEach(info => {
-      doc.text(info, margin, yPosition);
-      yPosition += 8;
-    });
-    
-    // Data do relatório
-    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth - margin, 50, { align: 'right' });
-    doc.text(`Total de Alunos: ${alunos.length}`, pageWidth - margin, 58, { align: 'right' });
-    
-    // Ordenar alunos alfabeticamente
-    const alunosOrdenados = alunos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
-    
-    // Tabela de alunos com informações completas
-    const tableData = alunosOrdenados.map((aluno, index) => {
-      const dataNascimento = aluno.data_nascimento ? this.formatBirthDate(aluno.data_nascimento) : 'N/A';
-      const idade = aluno.data_nascimento ? this.calculateAge(aluno.data_nascimento) : (aluno.idade || 'N/A');
+  static async generateSingleTurmaPDF(turma: any): Promise<void> {
+    try {
+      const alunos = await this.getStudentsByTurma(turma.codigo);
       
-      return [
-        (index + 1).toString(),
-        aluno.nome,
-        dataNascimento,
-        idade.toString(),
-        turma.tb_cursos?.designacao || 'N/A'
+      // Importar jsPDF dinamicamente
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+      
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 20;
+      
+      // Adicionar cabeçalho
+      let yPosition = await this.addHeader(doc, pageWidth, margin, 'LISTA NOMINAL DE ALUNOS');
+      
+      // Informações da turma
+      yPosition += 5;
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      
+      const turmaInfo = [
+        `Turma: ${turma.designacao}`,
+        `Classe: ${turma.tb_classes?.designacao || 'N/A'}`,
+        `Curso: ${turma.tb_cursos?.designacao || 'N/A'}`,
+        `Sala: ${turma.tb_salas?.designacao || 'N/A'}`,
+        `Período: ${turma.tb_periodos?.designacao || 'N/A'}`,
+        `Total de Alunos: ${alunos.length}`
       ];
-    });
-    
-    autoTable(doc, {
-      head: [['Nº', 'Nome Completo', 'Data Nascimento', 'Idade', 'Curso']],
-      body: tableData,
-      startY: yPosition + 10,
-      margin: { left: margin, right: margin },
-      styles: {
-        fontSize: 10,
-        cellPadding: 3,
-      },
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      },
-      columnStyles: {
-        0: { halign: 'center', cellWidth: 15 },
-        1: { cellWidth: 80 },
-        2: { halign: 'center', cellWidth: 30 },
-        3: { halign: 'center', cellWidth: 20 },
-        4: { cellWidth: 45 }
+      
+      turmaInfo.forEach(info => {
+        doc.text(info, margin, yPosition);
+        yPosition += 7;
+      });
+      
+      yPosition += 5;
+      
+      // Ordenar alunos alfabeticamente
+      const alunosOrdenados = alunos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
+      
+      // Cabeçalho da tabela
+      doc.setFontSize(9);
+      doc.setTextColor(255, 255, 255);
+      doc.setFillColor(249, 205, 29); // Amarelo JOMORAIS
+      doc.rect(15, yPosition - 5, 180, 10, 'F');
+      
+      doc.text('Nº', 20, yPosition);
+      doc.text('Nome', 35, yPosition);
+      doc.text('Telefone', 110, yPosition);
+      doc.text('Documento', 140, yPosition);
+      doc.text('Status', 175, yPosition);
+      yPosition += 12;
+      
+      // Dados dos alunos
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(8);
+      
+      alunosOrdenados.forEach((aluno, index) => {
+        // Verificar se precisa de nova página
+        if (yPosition > 260) {
+          doc.addPage();
+          yPosition = 30;
+          
+          // Repetir cabeçalho da tabela
+          doc.setFontSize(9);
+          doc.setTextColor(255, 255, 255);
+          doc.setFillColor(249, 205, 29);
+          doc.rect(15, yPosition - 5, 180, 10, 'F');
+          doc.text('Nº', 20, yPosition);
+          doc.text('Nome', 35, yPosition);
+          doc.text('Telefone', 110, yPosition);
+          doc.text('Documento', 140, yPosition);
+          doc.text('Status', 175, yPosition);
+          yPosition += 12;
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(8);
+        }
+        
+        // Linha alternada
+        if (index % 2 === 0) {
+          doc.setFillColor(248, 249, 250);
+          doc.rect(15, yPosition - 4, 180, 8, 'F');
+        }
+        
+        // Dados do aluno
+        doc.text((index + 1).toString(), 20, yPosition);
+        doc.text(aluno.nome?.substring(0, 25) || 'N/A', 35, yPosition);
+        doc.text(aluno.telefone?.substring(0, 15) || 'N/A', 110, yPosition);
+        doc.text(aluno.numero_documento?.substring(0, 15) || 'N/A', 140, yPosition);
+        
+        // Status (sempre ativo para alunos matriculados)
+        doc.setTextColor(34, 197, 94); // Verde
+        doc.text('Ativo', 175, yPosition);
+        doc.setTextColor(0, 0, 0);
+        
+        yPosition += 8;
+      });
+      
+      // Rodapé com assinaturas
+      if (yPosition + 60 < 280) {
+        yPosition += 20;
+        doc.setFontSize(10);
+        doc.text('Assinatura do Diretor: _________________________', margin, yPosition);
+        doc.text('Assinatura do Coordenador: _________________________', margin, yPosition + 15);
       }
-    });
-    
-    // Rodapé
-    const finalY = doc.lastAutoTable?.finalY || yPosition + 50;
-    doc.setFontSize(10);
-    doc.text('Assinatura do Diretor: _________________________', margin, finalY + 30);
-    doc.text('Assinatura do Coordenador: _________________________', margin, finalY + 45);
-    
-    // Salvar o PDF
-    doc.save(`Lista_Alunos_${turma.designacao.replace(/\s+/g, '_')}.pdf`);
+      
+      // Adicionar número de página no rodapé
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Página ${i} de ${totalPages}`, pageWidth - 20, 285, { align: 'right' });
+      }
+      
+      // Salvar o PDF
+      doc.save(`Lista_Alunos_${turma.designacao.replace(/\s+/g, '_')}.pdf`);
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF da turma:', error);
+      throw new Error(`Erro ao gerar PDF: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
   }
 
   /**
@@ -255,9 +273,10 @@ export class TurmaReportService {
       }
       
       
+      // Importar jsPDF dinamicamente
+      const { jsPDF } = await import('jspdf');
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.width;
-      const pageHeight = doc.internal.pageSize.height;
       const margin = 20;
       
       // Processar cada turma
@@ -271,40 +290,29 @@ export class TurmaReportService {
             doc.addPage();
           }
           
-          // Adicionar logo
-          let yPos = await this.addLogo(doc, pageWidth, 15);
-          
-          // Cabeçalho da escola/instituição
-          doc.setFontSize(16);
-          doc.setFont('helvetica', 'bold');
-          doc.text('INSTITUTO MÉDIO POLITÉCNICO JO MORAIS', pageWidth / 2, yPos, { align: 'center' });
-          
-          yPos += 10;
-          doc.setFontSize(14);
-          doc.text('LISTA NOMINAL DE ALUNOS', pageWidth / 2, yPos, { align: 'center' });
+          // Adicionar cabeçalho
+          let yPosition = await this.addHeader(doc, pageWidth, margin, 'LISTA NOMINAL DE ALUNOS');
           
           // Informações da turma
-          yPos += 10;
-          doc.setFontSize(12);
-          doc.setFont('helvetica', 'normal');
+          yPosition += 5;
+          doc.setFontSize(11);
+          doc.setTextColor(0, 0, 0);
           
           const turmaInfo = [
             `Turma: ${turmaData.turma.designacao || 'N/A'}`,
             `Classe: ${turmaData.turma.tb_classes?.designacao || 'N/A'}`,
             `Curso: ${turmaData.turma.tb_cursos?.designacao || 'N/A'}`,
             `Sala: ${turmaData.turma.tb_salas?.designacao || 'N/A'}`,
-            `Período: ${turmaData.turma.tb_periodos?.designacao || 'N/A'}`
+            `Período: ${turmaData.turma.tb_periodos?.designacao || 'N/A'}`,
+            `Total de Alunos: ${turmaData.alunos?.length || 0}`
           ];
           
-          let yPosition = yPos;
           turmaInfo.forEach(info => {
             doc.text(info, margin, yPosition);
-            yPosition += 8;
+            yPosition += 7;
           });
           
-          // Data do relatório
-          doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth - margin, 50, { align: 'right' });
-          doc.text(`Total de Alunos: ${turmaData.alunos?.length || 0}`, pageWidth - margin, 58, { align: 'right' });
+          yPosition += 5;
           
           // Verificar se há alunos na turma
           if (!turmaData.alunos || turmaData.alunos.length === 0) {
@@ -316,113 +324,86 @@ export class TurmaReportService {
               (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' })
             );
             
-            // Tabela de alunos com informações completas
-            const tableData = alunosOrdenados.map((aluno, index) => {
-              const dataNascimento = aluno.data_nascimento ? this.formatBirthDate(aluno.data_nascimento) : 'N/A';
-              const idade = aluno.data_nascimento ? this.calculateAge(aluno.data_nascimento) : (aluno.idade || 'N/A');
+            // Cabeçalho da tabela
+            doc.setFontSize(9);
+            doc.setTextColor(255, 255, 255);
+            doc.setFillColor(249, 205, 29); // Amarelo JOMORAIS
+            doc.rect(15, yPosition - 5, 180, 10, 'F');
+            
+            doc.text('Nº', 20, yPosition);
+            doc.text('Nome', 35, yPosition);
+            doc.text('Telefone', 110, yPosition);
+            doc.text('Documento', 140, yPosition);
+            doc.text('Status', 175, yPosition);
+            yPosition += 12;
+            
+            // Dados dos alunos
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(8);
+            
+            alunosOrdenados.forEach((aluno, index) => {
+              // Verificar se precisa de nova página
+              if (yPosition > 260) {
+                doc.addPage();
+                yPosition = 30;
+                
+                // Repetir cabeçalho da tabela
+                doc.setFontSize(9);
+                doc.setTextColor(255, 255, 255);
+                doc.setFillColor(249, 205, 29);
+                doc.rect(15, yPosition - 5, 180, 10, 'F');
+                doc.text('Nº', 20, yPosition);
+                doc.text('Nome', 35, yPosition);
+                doc.text('Telefone', 110, yPosition);
+                doc.text('Documento', 140, yPosition);
+                doc.text('Status', 175, yPosition);
+                yPosition += 12;
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(8);
+              }
               
-              return [
-                (index + 1).toString(),
-                aluno.nome || 'Nome não informado',
-                dataNascimento,
-                idade.toString(),
-                turmaData.turma.tb_cursos?.designacao || 'N/A'
-              ];
+              // Linha alternada
+              if (index % 2 === 0) {
+                doc.setFillColor(248, 249, 250);
+                doc.rect(15, yPosition - 4, 180, 8, 'F');
+              }
+              
+              // Dados do aluno
+              doc.text((index + 1).toString(), 20, yPosition);
+              doc.text(aluno.nome?.substring(0, 25) || 'N/A', 35, yPosition);
+              doc.text(aluno.telefone?.substring(0, 15) || 'N/A', 110, yPosition);
+              doc.text(aluno.numero_documento?.substring(0, 15) || 'N/A', 140, yPosition);
+              
+              // Status (sempre ativo para alunos matriculados)
+              doc.setTextColor(34, 197, 94); // Verde
+              doc.text('Ativo', 175, yPosition);
+              doc.setTextColor(0, 0, 0);
+              
+              yPosition += 8;
             });
             
-            // Verificar se há espaço suficiente na página
-            const estimatedTableHeight = (tableData.length + 1) * 8; // Estimativa
-            const availableSpace = pageHeight - yPosition - 100; // Espaço disponível
-            
-            if (estimatedTableHeight > availableSpace && tableData.length > 20) {
-              // Se a tabela for muito grande, dividir em páginas
-              const itemsPerPage = Math.floor(availableSpace / 8) - 2; // Margem de segurança
-              let currentPage = 0;
-              
-              while (currentPage * itemsPerPage < tableData.length) {
-                if (currentPage > 0) {
-                  doc.addPage();
-                  // Repetir cabeçalho na nova página
-                  doc.setFontSize(14);
-                  doc.setFont('helvetica', 'bold');
-                  doc.text(`${turmaData.turma.designacao} (continuação)`, pageWidth / 2, 25, { align: 'center' });
-                  yPosition = 40;
-                }
-                
-                const pageData = tableData.slice(
-                  currentPage * itemsPerPage,
-                  (currentPage + 1) * itemsPerPage
-                );
-                
-                autoTable(doc, {
-                  head: currentPage === 0 ? [['Nº', 'Nome Completo', 'Data Nascimento', 'Idade', 'Curso']] : [],
-                  body: pageData,
-                  startY: yPosition + 10,
-                  margin: { left: margin, right: margin },
-                  styles: {
-                    fontSize: 9,
-                    cellPadding: 2,
-                  },
-                  headStyles: {
-                    fillColor: [41, 128, 185],
-                    textColor: 255,
-                    fontStyle: 'bold'
-                  },
-                  alternateRowStyles: {
-                    fillColor: [245, 245, 245]
-                  },
-                  columnStyles: {
-                    0: { halign: 'center', cellWidth: 15 },
-                    1: { cellWidth: 70 },
-                    2: { halign: 'center', cellWidth: 25 },
-                    3: { halign: 'center', cellWidth: 15 },
-                    4: { cellWidth: 40 }
-                  }
-                });
-                
-                currentPage++;
-              }
-            } else {
-              // Tabela cabe em uma página
-              autoTable(doc, {
-                head: [['Nº', 'Nome Completo', 'Data Nascimento', 'Idade', 'Curso']],
-                body: tableData,
-                startY: yPosition + 10,
-                margin: { left: margin, right: margin },
-                styles: {
-                  fontSize: 10,
-                  cellPadding: 3,
-                },
-                headStyles: {
-                  fillColor: [41, 128, 185],
-                  textColor: 255,
-                  fontStyle: 'bold'
-                },
-                alternateRowStyles: {
-                  fillColor: [245, 245, 245]
-                },
-                columnStyles: {
-                  0: { halign: 'center', cellWidth: 15 },
-                  1: { cellWidth: 80 },
-                  2: { halign: 'center', cellWidth: 30 },
-                  3: { halign: 'center', cellWidth: 20 },
-                  4: { cellWidth: 45 }
-                }
-              });
+            // Rodapé com assinaturas
+            if (yPosition + 60 < 280) {
+              yPosition += 20;
+              doc.setFontSize(10);
+              doc.text('Assinatura do Diretor: _________________________', margin, yPosition);
+              doc.text('Assinatura do Coordenador: _________________________', margin, yPosition + 15);
             }
           }
           
-          // Rodapé
-          const finalY = doc.lastAutoTable?.finalY || yPosition + 50;
-          if (finalY + 60 < pageHeight) { // Verificar se há espaço para o rodapé
-            doc.setFontSize(10);
-            doc.text('Assinatura do Diretor: _________________________', margin, finalY + 30);
-            doc.text('Assinatura do Coordenador: _________________________', margin, finalY + 45);
-          }
-          
-        } catch {
+        } catch (turmaError) {
+          console.error(`Erro ao processar turma ${turmaData.turma.designacao}:`, turmaError);
           // Continuar com as outras turmas mesmo se uma falhar
         }
+      }
+      
+      // Adicionar número de página no rodapé de todas as páginas
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Página ${i} de ${totalPages}`, pageWidth - 20, 285, { align: 'right' });
       }
       
       // Salvar o PDF

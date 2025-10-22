@@ -98,6 +98,8 @@ export default function TurmasPage() {
   const [anosLectivos, setAnosLectivos] = useState<AnoLectivo[]>([]);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [loadingAnosLectivos, setLoadingAnosLectivos] = useState(false);
+  const [allTurmas, setAllTurmas] = useState<any[]>([]);
+  const [loadingAllTurmas, setLoadingAllTurmas] = useState(false);
 
   // Filtrar turmas no frontend (enquanto backend não suporta filtros adicionais)
   const filteredTurmas = useMemo(() => {
@@ -137,10 +139,59 @@ export default function TurmasPage() {
     }
   };
 
+  // Função para carregar TODAS as turmas de um ano letivo específico
+  const loadAllTurmasByAnoLectivo = async (anoLectivoId?: number) => {
+    setLoadingAllTurmas(true);
+    try {
+      if (anoLectivoId) {
+        console.log(`🔍 Buscando TODAS as turmas do ano letivo ${anoLectivoId}...`);
+      } else {
+        console.log('🔍 Buscando TODAS as turmas...');
+      }
+      
+      // Primeiro, buscar para saber o total
+      const firstResponse = await api.get('/api/academic-management/turmas', {
+        params: { page: 1, limit: 10 }
+      });
+      
+      const totalItems = firstResponse.data.pagination?.totalItems || 0;
+      console.log(`📊 Total de turmas na base: ${totalItems}`);
+      
+      // Garantir que totalItems é um número válido
+      const limitValue = typeof totalItems === 'number' && totalItems > 0 ? totalItems : 1000;
+      
+      // Agora buscar todas as turmas
+      const allResponse = await api.get('/api/academic-management/turmas', {
+        params: { page: 1, limit: limitValue }
+      });
+      
+      if (allResponse.data.success) {
+        let todasTurmas = allResponse.data.data;
+        
+        // Filtrar por ano letivo se especificado
+        if (anoLectivoId) {
+          todasTurmas = todasTurmas.filter((turma: any) => turma.codigo_AnoLectivo === anoLectivoId);
+          console.log(`✅ Carregadas ${todasTurmas.length} turmas do ano letivo ${anoLectivoId}`);
+        } else {
+          console.log(`✅ Carregadas ${todasTurmas.length} turmas para o select`);
+        }
+        
+        setAllTurmas(todasTurmas);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar todas as turmas:', error);
+      // Fallback: usar turmas da página atual se falhar
+      setAllTurmas(turmas);
+    } finally {
+      setLoadingAllTurmas(false);
+    }
+  };
+
   // Carregar anos letivos quando o modal abrir
   const handleOpenModal = () => {
     setShowReportModal(true);
     loadAnosLectivos();
+    // Não carregar turmas ainda - esperar seleção do ano letivo
   };
 
   // Funções para geração de PDF
@@ -527,6 +578,12 @@ export default function TurmasPage() {
                 onValueChange={(value) => {
                   const ano = anosLectivos.find(a => a.codigo.toString() === value);
                   setSelectedAnoLectivo(ano || null);
+                  // Carregar todas as turmas desse ano letivo
+                  if (ano) {
+                    loadAllTurmasByAnoLectivo(ano.codigo);
+                  }
+                  // Limpar turma selecionada ao mudar ano letivo
+                  setSelectedTurma(null);
                 }}
                 disabled={loadingAnosLectivos}
               >
@@ -589,17 +646,29 @@ export default function TurmasPage() {
                 <Select
                   value={selectedTurma?.codigo?.toString() || ""}
                   onValueChange={(value) => {
-                    const turma = turmas.find(t => t.codigo.toString() === value);
+                    const turma = allTurmas.find(t => t.codigo.toString() === value);
                     setSelectedTurma(turma || null);
                   }}
+                  disabled={loadingAllTurmas || !selectedAnoLectivo}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Escolha uma turma" />
+                    <SelectValue placeholder={
+                      !selectedAnoLectivo 
+                        ? "Selecione um ano letivo primeiro" 
+                        : loadingAllTurmas 
+                        ? "Carregando turmas..." 
+                        : allTurmas.length === 0
+                        ? "Nenhuma turma encontrada"
+                        : "Escolha uma turma"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
-                    {turmas
-                      .filter(turma => !selectedAnoLectivo || turma.codigo_AnoLectivo === selectedAnoLectivo?.codigo)
-                      .map((turma) => (
+                    {allTurmas.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-gray-500">
+                        Nenhuma turma encontrada para este ano letivo
+                      </div>
+                    ) : (
+                      allTurmas.map((turma) => (
                         <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
                           <div className="flex flex-col">
                             <span className="font-medium">{turma.designacao}</span>
@@ -608,7 +677,8 @@ export default function TurmasPage() {
                             </span>
                           </div>
                         </SelectItem>
-                      ))}
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

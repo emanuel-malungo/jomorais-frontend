@@ -589,6 +589,16 @@ class ReportsService {
       throw new Error(`Erro ao gerar conteúdo do PDF: ${contentError instanceof Error ? contentError.message : 'Erro desconhecido'}`);
     }
 
+    // Adicionar número de página no rodapé de todas as páginas
+    const totalPages = (doc as any).getNumberOfPages();
+    
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Página ${i} de ${totalPages}`, pageWidth - 20, 285, { align: 'right' });
+    }
+    
     // Salvar o PDF
     const fileName = `relatorio-${reportType}-${new Date().toISOString().split('T')[0]}.pdf`;
     console.log('💾 Salvando PDF:', fileName);
