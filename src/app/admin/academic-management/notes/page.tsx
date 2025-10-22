@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Container from '@/components/layout/Container';
-import StatCard from '@/components/layout/StatCard';
 import { 
   useTrimestres, 
   useTiposNota, 
@@ -29,13 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
 import {
   Select,
   SelectContent,
@@ -55,12 +48,9 @@ import {
   FileText,
   Plus,
   MoreHorizontal,
-  Edit,
   Trash2,
-  Activity,
   Award,
   Calendar,
-  Settings,
   Loader2,
 } from 'lucide-react';
 

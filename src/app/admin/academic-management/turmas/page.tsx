@@ -244,7 +244,7 @@ export default function TurmasPage() {
       />
 
       {/* Stats Cards usando StatCard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
         <StatCard
           icon={School}
           title="Total de Turmas"
@@ -256,7 +256,7 @@ export default function TurmasPage() {
           accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
         />
 
-        <StatCard
+        {/* <StatCard
           icon={Users}
           title="Turmas Ativas"
           value={stats.active.toString()}
@@ -265,7 +265,7 @@ export default function TurmasPage() {
           color="text-emerald-600"
           bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
           accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
-        />
+        /> */}
 
         <StatCard
           title="Turmas Inativas"
