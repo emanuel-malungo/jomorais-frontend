@@ -32,15 +32,11 @@ import {
   BookOpen,
   Plus,
   MoreHorizontal,
-  Eye,
   Edit,
-  Trash2,
   Clock,
-  Users,
   GraduationCap,
   ChevronLeft,
   ChevronRight,
-  FileText,
   Grid3X3,
   List,
 } from 'lucide-react';
@@ -49,23 +45,13 @@ import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { DisciplineModal } from '@/components/discipline/discipline-modal';
-import { ConfirmDeleteModal } from '@/components/discipline/confirm-delete-modal';
 
-import { useDisciplines, useDeleteDiscipline } from '@/hooks/useDiscipline';
+import { useDisciplines, useDisciplineStatistics } from '@/hooks/useDiscipline';
 import { useCourses } from '@/hooks/useCourse';
 import { IDiscipline } from '@/types/discipline.types';
 
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "1", label: "Ativo" },
-  { value: "0", label: "Inativo" },
-];
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 
-const tipoOptions = [
-  { value: "all", label: "Todos os Tipos" },
-  { value: "0", label: "Geral" },
-  { value: "1", label: "Específica" },
-];
 
 export default function ListDisciplinePage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,12 +62,12 @@ export default function ListDisciplinePage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedDiscipline, setSelectedDiscipline] = useState<IDiscipline | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [disciplineToDelete, setDisciplineToDelete] = useState<IDiscipline | null>(null);
 
-  const { disciplines, loading, error, pagination, refetch } = useDisciplines(currentPage, itemsPerPage, searchTerm);
-  const { courses, loading: coursesLoading } = useCourses(1, 100); // Buscar todos os cursos para o modal
-  const { deleteDiscipline, loading: deleting, error: deleteError } = useDeleteDiscipline();
+  const { disciplines, loading, pagination, refetch } = useDisciplines(currentPage, itemsPerPage, searchTerm);
+  const { courses, loading: coursesLoading } = useCourses(1, 100);
+  const { statistics, loading: statsLoading } = useDisciplineStatistics();
+
+  const { statusOptions } = useFilterOptions();
 
   const [filteredDisciplines, setFilteredDisciplines] = useState<IDiscipline[]>([]);
 
@@ -91,14 +77,14 @@ export default function ListDisciplinePage() {
 
     // Filtro por status
     if (statusFilter !== "all") {
-      filtered = filtered.filter((discipline: IDiscipline) => 
+      filtered = filtered.filter((discipline: IDiscipline) =>
         discipline.status.toString() === statusFilter
       );
     }
 
     // Filtro por tipo (cadeira específica)
     if (tipoFilter !== "all") {
-      filtered = filtered.filter((discipline: IDiscipline) => 
+      filtered = filtered.filter((discipline: IDiscipline) =>
         (discipline.cadeiraEspecifica || 0).toString() === tipoFilter
       );
     }
@@ -129,19 +115,7 @@ export default function ListDisciplinePage() {
     setSelectedDiscipline(null);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (disciplineToDelete) {
-      try {
-        await deleteDiscipline(disciplineToDelete.codigo);
-        setShowDeleteModal(false);
-        setDisciplineToDelete(null);
-        refetch();
-      } catch (error: any) {
-        console.error('Erro ao excluir disciplina:', error);
-        // Manter o modal aberto para mostrar o erro
-      }
-    }
-  };
+
 
   return (
     <Container>
@@ -155,10 +129,10 @@ export default function ListDisciplinePage() {
       />
 
       {/* Stats Cards usando componente StatCard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total de Disciplinas"
-          value={totalItems.toString()}
+          value={statsLoading ? "..." : (statistics?.totalDisciplinas || 0).toString()}
           change="+4.2%"
           changeType="up"
           icon={BookOpen}
@@ -167,9 +141,9 @@ export default function ListDisciplinePage() {
           accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
         />
 
-                <StatCard
+        <StatCard
           title="Disciplinas Ativas"
-          value={disciplines.filter((d: IDiscipline) => d.status === 1).length.toString()}
+          value={statsLoading ? "..." : (statistics?.disciplinasAtivas || 0).toString()}
           change="+2.1%"
           changeType="up"
           icon={GraduationCap}
@@ -180,7 +154,7 @@ export default function ListDisciplinePage() {
 
         <StatCard
           title="Disciplinas Específicas"
-          value={disciplines.filter((d: IDiscipline) => d.cadeiraEspecifica === 1).length.toString()}
+          value={statsLoading ? "..." : (statistics?.disciplinasEspecificas || 0).toString()}
           change="+1.2%"
           changeType="up"
           icon={BookOpen}
@@ -190,19 +164,8 @@ export default function ListDisciplinePage() {
         />
 
         <StatCard
-          title="Na Grade Curricular"
-          value={disciplines.filter((d: IDiscipline) => d.tb_grade_curricular && d.tb_grade_curricular.length > 0).length.toString()}
-          change="+2.5%"
-          changeType="up"
-          icon={FileText}
-          color="text-orange-600"
-          bgColor="bg-gradient-to-br from-orange-50 via-white to-orange-50/50"
-          accentColor="bg-gradient-to-br from-orange-500 to-orange-600"
-        />
-
-        <StatCard
           title="Disciplinas Inativas"
-          value={disciplines.filter((d: IDiscipline) => d.status === 0).length.toString()}
+          value={statsLoading ? "..." : (statistics?.disciplinasInativas || 0).toString()}
           change="-0.8%"
           changeType="down"
           icon={Clock}
@@ -223,13 +186,6 @@ export default function ListDisciplinePage() {
             value: statusFilter,
             onChange: setStatusFilter,
             options: statusOptions,
-            width: "w-48"
-          },
-          {
-            label: "Tipo",
-            value: tipoFilter,
-            onChange: setTipoFilter,
-            options: tipoOptions,
             width: "w-48"
           }
         ]}
@@ -271,139 +227,131 @@ export default function ListDisciplinePage() {
           {viewMode === 'table' ? (
             <div className="rounded-md border">
               <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead>Disciplina</TableHead>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Curso</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#182F59]"></div>
-                        <span>Carregando página {currentPage}...</span>
-                      </div>
-                    </TableCell>
+                    <TableHead className="w-12">#</TableHead>
+                    <TableHead>Disciplina</TableHead>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Curso</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Grade</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ) : currentDisciplines.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <div className="flex flex-col items-center space-y-2">
-                        <BookOpen className="h-12 w-12 text-gray-400" />
-                        <p className="text-gray-500">Nenhuma disciplina encontrada</p>
-                        <p className="text-sm text-gray-400">
-                          Tente ajustar os filtros de busca
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  currentDisciplines.map((discipline, index) => (
-                    <TableRow key={discipline.codigo || index} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        {startIndex + index}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#182F59] to-[#1a3260] flex items-center justify-center text-white font-semibold text-xs">
-                            {discipline.designacao.charAt(0)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-gray-900 truncate">{discipline.designacao}</p>
-                            <p className="text-sm text-gray-500">ID: {discipline.codigo}</p>
-                          </div>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#182F59]"></div>
+                          <span>Carregando página {currentPage}...</span>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="font-mono">
-                          {discipline.codigo}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <GraduationCap className="w-4 h-4 text-gray-400" />
-                            <span className="font-medium text-sm">
-                              {discipline.tb_cursos?.designacao && discipline.tb_cursos.designacao.trim() 
-                                ? discipline.tb_cursos.designacao 
-                                : `Curso ID ${discipline.codigo_Curso}`}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500">Código: {discipline.codigo_Curso}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={discipline.cadeiraEspecifica === 1 ? "default" : "secondary"}
-                          className={discipline.cadeiraEspecifica === 1 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}
-                        >
-                          {discipline.cadeiraEspecifica === 1 ? "Específica" : "Geral"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={discipline.status === 1 ? "default" : "secondary"}
-                          className={discipline.status === 1 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}
-                        >
-                          {discipline.status === 1 ? "Ativa" : "Inativa"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {discipline.tb_grade_curricular && discipline.tb_grade_curricular.length > 0 ? (
-                          <Badge 
-                            variant="default"
-                            className="bg-orange-100 text-orange-800 text-xs"
-                          >
-                            Na Grade ({discipline.tb_grade_curricular.length})
-                          </Badge>
-                        ) : (
-                          <Badge 
-                            variant="secondary"
-                            className="bg-gray-100 text-gray-600 text-xs"
-                          >
-                            Livre
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => { setSelectedDiscipline(discipline); setShowModal(true) }}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => { setDisciplineToDelete(discipline); setShowDeleteModal(true) }}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : currentDisciplines.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <div className="flex flex-col items-center space-y-2">
+                          <BookOpen className="h-12 w-12 text-gray-400" />
+                          <p className="text-gray-500">Nenhuma disciplina encontrada</p>
+                          <p className="text-sm text-gray-400">
+                            Tente ajustar os filtros de busca
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    currentDisciplines.map((discipline, index) => (
+                      <TableRow key={discipline.codigo || index} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">
+                          {startIndex + index}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#182F59] to-[#1a3260] flex items-center justify-center text-white font-semibold text-xs">
+                              {discipline.designacao.charAt(0)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 truncate">{discipline.designacao}</p>
+                              <p className="text-sm text-gray-500">ID: {discipline.codigo}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono">
+                            {discipline.codigo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <GraduationCap className="w-4 h-4 text-gray-400" />
+                              <span className="font-medium text-sm">
+                                {discipline.tb_cursos?.designacao && discipline.tb_cursos.designacao.trim()
+                                  ? discipline.tb_cursos.designacao
+                                  : `Curso ID ${discipline.codigo_Curso}`}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500">Código: {discipline.codigo_Curso}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={discipline.cadeiraEspecifica === 1 ? "default" : "secondary"}
+                            className={discipline.cadeiraEspecifica === 1 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}
+                          >
+                            {discipline.cadeiraEspecifica === 1 ? "Específica" : "Geral"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={discipline.status === 1 ? "default" : "secondary"}
+                            className={discipline.status === 1 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}
+                          >
+                            {discipline.status === 1 ? "Ativa" : "Inativa"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {discipline.tb_grade_curricular && discipline.tb_grade_curricular.length > 0 ? (
+                            <Badge
+                              variant="default"
+                              className="bg-orange-100 text-orange-800 text-xs"
+                            >
+                              Na Grade ({discipline.tb_grade_curricular.length})
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="bg-gray-100 text-gray-600 text-xs"
+                            >
+                              Livre
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => { setSelectedDiscipline(discipline); setShowModal(true) }}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             // Visualização em Cards
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -453,14 +401,6 @@ export default function ListDisciplinePage() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => { setDisciplineToDelete(discipline); setShowDeleteModal(true) }}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -469,15 +409,15 @@ export default function ListDisciplinePage() {
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">Curso:</span>
                           <span className="text-xs font-medium">
-                            {discipline.tb_cursos?.designacao && discipline.tb_cursos.designacao.trim() 
-                              ? discipline.tb_cursos.designacao 
+                            {discipline.tb_cursos?.designacao && discipline.tb_cursos.designacao.trim()
+                              ? discipline.tb_cursos.designacao
                               : `Curso ID ${discipline.codigo_Curso}`}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">Tipo:</span>
-                          <Badge 
+                          <Badge
                             variant={discipline.cadeiraEspecifica === 1 ? "default" : "secondary"}
                             className={`text-xs ${discipline.cadeiraEspecifica === 1 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}
                           >
@@ -487,7 +427,7 @@ export default function ListDisciplinePage() {
 
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">Status:</span>
-                          <Badge 
+                          <Badge
                             variant={discipline.status === 1 ? "default" : "secondary"}
                             className={`text-xs ${discipline.status === 1 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}
                           >
@@ -498,14 +438,14 @@ export default function ListDisciplinePage() {
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">Grade:</span>
                           {discipline.tb_grade_curricular && discipline.tb_grade_curricular.length > 0 ? (
-                            <Badge 
+                            <Badge
                               variant="default"
                               className="bg-orange-100 text-orange-800 text-xs"
                             >
                               Na Grade ({discipline.tb_grade_curricular.length})
                             </Badge>
                           ) : (
-                            <Badge 
+                            <Badge
                               variant="secondary"
                               className="bg-gray-100 text-gray-600 text-xs"
                             >
@@ -543,9 +483,9 @@ export default function ListDisciplinePage() {
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
+
                     const pages = [];
-                    
+
                     // Primeira página
                     if (adjustedStartPage > 1) {
                       pages.push(
@@ -563,7 +503,7 @@ export default function ListDisciplinePage() {
                         pages.push(<span key="ellipsis1" className="px-2">...</span>);
                       }
                     }
-                    
+
                     // Páginas do meio
                     for (let i = adjustedStartPage; i <= endPage; i++) {
                       pages.push(
@@ -579,7 +519,7 @@ export default function ListDisciplinePage() {
                         </Button>
                       );
                     }
-                    
+
                     // Última página
                     if (endPage < totalPages) {
                       if (endPage < totalPages - 1) {
@@ -597,7 +537,7 @@ export default function ListDisciplinePage() {
                         </Button>
                       );
                     }
-                    
+
                     return pages;
                   })()}
                 </div>
@@ -623,22 +563,6 @@ export default function ListDisciplinePage() {
         discipline={selectedDiscipline}
         courses={courses}
         onSuccess={handleModalSuccess}
-      />
-
-      {/* Modal de Confirmação de Exclusão */}
-      <ConfirmDeleteModal
-        open={showDeleteModal}
-        onOpenChange={(open) => {
-          setShowDeleteModal(open);
-          if (!open) {
-            setDisciplineToDelete(null);
-          }
-        }}
-        onConfirm={handleDeleteConfirm}
-        loading={deleting}
-        title="Excluir Disciplina"
-        description={`Tem certeza que deseja excluir a disciplina "${disciplineToDelete?.designacao}"? Esta ação não pode ser desfeita.`}
-        error={deleteError}
       />
     </Container>
   );

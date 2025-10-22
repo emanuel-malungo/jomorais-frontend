@@ -33,3 +33,11 @@ export interface IDisciplineListResponse {
   data: IDiscipline[]
   pagination: IPagination
 }
+
+export interface IDisciplineStatistics {
+  totalDisciplinas: number
+  disciplinasAtivas: number
+  disciplinasInativas: number
+  disciplinasEspecificas: number
+  naGradeCurricular: number
+}

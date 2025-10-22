@@ -24,6 +24,8 @@ import { useCreateDiscipline, useUpdateDiscipline } from '@/hooks/useDiscipline'
 import { IDiscipline, IDisciplineInput } from '@/types/discipline.types'
 import { ICourse } from '@/types/course.types'
 
+import { useFilterOptions } from '@/hooks/useFilterOptions'
+
 interface DisciplineModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -47,6 +49,8 @@ export function DisciplineModal({
   const isEditing = !!discipline
   const { createDiscipline, loading: creating, error: createError } = useCreateDiscipline()
   const { updateDiscipline, loading: updating, error: updateError } = useUpdateDiscipline(discipline?.codigo || 0)
+
+  const { statusOptions } = useFilterOptions()
 
   const loading = creating || updating
   const error = createError || updateError
@@ -156,8 +160,8 @@ export function DisciplineModal({
               <SelectContent>
                 {courses.map((course) => (
                   <SelectItem key={course.codigo} value={course.codigo.toString()}>
-                    {course.designacao && course.designacao.trim() 
-                      ? course.designacao 
+                    {course.designacao && course.designacao.trim()
+                      ? course.designacao
                       : `Curso ID ${course.codigo}`}
                   </SelectItem>
                 ))}
@@ -178,8 +182,13 @@ export function DisciplineModal({
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Ativa</SelectItem>
-                  <SelectItem value="0">Inativa</SelectItem>
+                  {statusOptions
+                    .filter(option => option.value !== "all")
+                    .map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

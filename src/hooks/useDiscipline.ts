@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react"
 import DisciplineService from "@/services/discipline.service"
-import { IDiscipline, IDisciplineInput, IDisciplineListResponse } from "@/types/discipline.types"
+import { toast } from "react-toastify"
+import { getErrorMessage } from "@/utils/getErrorMessage.utils"
+import { IDiscipline, IDisciplineInput, IDisciplineListResponse, IDisciplineStatistics } from "@/types/discipline.types"
 
 // Listar disciplinas
 export function useDisciplines(page = 1, limit = 10, search = "") {
@@ -13,11 +15,19 @@ export function useDisciplines(page = 1, limit = 10, search = "") {
         try {
             setLoading(true)
             setError(null)
-            const { data, pagination } = await DisciplineService.getDisciplines(page, limit, search)
+            const result = await DisciplineService.getDisciplines(page, limit, search)
+            if (!result) {
+                // service returned undefined — set sensible defaults
+                setDisciplines([])
+                setPagination(null)
+                return
+            }
+            const { data, pagination } = result
             setDisciplines(data)
             setPagination(pagination)
-        } catch (err: any) {
-            setError(err.message || "Erro ao carregar disciplinas")
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao carregar disciplinas");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -43,8 +53,8 @@ export function useDiscipline(id?: number) {
             setError(null)
             const data = await DisciplineService.getDisciplineById(id)
             setDiscipline(data)
-        } catch (err: any) {
-            setError(err.message || "Erro ao carregar disciplina")
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, "Erro ao carregar disciplina"))
         } finally {
             setLoading(false)
         }
@@ -67,9 +77,9 @@ export function useCreateDiscipline() {
             setLoading(true)
             setError(null)
             return await DisciplineService.createDiscipline(payload)
-        } catch (err: any) {
-            setError(err.message || "Erro ao criar disciplina")
-            throw err
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao criar disciplina");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -88,9 +98,9 @@ export function useUpdateDiscipline(id: number) {
             setLoading(true)
             setError(null)
             return await DisciplineService.updateDiscipline(id, payload)
-        } catch (err: any) {
-            setError(err.message || "Erro ao atualizar disciplina")
-            throw err
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao atualizar disciplina");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -109,13 +119,43 @@ export function useDeleteDiscipline() {
             setLoading(true)
             setError(null)
             await DisciplineService.deleteDiscipline(id)
-        } catch (err: any) {
-            setError(err.message || "Erro ao deletar disciplina")
-            throw err
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao deletar disciplina");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
     }, [])
 
     return { deleteDiscipline, loading, error }
+}
+
+// Estatísticas de disciplinas
+export function useDisciplineStatistics() {
+    const [statistics, setStatistics] = useState<IDisciplineStatistics | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const fetchStatistics = useCallback(async () => {
+        try {
+            setLoading(true)
+            setError(null)
+            const data = await DisciplineService.getDisciplineStatistics()
+            if (data) {
+                setStatistics(data)
+            }
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao carregar estatísticas")
+            setError(errorMessage)
+            toast.error(errorMessage)
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        fetchStatistics()
+    }, [fetchStatistics])
+
+    return { statistics, loading, error, refetch: fetchStatistics }
 }
