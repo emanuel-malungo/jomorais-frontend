@@ -56,7 +56,8 @@ import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
 export default function ConfirmationsListPage() {
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // Input do usuário
+  const [searchTerm, setSearchTerm] = useState(""); // Termo usado na busca (com debounce)
   const [statusFilter, setStatusFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,6 +80,16 @@ export default function ConfirmationsListPage() {
     statusOptions,
     academicYearOptions
   } = useFilterOptions(1, 100, "");
+
+  // Debounce para pesquisa - aguarda 500ms após o usuário parar de digitar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setCurrentPage(1); // Resetar para primeira página ao pesquisar
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // Hook para buscar confirmações da API com filtros
   const {
@@ -227,21 +238,28 @@ export default function ConfirmationsListPage() {
 
       <FilterSearchCard
         title="Filtros e Busca"
-        searchPlaceholder="Buscar por aluno ou ano letivo..."
-        searchValue={searchTerm}
-        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por nome do aluno ou turma..."
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        isSearching={isLoading}
         filters={[
           {
             label: "Status",
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (value) => {
+              setStatusFilter(value);
+              setCurrentPage(1);
+            },
             options: statusOptions,
             width: "w-48"
           },
           {
             label: "Ano Letivo",
             value: yearFilter,
-            onChange: setYearFilter,
+            onChange: (value) => {
+              setYearFilter(value);
+              setCurrentPage(1);
+            },
             options: academicYearOptions,
             width: "w-48"
           }
