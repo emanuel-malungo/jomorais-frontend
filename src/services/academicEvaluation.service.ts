@@ -1,25 +1,17 @@
 import {
-  ITipoAvaliacao,
   ITipoAvaliacaoInput,
   ITipoAvaliacaoResponse,
   ITipoAvaliacaoListResponse,
-  ITipoNota,
   ITipoNotaInput,
   ITipoNotaResponse,
   ITipoNotaListResponse,
-  ITipoNotaValor,
-  ITipoNotaValorInput,
   ITipoNotaValorResponse,
   ITipoNotaValorListResponse,
-  ITipoPauta,
-  ITipoPautaInput,
   ITipoPautaResponse,
   ITipoPautaListResponse,
-  ITrimestre,
   ITrimestreInput,
   ITrimestreResponse,
   ITrimestreListResponse,
-  IAcademicEvaluationReport,
   IAcademicEvaluationReportResponse,
   IEstatisticasNotas,
   IAcademicEvaluationActionResponse,
@@ -235,15 +227,10 @@ class AcademicEvaluationService {
 
   // Gerar relatório de avaliação
   async getRelatorioAvaliacao(): Promise<IAcademicEvaluationReportResponse> {
-    console.log('🔍 Chamando getRelatorioAvaliacao...');
-    console.log('📍 Endpoint:', '/api/academic-evaluation/relatorio');
-    
     try {
       const response = await api.get('/api/academic-evaluation/relatorio');
-      console.log('✅ Relatório carregado com sucesso:', response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Erro ao carregar relatório:', error);
       throw error;
     }
   }

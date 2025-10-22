@@ -134,34 +134,25 @@ const detectarCursoNaTipoServico = (designacao: string, cursoAluno: string): boo
   
   if (!abreviacoes) return false;
   
-  console.log(`🔍 Verificando curso "${cursoAluno}" em "${designacaoUpper}"`);
-  console.log(`📝 Abreviações: ${abreviacoes.join(', ')}`);
-  
   // Analisa letra por letra e sentido semântico
   for (const abrev of abreviacoes) {
     if (designacaoUpper.includes(abrev)) {
-      console.log(`✅ Encontrou: ${abrev}`);
       return true;
     }
   }
   
-  console.log(`❌ Nenhuma abreviação encontrada`);
   return false;
 };
 
 // Função para extrair número da classe da string
 const extrairNumeroClasse = (texto: string): string | null => {
-  console.log('🔍 [CLASSE] Extraindo classe de:', texto);
   const match = texto.match(/(\d+)ª/);
   const resultado = match ? match[1] + 'ª' : null;
-  console.log('✅ [CLASSE] Resultado:', resultado, 'Match completo:', match);
   return resultado;
 };
 
 // Função para extrair ano letivo da string
 const extrairAnoLetivo = (texto: string): string | null => {
-  console.log('🔍 Extraindo ano letivo de:', texto);
-  
   // Procura padrões como 2024/2025, 2024-2025, 2024 / 2025
   const match = texto.match(/(\d{4})\s*[\/\-]\s*(\d{4})/);
   let resultado = null;
@@ -171,25 +162,18 @@ const extrairAnoLetivo = (texto: string): string | null => {
     resultado = `${match[1]}/${match[2]}`;
   }
   
-  console.log('📅 Ano letivo extraído:', resultado);
   return resultado;
 };
 
 // Função para mapear COMPLETO da turma (curso, classe, ano)
 export const mapearTurmaCompleta = (turma: string) => {
-  console.log('🔍 MAPEANDO TURMA COMPLETA:', turma);
-  
   // Extrair ano letivo
   const anoLetivo = extrairAnoLetivo(turma);
-  console.log('📅 Ano letivo encontrado na turma:', anoLetivo);
-  
   // Extrair classe
   const classe = extrairNumeroClasse(turma);
-  console.log('🎓 Classe encontrada na turma:', classe);
   
   // Extrair curso
   const curso = mapearCursoPorTurma(turma);
-  console.log('📚 Curso encontrado na turma:', curso);
   
   return {
     curso,
@@ -203,8 +187,6 @@ export const mapearTurmaCompleta = (turma: string) => {
 export const mapearCursoPorTurma = (turma: string): string => {
   const turmaUpper = turma.toUpperCase();
   
-  console.log('🔍 Mapeando curso para turma:', turma);
-  
   // Mapeamento robusto que considera variações com e sem pontos
   
   // 1. Análises Clínicas (A.C, AC, A C)
@@ -213,7 +195,6 @@ export const mapearCursoPorTurma = (turma: string): string => {
       (turmaUpper.includes('AC') && !turmaUpper.includes('FARMAC')) ||
       turmaUpper.includes('ANALISES') || 
       turmaUpper.includes('ANÁLISES')) {
-    console.log('✅ Curso mapeado: ANALISES CLINICAS');
     return 'ANALISES CLINICAS';
   }
   
@@ -221,7 +202,6 @@ export const mapearCursoPorTurma = (turma: string): string => {
   if (contemAbreviacao(turma, 'E.G') || 
       contemAbreviacao(turma, 'EG') ||
       turmaUpper.includes('ENFERMAGEM')) {
-    console.log('✅ Curso mapeado: ENFERMAGEM GERAL');
     return 'ENFERMAGEM GERAL';
   }
   
@@ -230,7 +210,6 @@ export const mapearCursoPorTurma = (turma: string): string => {
       contemAbreviacao(turma, 'FM') ||
       turmaUpper.includes('FARMAC') || 
       turmaUpper.includes('FARMÁCIA')) {
-    console.log('✅ Curso mapeado: FARMACIA');
     return 'FARMACIA';
   }
   
@@ -239,7 +218,6 @@ export const mapearCursoPorTurma = (turma: string): string => {
       contemAbreviacao(turma, 'CEJ') ||
       turmaUpper.includes('ECONOMICAS') ||
       turmaUpper.includes('JURIDICAS')) {
-    console.log('✅ Curso mapeado: CIENCIAS ECONOMICAS JURIDICAS');
     return 'CIENCIAS ECONOMICAS JURIDICAS';
   }
   
@@ -248,20 +226,16 @@ export const mapearCursoPorTurma = (turma: string): string => {
       contemAbreviacao(turma, 'CFB') ||
       turmaUpper.includes('FISICAS') ||
       turmaUpper.includes('BIOLOGICAS')) {
-    console.log('✅ Curso mapeado: CIENCIAS FISICAS BIOLOGICAS');
     return 'CIENCIAS FISICAS BIOLOGICAS';
   }
   
-  console.log('❌ Curso não identificado, usando GERAL');
   return 'GERAL'; // Fallback
 };
 
 // Função para extrair classe da turma
 export const extrairClasseDaTurma = (turma: string): string => {
-  console.log('🔍 Extraindo classe da turma:', turma);
   const match = turma.match(/(\d+)ª/);
   const classe = match ? `${match[1]}ª` : '';
-  console.log('✅ Classe extraída:', classe);
   return classe;
 };
 
@@ -281,48 +255,10 @@ export const findBestTipoServicoForAluno = (
   const classe = extrairNumeroClasse(turma);
   const anoTurma = extrairAnoLetivo(turma);
   
-  console.log('🔍 [BUSCA] Dados extraídos da turma:', {
-    turmaOriginal: turma,
-    curso: curso,
-    classeExtraida: classe,
-    anoTurma: anoTurma
-  });
-
-  // Log específico para casos de Enfermagem
-  if (turma.includes('Enfermagem') || turma.includes('ENFERMAGEM')) {
-    console.log('🏥 [ENFERMAGEM] CASO ESPECÍFICO:', {
-      turma: turma,
-      classeExtraida: classe,
-      curso: curso
-    });
-  }
-
-  // Log específico para Catarina Ana
-  if (turma.includes('10ª A.C-B-VESP')) {
-    console.log('👩‍⚕️ [CATARINA ANA] CASO ESPECÍFICO:', {
-      turmaOriginal: turma,
-      classeExtraida: classe,
-      cursoMapeado: curso,
-      debugRegex: turma.match(/(\d+)ª/)
-    });
-  }
-  
   // Definir ano para buscar
   const anoBuscar = anoLectivoSelecionado ? 
     `${anoLectivoSelecionado.anoInicial}/${anoLectivoSelecionado.anoFinal}` : 
     anoTurma;
-
-  console.log(`Buscar: ${curso} ${classe} ${anoBuscar || 'SEM ANO'}`);
-  
-  // Log específico para Enfermagem - mostrar todos os tipos disponíveis
-  if (curso === 'ENFERMAGEM GERAL') {
-    console.log('🏥 [ENFERMAGEM] Tipos de serviço disponíveis:');
-    tiposServico.forEach(tipo => {
-      if (tipo.designacao.toUpperCase().includes('ENFERMAGEM')) {
-        console.log(`  - ${tipo.designacao} (Preço: ${tipo.preco})`);
-      }
-    });
-  }
   
   // Buscar tipo de serviço - VALIDAR TUDO ANTES DE RETORNAR
   const candidatos = [];
@@ -340,10 +276,6 @@ export const findBestTipoServicoForAluno = (
     const classeNoTipo = extrairNumeroClasse(nome);
     const temClasse = classeNoTipo === classe;
     
-    if (nome.includes('ENFERMAGEM')) {
-      console.log(`🎓 [CLASSE] Comparando: "${classeNoTipo}" === "${classe}" = ${temClasse} (${nome})`);
-    }
-    
     // 4. Verificar ANO LETIVO
     const anoNoTipo = extrairAnoLetivo(nome);
     let temAno = false;
@@ -356,8 +288,6 @@ export const findBestTipoServicoForAluno = (
       temAno = !anoNoTipo;
     }
     
-    console.log(`📋 ${nome}: Curso=${temCurso}, Classe=${temClasse}, Ano=${temAno} (${anoNoTipo} vs ${anoBuscar})`);
-    
     // SÓ ADICIONA SE TUDO ESTIVER CORRETO
     if (temCurso && temClasse && temAno) {
       candidatos.push(tipo);
@@ -369,14 +299,11 @@ export const findBestTipoServicoForAluno = (
     const melhor = candidatos.reduce((best, current) => 
       current.preco > best.preco ? current : best
     );
-    console.log(`✅ Selecionado: ${melhor.designacao}`);
     return melhor;
   }
   
   // FALLBACK: Se não encontrou com ano específico, buscar sem ano (genéricos)
   if (anoBuscar) {
-    console.log('🔄 Não encontrou com ano específico, buscando genéricos...');
-    
     const genericosCandidatos = [];
     const genericosCursoClasse = []; // Prioridade 1: mesmo curso e classe
     const genericosCurso = [];       // Prioridade 2: mesmo curso, classe diferente
@@ -390,32 +317,17 @@ export const findBestTipoServicoForAluno = (
       const classeNoTipo = extrairNumeroClasse(nome);
       const temClasse = classeNoTipo === classe;
       
-      if (nome.includes('ENFERMAGEM') || nome.includes('ANALISES') || nome.includes('ANALÍSES')) {
-        console.log(`🎓 [GENÉRICO-CLASSE] Comparando: "${classeNoTipo}" === "${classe}" = ${temClasse} (${nome})`);
-      }
-      
       // Deve ser genérico (sem ano)
       const anoNoTipo = extrairAnoLetivo(nome);
       const eGenerico = !anoNoTipo;
       
-      console.log(`📋 GENÉRICO ${nome}: Curso=${temCurso}, Classe=${temClasse}, Genérico=${eGenerico}`);
-      
       if (eGenerico) {
-        // Log específico para Analíses Clínicas 10ª
-        if (nome.includes('ANALÍSES CLÍNICAS 10ª')) {
-          console.log(`🔬 [ANALISES 10ª] ENCONTRADO: ${nome}`);
-          console.log(`🔬 [ANALISES 10ª] Curso=${temCurso}, Classe=${temClasse}, Genérico=${eGenerico}`);
-          console.log(`🔬 [ANALISES 10ª] Curso esperado: "${curso}", Classe esperada: "${classe}"`);
-        }
-        
         if (temCurso && temClasse) {
           // PRIORIDADE 1: Mesmo curso E mesma classe
           genericosCursoClasse.push(tipo);
-          console.log(`🎯 [PRIORIDADE 1] Curso+Classe: ${nome}`);
         } else if (temCurso) {
           // PRIORIDADE 2: Mesmo curso, classe diferente
           genericosCurso.push(tipo);
-          console.log(`🎯 [PRIORIDADE 2] Só Curso: ${nome}`);
         } else {
           // PRIORIDADE 3: Outros genéricos
           genericosCandidatos.push(tipo);
@@ -430,15 +342,12 @@ export const findBestTipoServicoForAluno = (
     if (genericosCursoClasse.length > 0) {
       candidatosFinais = genericosCursoClasse;
       tipoSelecionado = 'CURSO+CLASSE';
-      console.log(`✅ [SELEÇÃO] Usando PRIORIDADE 1 (Curso+Classe): ${candidatosFinais.length} candidatos`);
     } else if (genericosCurso.length > 0) {
       candidatosFinais = genericosCurso;
       tipoSelecionado = 'SÓ CURSO';
-      console.log(`✅ [SELEÇÃO] Usando PRIORIDADE 2 (Só Curso): ${candidatosFinais.length} candidatos`);
     } else if (genericosCandidatos.length > 0) {
       candidatosFinais = genericosCandidatos;
       tipoSelecionado = 'OUTROS';
-      console.log(`✅ [SELEÇÃO] Usando PRIORIDADE 3 (Outros): ${candidatosFinais.length} candidatos`);
     }
     
     if (candidatosFinais.length > 0) {
@@ -446,12 +355,10 @@ export const findBestTipoServicoForAluno = (
       const melhor = candidatosFinais.reduce((best, current) => 
         current.preco > best.preco ? current : best
       );
-      console.log(`✅ Selecionado GENÉRICO (${tipoSelecionado}): ${melhor.designacao} - ${melhor.preco} Kz`);
       return melhor;
     }
   }
   
-  console.log('❌ Não encontrado');
   return null;
 };
 
@@ -466,8 +373,6 @@ export const useConfirmacaoMaisRecente = () => {
     setError(null);
     
     try {
-      console.log('🔍 Buscando confirmação mais recente para aluno:', alunoId);
-      
       // Tentar múltiplos endpoints para encontrar confirmações do aluno
       let confirmacoes: any[] = [];
       
@@ -476,10 +381,9 @@ export const useConfirmacaoMaisRecente = () => {
         const response1 = await api.get(`/api/student-management/confirmations?alunoId=${alunoId}`);
         if (response1.data.success && response1.data.data?.length > 0) {
           confirmacoes = response1.data.data;
-          console.log('✅ Confirmações encontradas via endpoint específico:', confirmacoes.length);
         }
       } catch (err) {
-        console.log('⚠️ Endpoint específico não disponível, tentando alternativa...');
+        // Endpoint específico não disponível, tentando alternativa
       }
       
       // Opção 2: Buscar via dados completos do aluno (fallback)
@@ -493,17 +397,15 @@ export const useConfirmacaoMaisRecente = () => {
             const matriculas = alunoCompleto.tb_matriculas;
             if (matriculas?.tb_confirmacoes?.length > 0) {
               confirmacoes = matriculas.tb_confirmacoes;
-              console.log('✅ Confirmações encontradas via aluno completo:', confirmacoes.length);
             } else if (Array.isArray(matriculas)) {
               // Se matriculas é um array, buscar confirmações em cada matrícula
               confirmacoes = matriculas.flatMap(matricula => 
                 matricula.tb_confirmacoes || []
               ).filter(Boolean);
-              console.log('✅ Confirmações encontradas via múltiplas matrículas:', confirmacoes.length);
             }
           }
         } catch (err) {
-          console.log('⚠️ Erro ao buscar via aluno completo:', err);
+          // Erro ao buscar via aluno completo
         }
       }
       
@@ -527,25 +429,15 @@ export const useConfirmacaoMaisRecente = () => {
         });
         
         const confirmacaoMaisRecente = confirmacoesSorted[0];
-        console.log('✅ Confirmação mais recente selecionada:', {
-          id: confirmacaoMaisRecente.codigo,
-          ano: confirmacaoMaisRecente.anoLetivo?.designacao || 
-               confirmacaoMaisRecente.tb_anos_lectivos?.designacao ||
-               confirmacaoMaisRecente.codigo_Ano_lectivo,
-          turma: confirmacaoMaisRecente.turma?.designacao || 
-                 confirmacaoMaisRecente.tb_turmas?.designacao
-        });
         
         setConfirmacao(confirmacaoMaisRecente);
         return confirmacaoMaisRecente;
       } else {
-        console.log('❌ Nenhuma confirmação encontrada para o aluno');
         setConfirmacao(null);
         return null;
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erro ao buscar confirmação do aluno';
-      console.error('❌ Erro ao buscar confirmação:', errorMessage);
       setError(errorMessage);
       setConfirmacao(null);
       return null;
@@ -897,7 +789,6 @@ export const useMesesPendentesAluno = () => {
     } catch (err: any) {
       // Se for erro 400, pode ser que o aluno não esteja matriculado no ano
       if (err.response?.status === 400) {
-        console.log('Aluno não encontrado no ano letivo especificado');
         setMesesPendentes([]);
         setMesesPagos([]);
         setProximoMes(null);

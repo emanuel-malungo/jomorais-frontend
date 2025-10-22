@@ -6,9 +6,7 @@ import {
   ITipoNota,
   ITipoNotaInput,
   ITipoNotaValor,
-  ITipoNotaValorInput,
   ITipoPauta,
-  ITipoPautaInput,
   ITrimestre,
   ITrimestreInput,
   IAcademicEvaluationReport,
@@ -98,13 +96,10 @@ export function useTiposNota(page: number = 1, limit: number = 10, search?: stri
     try {
       setLoading(true);
       setError(null);
-      console.log('Carregando tipos de nota...');
       const response = await academicEvaluationService.getTiposNota(page, limit, search);
-      console.log('Resposta tipos de nota:', response);
       setTiposNota(response.data || []);
       setPagination(response.pagination || null);
     } catch (err) {
-      console.error('Erro ao carregar tipos de nota:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar tipos de nota');
       setTiposNota([]);
     } finally {
@@ -307,13 +302,10 @@ export function useTrimestres(page: number = 1, limit: number = 10, search?: str
     try {
       setLoading(true);
       setError(null);
-      console.log('Carregando trimestres...');
       const response = await academicEvaluationService.getTrimestres(page, limit, search);
-      console.log('Resposta trimestres:', response);
       setTrimestres(response.data || []);
       setPagination(response.pagination || null);
     } catch (err) {
-      console.error('Erro ao carregar trimestres:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar trimestres');
       setTrimestres([]);
     } finally {
@@ -610,12 +602,9 @@ export function useEstatisticasNotas() {
     try {
       setLoading(true);
       setError(null);
-      console.log('Carregando estatísticas...');
       const response = await academicEvaluationService.getEstatisticasNotas();
-      console.log('Resposta estatísticas:', response);
       setEstatisticas(response.data || null);
     } catch (err) {
-      console.error('Erro ao carregar estatísticas:', err);
       setError(err instanceof Error ? err.message : 'Erro ao gerar estatísticas de notas');
       setEstatisticas(null);
     } finally {

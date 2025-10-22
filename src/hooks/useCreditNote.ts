@@ -20,14 +20,11 @@ export function useCreateCreditNote() {
         codigoPagamentoi: data.codigoPagamentoi ? Number(data.codigoPagamentoi) : undefined
       };
 
-      console.log('📤 Hook enviando payload:', payload);
       
       const creditNote = await creditNoteService.create(payload);
       toast.success('Nota de crédito criada com sucesso!');
       return creditNote;
     } catch (err: any) {
-      console.error('❌ Erro completo:', err);
-      console.error('❌ Response data:', err.response?.data);
       
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Erro ao criar nota de crédito';
       setError(errorMessage);

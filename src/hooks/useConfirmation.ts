@@ -28,8 +28,6 @@ export function useConfirmations(
       setLoading(true)
       setError(null)
       
-      console.log('🔍 Buscando confirmações:', { page, limit, search, status, anoLectivo });
-      
       // Buscar diretamente na API com filtros otimizados
       const { data, pagination } = await ConfirmationService.getConfirmations(
         page,
@@ -39,14 +37,12 @@ export function useConfirmations(
         anoLectivo
       )
 
-      console.log(`✅ Encontradas ${data.length} confirmações de ${pagination.totalItems} total`);
       
       setConfirmations(data)
       setPagination(pagination)
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao carregar confirmações");
       setError(errorMessage);
-      console.error('❌ Erro ao buscar confirmações:', err);
     } finally {
       setLoading(false)
     }
@@ -77,7 +73,6 @@ export function useConfirmation(id?: number) {
       const data = await ConfirmationService.getConfirmationById(id)
       
       const endTime = performance.now();
-      console.log(`✅ Confirmação carregada em ${(endTime - startTime).toFixed(2)}ms`);
       
       setConfirmation(data)
     } catch (err: unknown) {
@@ -95,20 +90,17 @@ export function useConfirmation(id?: number) {
       setLoading(true)
       setError(null)
       
-      console.log('🔍 Carregando confirmação (manual) ID:', confirmationId);
       const startTime = performance.now();
       
       const data = await ConfirmationService.getConfirmationById(confirmationId)
       
       const endTime = performance.now();
-      console.log(`✅ Confirmação carregada em ${(endTime - startTime).toFixed(2)}ms`);
       
       setConfirmation(data)
       return data;
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao carregar confirmação");
       setError(errorMessage);
-      console.error('❌ Erro ao carregar confirmação:', err);
       throw err;
     } finally {
       setLoading(false)

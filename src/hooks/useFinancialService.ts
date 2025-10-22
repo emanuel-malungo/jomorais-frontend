@@ -32,28 +32,22 @@ export function useTiposServicos(page: number = 1, limit: number = 10, filters?:
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 Hook fetchTiposServicos chamado com:', { page, limit, filters });
       
       const response = await FinancialServiceService.getTiposServicos(page, limit, filters);
-      console.log('📦 Resposta recebida no hook:', response);
       
       setTiposServicos(response.data);
       setPagination(response.pagination);
     } catch (err: any) {
-      console.error('💥 Erro no hook:', err);
       
       // Tentar requisição mais simples em caso de erro
       if (err.response?.status === 400 && (filters?.search || filters?.tipoServico !== 'all' || filters?.status !== 'all')) {
-        console.log('🔄 Tentando requisição sem filtros...');
         try {
           const fallbackResponse = await FinancialServiceService.getTiposServicos(page, limit);
           setTiposServicos(fallbackResponse.data);
           setPagination(fallbackResponse.pagination);
           setError(null); // Limpar erro já que conseguimos carregar os dados
-          console.log('✅ Fallback bem-sucedido, dados carregados sem filtros');
           return;
         } catch (fallbackErr) {
-          console.error('💥 Fallback também falhou:', fallbackErr);
         }
       }
       

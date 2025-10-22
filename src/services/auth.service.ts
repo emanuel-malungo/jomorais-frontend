@@ -29,7 +29,6 @@ export default class authService {
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao fazer login';
             toast.error(errorMessage);
-            console.error("Erro ao fazer login:", error);
             throw error;
         }
     }
@@ -46,8 +45,6 @@ export default class authService {
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao fazer logout';
             toast.error(errorMessage);
-            console.error("Erro ao fazer logout:", error);
-            
             // Mesmo se der erro no servidor, limpar localStorage
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -61,7 +58,6 @@ export default class authService {
             const response = await api.get("/api/auth/legacy/me");
             return response.data;
         } catch (error) {
-            console.error("Erro ao buscar usuário atual:", error);
             throw error;
         }
     }
@@ -78,7 +74,6 @@ export default class authService {
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao registrar usuário';
             toast.error(errorMessage);
-            console.error("Erro ao registrar usuário:", error);
             throw error;
         }
     }
@@ -99,7 +94,6 @@ export default class authService {
             const response = await api.get("/api/auth/user-types");
             return response.data;
         } catch (error) {
-            console.error("Erro ao buscar tipos de usuário:", error);
             throw error;
         }
     }
@@ -123,7 +117,6 @@ export default class authService {
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao fazer login';
             toast.error(errorMessage);
-            console.error("Erro ao fazer login (sistema moderno):", error);
             throw error;
         }
     }
@@ -140,7 +133,6 @@ export default class authService {
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao registrar usuário';
             toast.error(errorMessage);
-            console.error("Erro ao registrar usuário (sistema moderno):", error);
             throw error;
         }
     }
@@ -150,7 +142,6 @@ export default class authService {
             const response = await api.get("/api/auth/me");
             return response.data;
         } catch (error) {
-            console.error("Erro ao buscar usuário atual (sistema moderno):", error);
             throw error;
         }
     }
