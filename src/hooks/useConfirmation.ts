@@ -27,7 +27,10 @@ export function useConfirmations(
     try {
       setLoading(true)
       setError(null)
-      // Buscar com filtros no backend
+      
+      console.log('🔍 Buscando confirmações:', { page, limit, search, status, anoLectivo });
+      
+      // Buscar diretamente na API com filtros otimizados
       const { data, pagination } = await ConfirmationService.getConfirmations(
         page,
         limit,
@@ -36,11 +39,14 @@ export function useConfirmations(
         anoLectivo
       )
 
+      console.log(`✅ Encontradas ${data.length} confirmações de ${pagination.totalItems} total`);
+      
       setConfirmations(data)
       setPagination(pagination)
     } catch (err: unknown) {
-      const errorMessage = getErrorMessage(err, "Erro ao carregar alunos");
-      toast.error(errorMessage);
+      const errorMessage = getErrorMessage(err, "Erro ao carregar confirmações");
+      setError(errorMessage);
+      console.error('❌ Erro ao buscar confirmações:', err);
     } finally {
       setLoading(false)
     }
@@ -53,7 +59,7 @@ export function useConfirmations(
   return { confirmations, pagination, loading, error, refetch: fetchConfirmations }
 }
 
-// Uma confirmação por ID
+// Uma confirmação por ID - Otimizado para modal rápido
 export function useConfirmation(id?: number) {
   const [confirmation, setConfirmation] = useState<IConfirmation | null>(null)
   const [loading, setLoading] = useState(false)
@@ -64,21 +70,65 @@ export function useConfirmation(id?: number) {
     try {
       setLoading(true)
       setError(null)
+      
+      console.log('🔍 Carregando confirmação ID:', id);
+      const startTime = performance.now();
+      
       const data = await ConfirmationService.getConfirmationById(id)
+      
+      const endTime = performance.now();
+      console.log(`✅ Confirmação carregada em ${(endTime - startTime).toFixed(2)}ms`);
+      
       setConfirmation(data)
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao carregar confirmação");
-      toast.error(errorMessage);
+      setError(errorMessage);
+      console.error('❌ Erro ao carregar confirmação:', err);
     } finally {
       setLoading(false)
     }
   }, [id])
 
-  useEffect(() => {
-    fetchConfirmation()
-  }, [fetchConfirmation])
+  // Fetch manual para modal - não automático
+  const fetchConfirmationManual = useCallback(async (confirmationId: number) => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      console.log('🔍 Carregando confirmação (manual) ID:', confirmationId);
+      const startTime = performance.now();
+      
+      const data = await ConfirmationService.getConfirmationById(confirmationId)
+      
+      const endTime = performance.now();
+      console.log(`✅ Confirmação carregada em ${(endTime - startTime).toFixed(2)}ms`);
+      
+      setConfirmation(data)
+      return data;
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar confirmação");
+      setError(errorMessage);
+      console.error('❌ Erro ao carregar confirmação:', err);
+      throw err;
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  return { confirmation, loading, error, refetch: fetchConfirmation }
+  useEffect(() => {
+    if (id) {
+      fetchConfirmation()
+    }
+  }, [fetchConfirmation, id])
+
+  return { 
+    confirmation, 
+    loading, 
+    error, 
+    refetch: fetchConfirmation,
+    fetchConfirmationManual,
+    clearConfirmation: () => setConfirmation(null)
+  }
 }
 
 // Criar

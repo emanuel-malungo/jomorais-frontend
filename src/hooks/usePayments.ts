@@ -41,7 +41,8 @@ export interface IStudentConfirmed {
   n_documento_identificacao: string;
   email: string;
   telefone: string;
-  tb_matriculas: Array<{
+  tb_matriculas: {
+    codigo: number;
     tb_cursos: {
       codigo: number;
       designacao: string;
@@ -55,7 +56,7 @@ export interface IStudentConfirmed {
         };
       };
     }>;
-  }>;
+  };
 }
 
 export interface IStudentFinancialData {
@@ -135,13 +136,16 @@ export const useStudentsConfirmed = () => {
 
   const fetchStudents = async (
     page: number = 1,
-    limit: number = 1000, // CORREÇÃO: Aumentar limite para buscar mais alunos
+    limit: number = 10, // Usar paginação adequada
     search?: string,
     turma?: number,
     curso?: number
   ) => {
     setLoading(true);
     setError(null);
+    
+    console.log('🔍 Buscando alunos confirmados:', { page, limit, search, turma, curso });
+    const startTime = performance.now();
     
     try {
       const params = new URLSearchParams({
@@ -160,7 +164,10 @@ export const useStudentsConfirmed = () => {
       const response = await api.get(`/api/payment-management/alunos-confirmados?${params}`);
       
       if (response.data.success) {
-        console.log('✅ Alunos recebidos:', response.data.data.length);
+        const endTime = performance.now();
+        console.log(`✅ Alunos recebidos: ${response.data.data.length} em ${(endTime - startTime).toFixed(2)}ms`);
+        console.log(`📊 Paginação: ${response.data.pagination.currentPage}/${response.data.pagination.totalPages} (${response.data.pagination.totalItems} total)`);
+        
         if (search) {
           console.log('🔍 Resultados da busca por "' + search + '":', response.data.data.map((s: any) => s.nome));
         }
@@ -198,11 +205,16 @@ export const useStudentFinancialData = () => {
     setLoading(true);
     setError(null);
     
+    console.log('💰 Buscando dados financeiros do aluno:', { studentId, anoLectivo });
+    const startTime = performance.now();
+    
     try {
       const params = anoLectivo ? `?ano_lectivo=${anoLectivo}` : '';
       const response = await api.get(`/api/payment-management/aluno/${studentId}/financeiro${params}`);
       
       if (response.data.success) {
+        const endTime = performance.now();
+        console.log(`✅ Dados financeiros recebidos em ${(endTime - startTime).toFixed(2)}ms`);
         setData(response.data.data);
       } else {
         throw new Error(response.data.message || 'Erro ao buscar dados financeiros');

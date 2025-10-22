@@ -56,10 +56,16 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
   const { anosLectivos } = useAnosLectivos();
   const { mesesPendentes, mesesPagos, fetchMesesPendentes, clearMesesPendentes, refreshMesesPendentes, loading: mesesLoading, mensagem } = useMesesPendentesAluno();
 
-  // Buscar meses pendentes quando o ano letivo mudar
+  // Buscar meses pendentes quando o ano letivo mudar (otimizado)
   useEffect(() => {
     if (student && selectedAnoLectivo) {
-      fetchMesesPendentes(student.codigo, selectedAnoLectivo);
+      console.log('💰 Carregando dados financeiros:', { aluno: student.nome, anoLectivo: selectedAnoLectivo });
+      const startTime = performance.now();
+      
+      fetchMesesPendentes(student.codigo, selectedAnoLectivo).then(() => {
+        const endTime = performance.now();
+        console.log(`✅ Dados financeiros carregados em ${(endTime - startTime).toFixed(2)}ms`);
+      });
     }
   }, [student?.codigo, selectedAnoLectivo]); // Removido fetchMesesPendentes das dependências
 

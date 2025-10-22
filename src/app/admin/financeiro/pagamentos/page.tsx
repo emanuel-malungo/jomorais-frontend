@@ -55,8 +55,8 @@ const PagamentosPage = () => {
   const [paymentsCurrentPage, setPaymentsCurrentPage] = useState(1);
   const [selectedTipoServico, setSelectedTipoServico] = useState<string>('all');
   
-  // Debounce para busca
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  // Debounce para busca (otimizado)
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const debouncedPaymentsSearch = useDebounce(paymentsSearchTerm, 500);
 
   // Hooks
@@ -96,7 +96,7 @@ const PagamentosPage = () => {
       
       const turmaId = selectedTurma !== 'all' ? parseInt(selectedTurma) : undefined;
       const cursoId = selectedCurso !== 'all' ? parseInt(selectedCurso) : undefined;
-      fetchStudents(currentPage, 1000, debouncedSearchTerm, turmaId, cursoId);
+      fetchStudents(currentPage, 100, debouncedSearchTerm, turmaId, cursoId);
     }
   }, [showStudentsModal, currentPage, debouncedSearchTerm, selectedTurma, selectedCurso]);
 
@@ -108,9 +108,12 @@ const PagamentosPage = () => {
 
   // Handlers
   const handleViewStudent = async (student: any) => {
+    console.log('👁️ Abrindo dados financeiros para:', student.nome);
     setSelectedStudent(student);
-    await fetchFinancialData(student.codigo);
     setShowFinancialModal(true);
+    
+    // Carregar dados financeiros de forma assíncrona (não bloqueante)
+    fetchFinancialData(student.codigo);
   };
 
   const handleCloseFinancialModal = () => {
@@ -465,17 +468,17 @@ const PagamentosPage = () => {
                           <div>
                             <div className="font-medium text-gray-900 text-sm truncate max-w-[120px] sm:max-w-none">{student.nome}</div>
                             <div className="text-xs text-gray-500 sm:hidden">{student.n_documento_identificacao}</div>
-                            <div className="text-xs text-gray-500 md:hidden">{student.tb_matriculas?.[0]?.tb_cursos?.designacao || 'N/A'}</div>
+                            <div className="text-xs text-gray-500 md:hidden">{student.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</div>
                           </div>
                         </td>
                         <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-900 hidden sm:table-cell">
                           {student.n_documento_identificacao}
                         </td>
                         <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-900 hidden md:table-cell">
-                          {student.tb_matriculas?.[0]?.tb_cursos?.designacao || 'N/A'}
+                          {student.tb_matriculas?.tb_cursos?.designacao || 'N/A'}
                         </td>
                         <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-900">
-                          {student.tb_matriculas?.[0]?.tb_confirmacoes?.[0]?.tb_turmas?.designacao || 'N/A'}
+                          {student.tb_matriculas?.tb_confirmacoes?.[0]?.tb_turmas?.designacao || 'N/A'}
                         </td>
                         <td className="px-2 sm:px-4 py-3">
                           <Button

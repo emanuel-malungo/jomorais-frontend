@@ -4,8 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useConfirmations, useConfirmationsStatistics } from '@/hooks/useConfirmation';
+import { useConfirmations, useConfirmationsStatistics, useConfirmation } from '@/hooks/useConfirmation';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Card,
   CardContent,
@@ -39,7 +45,9 @@ import {
   Clock,
   GraduationCap,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Eye,
+  Loader2
 } from 'lucide-react';
 
 import { WelcomeHeader } from '@/components/dashboard';
@@ -53,6 +61,18 @@ export default function ConfirmationsListPage() {
   const [yearFilter, setYearFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  
+  // Estados para modal de visualização rápida
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedConfirmationId, setSelectedConfirmationId] = useState<number | null>(null);
+  
+  // Hook para confirmação individual (modal)
+  const { 
+    confirmation: selectedConfirmation, 
+    loading: confirmationLoading, 
+    fetchConfirmationManual,
+    clearConfirmation 
+  } = useConfirmation();
 
   // Usar o hook useFilterOptions para obter as opções de filtros
   const {
@@ -84,11 +104,12 @@ export default function ConfirmationsListPage() {
     yearFilter !== "all" ? yearFilter : null
   );
 
-  // Recarregar quando mudar a busca (com debounce)
+  // Recarregar quando mudar a busca (com debounce otimizado)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      setCurrentPage(1);
-    }, 500);
+      setCurrentPage(1); // Reset para primeira página ao buscar
+      console.log('🔍 Busca alterada:', searchTerm);
+    }, 300); // Reduzido para 300ms para resposta mais rápida
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
@@ -104,6 +125,28 @@ export default function ConfirmationsListPage() {
 
   const handleEditConfirmation = (confirmationId: number) => {
     window.location.href = `/admin/student-management/confirmations/edit/${confirmationId}`;
+  };
+
+  // Função otimizada para visualizar confirmação
+  const handleViewConfirmation = async (confirmationId: number) => {
+    try {
+      console.log('👁️ Abrindo modal para confirmação:', confirmationId);
+      setSelectedConfirmationId(confirmationId);
+      setIsViewModalOpen(true);
+      
+      // Carregar dados da confirmação de forma assíncrona
+      await fetchConfirmationManual(confirmationId);
+    } catch (error) {
+      console.error('❌ Erro ao carregar confirmação para modal:', error);
+      setIsViewModalOpen(false);
+    }
+  };
+
+  // Função para fechar modal
+  const handleCloseModal = () => {
+    setIsViewModalOpen(false);
+    setSelectedConfirmationId(null);
+    clearConfirmation();
   };
 
   const formatDate = (dateString: string) => {
@@ -268,23 +311,23 @@ export default function ConfirmationsListPage() {
                             <Users className="h-5 w-5 text-gray-500" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{confirmation.tb_matriculas.tb_alunos.nome}</p>
+                            <p className="font-medium text-gray-900">{confirmation.tb_matriculas?.tb_alunos?.nome || 'N/A'}</p>
                             <p className="text-sm text-gray-500">
-                              {confirmation.tb_matriculas.tb_alunos.dataNascimento ? calculateAge(confirmation.tb_matriculas.tb_alunos.dataNascimento) : 'N/A'} anos • {confirmation.tb_matriculas.tb_alunos.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                              {confirmation.tb_matriculas?.tb_alunos?.dataNascimento ? calculateAge(confirmation.tb_matriculas.tb_alunos.dataNascimento) : 'N/A'} anos • {confirmation.tb_matriculas?.tb_alunos?.sexo === 'M' ? 'Masculino' : 'Feminino'}
                             </p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium text-gray-900">{confirmation.tb_turmas.designacao}</p>
+                          <p className="font-medium text-gray-900">{confirmation.tb_turmas?.designacao || 'N/A'}</p>
                           <p className="text-sm text-gray-500">
-                            {confirmation.tb_turmas.tb_classes.designacao} • {confirmation.tb_turmas.tb_periodos.designacao}
+                            {confirmation.tb_turmas?.tb_classes?.designacao || 'N/A'} • {confirmation.tb_turmas?.tb_periodos?.designacao || 'N/A'}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <p className="font-medium text-gray-900">{confirmation.tb_matriculas.tb_cursos.designacao}</p>
+                        <p className="font-medium text-gray-900">{confirmation.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</p>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
@@ -310,6 +353,10 @@ export default function ConfirmationsListPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleViewConfirmation(confirmation.codigo)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Visualizar
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEditConfirmation(confirmation.codigo)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
@@ -415,6 +462,137 @@ export default function ConfirmationsListPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Visualização Rápida */}
+      <Dialog open={isViewModalOpen} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Eye className="h-5 w-5" />
+              <span>Detalhes da Confirmação</span>
+              {confirmationLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {confirmationLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600">Carregando detalhes...</span>
+            </div>
+          ) : selectedConfirmation ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Informações do Aluno */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <Users className="h-5 w-5" />
+                    <span>Dados do Aluno</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Nome</label>
+                    <p className="text-base font-medium">{selectedConfirmation.tb_matriculas?.tb_alunos?.nome || 'N/A'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Idade</label>
+                      <p className="text-base">
+                        {selectedConfirmation.tb_matriculas?.tb_alunos?.dataNascimento 
+                          ? calculateAge(selectedConfirmation.tb_matriculas.tb_alunos.dataNascimento) 
+                          : 'N/A'} anos
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Sexo</label>
+                      <p className="text-base">
+                        {selectedConfirmation.tb_matriculas?.tb_alunos?.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Informações Acadêmicas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <GraduationCap className="h-5 w-5" />
+                    <span>Dados Acadêmicos</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Curso</label>
+                    <p className="text-base font-medium">{selectedConfirmation.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Turma</label>
+                    <p className="text-base">{selectedConfirmation.tb_turmas?.designacao || 'N/A'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Classe</label>
+                      <p className="text-base">{selectedConfirmation.tb_turmas?.tb_classes?.designacao || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Período</label>
+                      <p className="text-base">{selectedConfirmation.tb_turmas?.tb_periodos?.designacao || 'N/A'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Informações da Confirmação */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <CheckCircle className="h-5 w-5" />
+                    <span>Detalhes da Confirmação</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Data de Confirmação</label>
+                      <p className="text-base flex items-center space-x-2">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <span>{selectedConfirmation.data_Confirmacao ? formatDate(selectedConfirmation.data_Confirmacao) : 'N/A'}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Status</label>
+                      <div className="mt-1">
+                        <Badge
+                          variant={selectedConfirmation.codigo_Status === 1 ? "default" : "secondary"}
+                          className={selectedConfirmation.codigo_Status === 1 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}
+                        >
+                          {selectedConfirmation.codigo_Status === 1 ? "Ativa" : "Inativa"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Classificação</label>
+                      <p className="text-base">{selectedConfirmation.classificacao || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  {selectedConfirmation.mes_Comecar && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Mês para Começar</label>
+                      <p className="text-base">{formatDate(selectedConfirmation.mes_Comecar)}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Nenhuma confirmação selecionada</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </Container>
   );
