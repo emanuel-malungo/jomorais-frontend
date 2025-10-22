@@ -130,20 +130,6 @@ export default function ClassesPage() {
         searchPlaceholder="Buscar por classe..."
         searchValue={searchTerm}
         onSearchChange={handleSearch}
-        filters={[
-          {
-            label: "Items por página",
-            value: limit.toString(),
-            onChange: (value) => handleLimitChange(parseInt(value)),
-            options: [
-              { value: "5", label: "5 por página" },
-              { value: "10", label: "10 por página" },
-              { value: "20", label: "20 por página" },
-              { value: "50", label: "50 por página" },
-            ],
-            width: "w-48"
-          }
-        ]}
       />
 
       {/* Tabela de Classes */}

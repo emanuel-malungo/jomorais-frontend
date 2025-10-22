@@ -30,7 +30,7 @@ interface FilterSearchCardProps {
     searchPlaceholder?: string
     searchValue: string
     onSearchChange: (value: string) => void
-    filters: FilterConfig[]
+    filters?: FilterConfig[]
 }
 
 const FilterSearchCard: React.FC<FilterSearchCardProps> = ({
@@ -38,7 +38,7 @@ const FilterSearchCard: React.FC<FilterSearchCardProps> = ({
     searchPlaceholder = "Buscar...",
     searchValue,
     onSearchChange,
-    filters,
+    filters = [],
 }) => {
     return (
         <Card className="mb-6">
