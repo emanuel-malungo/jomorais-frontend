@@ -7,6 +7,8 @@ export interface StudentData {
   email?: string;
   telefone?: string;
   data_nascimento?: string;
+  data_Nascimento?: string; // Variação do backend
+  dataNascimento?: string; // Outra possível variação
   idade?: number;
   genero?: string;
 }
@@ -77,6 +79,14 @@ export class TurmaReportService {
   }
   
   /**
+   * Obtém a data de nascimento do aluno (suporta múltiplas variações de campo)
+   */
+  private static getBirthDate(aluno: any): string | null {
+    // Suporta múltiplas variações do campo de data de nascimento
+    return aluno.data_nascimento || aluno.data_Nascimento || aluno.dataNascimento || null;
+  }
+
+  /**
    * Calcula a idade baseada na data de nascimento
    */
   private static calculateAge(birthDate: string): number {
@@ -90,6 +100,21 @@ export class TurmaReportService {
     }
     
     return age;
+  }
+
+  /**
+   * Obtém a idade do aluno (calcula ou retorna o campo idade)
+   */
+  private static getAge(aluno: StudentData): string {
+    const birthDate = this.getBirthDate(aluno);
+    if (birthDate) {
+      try {
+        return this.calculateAge(birthDate).toString();
+      } catch (error) {
+        console.warn('Erro ao calcular idade:', error);
+      }
+    }
+    return aluno.idade?.toString() || 'N/A';
   }
 
   /**
@@ -114,7 +139,8 @@ export class TurmaReportService {
         return response.data.data;
       }
       throw new Error(response.data.message || 'Erro ao buscar alunos');
-    } catch {
+    } catch (error) {
+      console.error('❌ Erro ao buscar alunos:', error);
       // Retornar array vazio se não houver alunos
       return [];
     }
@@ -183,10 +209,11 @@ export class TurmaReportService {
       doc.setFillColor(249, 205, 29); // Amarelo JOMORAIS
       doc.rect(15, yPosition - 5, 180, 10, 'F');
       
-      doc.text('Nº', 20, yPosition);
-      doc.text('Nome', 35, yPosition);
-      doc.text('Telefone', 110, yPosition);
-      doc.text('Documento', 140, yPosition);
+      doc.text('Nº', 18, yPosition);
+      doc.text('Nome', 30, yPosition);
+      doc.text('Telefone', 95, yPosition);
+      doc.text('Documento', 125, yPosition);
+      doc.text('Idade', 160, yPosition);
       doc.text('Status', 175, yPosition);
       yPosition += 12;
       
@@ -205,10 +232,11 @@ export class TurmaReportService {
           doc.setTextColor(255, 255, 255);
           doc.setFillColor(249, 205, 29);
           doc.rect(15, yPosition - 5, 180, 10, 'F');
-          doc.text('Nº', 20, yPosition);
-          doc.text('Nome', 35, yPosition);
-          doc.text('Telefone', 110, yPosition);
-          doc.text('Documento', 140, yPosition);
+          doc.text('Nº', 18, yPosition);
+          doc.text('Nome', 30, yPosition);
+          doc.text('Telefone', 95, yPosition);
+          doc.text('Documento', 125, yPosition);
+          doc.text('Idade', 160, yPosition);
           doc.text('Status', 175, yPosition);
           yPosition += 12;
           doc.setTextColor(0, 0, 0);
@@ -222,10 +250,13 @@ export class TurmaReportService {
         }
         
         // Dados do aluno
-        doc.text((index + 1).toString(), 20, yPosition);
-        doc.text(aluno.nome?.substring(0, 25) || 'N/A', 35, yPosition);
-        doc.text(aluno.telefone?.substring(0, 15) || 'N/A', 110, yPosition);
-        doc.text(aluno.numero_documento?.substring(0, 15) || 'N/A', 140, yPosition);
+        doc.text((index + 1).toString(), 18, yPosition);
+        doc.text(aluno.nome?.substring(0, 22) || 'N/A', 30, yPosition);
+        doc.text(aluno.telefone?.substring(0, 12) || 'N/A', 95, yPosition);
+        doc.text(aluno.numero_documento?.substring(0, 13) || 'N/A', 125, yPosition);
+        
+        // Idade
+        doc.text(this.getAge(aluno), 162, yPosition);
         
         // Status (sempre ativo para alunos matriculados)
         doc.setTextColor(34, 197, 94); // Verde
@@ -330,10 +361,11 @@ export class TurmaReportService {
             doc.setFillColor(249, 205, 29); // Amarelo JOMORAIS
             doc.rect(15, yPosition - 5, 180, 10, 'F');
             
-            doc.text('Nº', 20, yPosition);
-            doc.text('Nome', 35, yPosition);
-            doc.text('Telefone', 110, yPosition);
-            doc.text('Documento', 140, yPosition);
+            doc.text('Nº', 18, yPosition);
+            doc.text('Nome', 30, yPosition);
+            doc.text('Telefone', 95, yPosition);
+            doc.text('Documento', 125, yPosition);
+            doc.text('Idade', 160, yPosition);
             doc.text('Status', 175, yPosition);
             yPosition += 12;
             
@@ -352,10 +384,11 @@ export class TurmaReportService {
                 doc.setTextColor(255, 255, 255);
                 doc.setFillColor(249, 205, 29);
                 doc.rect(15, yPosition - 5, 180, 10, 'F');
-                doc.text('Nº', 20, yPosition);
-                doc.text('Nome', 35, yPosition);
-                doc.text('Telefone', 110, yPosition);
-                doc.text('Documento', 140, yPosition);
+                doc.text('Nº', 18, yPosition);
+                doc.text('Nome', 30, yPosition);
+                doc.text('Telefone', 95, yPosition);
+                doc.text('Documento', 125, yPosition);
+                doc.text('Idade', 160, yPosition);
                 doc.text('Status', 175, yPosition);
                 yPosition += 12;
                 doc.setTextColor(0, 0, 0);
@@ -369,10 +402,13 @@ export class TurmaReportService {
               }
               
               // Dados do aluno
-              doc.text((index + 1).toString(), 20, yPosition);
-              doc.text(aluno.nome?.substring(0, 25) || 'N/A', 35, yPosition);
-              doc.text(aluno.telefone?.substring(0, 15) || 'N/A', 110, yPosition);
-              doc.text(aluno.numero_documento?.substring(0, 15) || 'N/A', 140, yPosition);
+              doc.text((index + 1).toString(), 18, yPosition);
+              doc.text(aluno.nome?.substring(0, 22) || 'N/A', 30, yPosition);
+              doc.text(aluno.telefone?.substring(0, 12) || 'N/A', 95, yPosition);
+              doc.text(aluno.numero_documento?.substring(0, 13) || 'N/A', 125, yPosition);
+              
+              // Idade
+              doc.text(this.getAge(aluno), 162, yPosition);
               
               // Status (sempre ativo para alunos matriculados)
               doc.setTextColor(34, 197, 94); // Verde
