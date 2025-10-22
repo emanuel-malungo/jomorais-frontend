@@ -2,6 +2,7 @@ import { useMemo, useEffect } from 'react';
 import { useStatus } from '@/hooks/useStatusControl';
 import { useCourses } from '@/hooks/useCourse';
 import { useAnosLectivos } from '@/hooks/useAnoLectivo';
+import { usePeriodos } from '@/hooks';
 
 /**
  * Interface para opções de filtro
@@ -18,6 +19,7 @@ export interface UseFilterOptionsReturn {
     statusOptions: FilterOption[];
     courseOptions: FilterOption[];
     academicYearOptions: FilterOption[];
+    periodoOptions: FilterOption[];
     status: ReturnType<typeof useStatus>['status'];
     courses: ReturnType<typeof useCourses>['courses'];
     anosLectivos: ReturnType<typeof useAnosLectivos>['anosLectivos'];
@@ -40,6 +42,8 @@ export const useFilterOptions = (
 
     // Carregar todos os anos letivos
     const { anosLectivos, isLoading: loadingAcademicYears, fetchAnosLectivos } = useAnosLectivos();
+
+    const { periodos, fetchPeriodos } = usePeriodos();
 
     // Buscar anos letivos ao montar o componente
     useEffect(() => {
@@ -94,10 +98,29 @@ export const useFilterOptions = (
         return options;
     }, [anosLectivos]);
 
+    useEffect(() => {
+        fetchPeriodos(1, 100, "");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const periodoOptions = useMemo(() => {
+        const options = [{ value: "all", label: "Todos os Períodos" }];
+        if (periodos && periodos.length > 0) {
+            periodos.forEach((p) => {
+                options.push({
+                    value: p.codigo.toString(),
+                    label: p.designacao
+                });
+            });
+        }
+        return options;
+    }, [periodos]);
+
     return {
         statusOptions,
         courseOptions,
         academicYearOptions,
+        periodoOptions,
         status,
         courses,
         anosLectivos,

@@ -1,11 +1,25 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import api from '@/utils/api.utils';
+import { toast } from 'react-toastify';
+import { getErrorMessage } from '@/utils/getErrorMessage.utils';
 
 // Estender o tipo jsPDF para incluir autoTable
 declare module 'jspdf' {
   interface jsPDF {
-    autoTable: (options: any) => jsPDF;
+    autoTable: (options: {
+      head?: unknown[][];
+      body?: unknown[][];
+      startY?: number;
+      margin?: { left?: number; right?: number; top?: number; bottom?: number };
+      styles?: Record<string, unknown>;
+      headStyles?: Record<string, unknown>;
+      alternateRowStyles?: Record<string, unknown>;
+      columnStyles?: Record<string, unknown>;
+    }) => jsPDF;
+    lastAutoTable?: {
+      finalY: number;
+    };
   }
 }
 
@@ -58,8 +72,9 @@ export class TurmaReportService {
       
       return yPosition + 22; // Retornar nova posição Y (logo + margem maior)
     } catch (error) {
-      console.warn('Erro ao carregar logo:', error);
-      return yPosition; // Continuar sem o logo
+      const errorMessage = getErrorMessage(error, "Erro ao carregar logo");
+      toast.error(`Erro ao carregar logo: ${errorMessage}`);
+      return yPosition; // Retornar posição original se falhar
     }
   }
   
@@ -101,10 +116,9 @@ export class TurmaReportService {
         return response.data.data;
       }
       throw new Error(response.data.message || 'Erro ao buscar alunos');
-    } catch (error) {
-      console.error('Erro ao buscar alunos da turma:', error);
-      // Retornar dados mockados para teste
-      return this.getMockStudents();
+    } catch {
+      // Retornar array vazio se não houver alunos
+      return [];
     }
   }
 
@@ -119,17 +133,22 @@ export class TurmaReportService {
         return response.data.data;
       }
       throw new Error(response.data.message || 'Erro ao buscar dados');
-    } catch (error) {
-      console.error('Erro ao buscar todas as turmas:', error);
-      // Retornar dados mockados para teste
-      return this.getMockTurmasData();
+    } catch {
+      throw new Error('Não foi possível carregar os dados das turmas');
     }
   }
 
   /**
    * Gera PDF para uma turma específica
    */
-  static async generateSingleTurmaPDF(turma: any): Promise<void> {
+  static async generateSingleTurmaPDF(turma: {
+    codigo: number;
+    designacao: string;
+    tb_classes?: { designacao: string };
+    tb_cursos?: { designacao: string };
+    tb_salas?: { designacao: string };
+    tb_periodos?: { designacao: string };
+  }): Promise<void> {
     const alunos = await this.getStudentsByTurma(turma.codigo);
     
     const doc = new jsPDF();
@@ -215,7 +234,7 @@ export class TurmaReportService {
     });
     
     // Rodapé
-    const finalY = (doc as any).lastAutoTable.finalY || yPosition + 50;
+    const finalY = doc.lastAutoTable?.finalY || yPosition + 50;
     doc.setFontSize(10);
     doc.text('Assinatura do Diretor: _________________________', margin, finalY + 30);
     doc.text('Assinatura do Coordenador: _________________________', margin, finalY + 45);
@@ -229,14 +248,12 @@ export class TurmaReportService {
    */
   static async generateAllTurmasPDF(anoLectivoId?: number): Promise<void> {
     try {
-      console.log('Iniciando geração de PDF para todas as turmas...');
       const turmasData = await this.getAllTurmasWithStudents(anoLectivoId);
       
       if (!turmasData || turmasData.length === 0) {
         throw new Error('Nenhuma turma encontrada para o ano letivo selecionado');
       }
       
-      console.log(`Gerando PDF para ${turmasData.length} turmas`);
       
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.width;
@@ -248,7 +265,6 @@ export class TurmaReportService {
         const turmaData = turmasData[turmaIndex];
         
         try {
-          console.log(`Processando turma ${turmaIndex + 1}/${turmasData.length}: ${turmaData.turma.designacao}`);
           
           // Nova página para cada turma (exceto a primeira)
           if (turmaIndex > 0) {
@@ -397,72 +413,25 @@ export class TurmaReportService {
           }
           
           // Rodapé
-          const finalY = (doc as any).lastAutoTable?.finalY || yPosition + 50;
+          const finalY = doc.lastAutoTable?.finalY || yPosition + 50;
           if (finalY + 60 < pageHeight) { // Verificar se há espaço para o rodapé
             doc.setFontSize(10);
             doc.text('Assinatura do Diretor: _________________________', margin, finalY + 30);
             doc.text('Assinatura do Coordenador: _________________________', margin, finalY + 45);
           }
           
-        } catch (turmaError) {
-          console.error(`Erro ao processar turma ${turmaData.turma.designacao}:`, turmaError);
+        } catch {
           // Continuar com as outras turmas mesmo se uma falhar
         }
       }
       
       // Salvar o PDF
       const fileName = `Lista_Alunos_Todas_Turmas_${new Date().toISOString().split('T')[0]}.pdf`;
-      console.log(`Salvando PDF: ${fileName}`);
+
       doc.save(fileName);
       
     } catch (error) {
-      console.error('Erro ao gerar PDF de todas as turmas:', error);
       throw new Error(`Erro ao gerar PDF: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
-  }
-
-  /**
-   * Dados mockados para teste
-   */
-  private static getMockStudents(): StudentData[] {
-    return [
-      { codigo: 1, nome: 'João Silva Santos', numero_documento: '123456789LA041', email: 'joao@email.com', telefone: '923456789', data_nascimento: '2005-03-15', genero: 'M' },
-      { codigo: 2, nome: 'Maria Fernanda Costa', numero_documento: '987654321LA042', email: 'maria@email.com', telefone: '924567890', data_nascimento: '2004-07-22', genero: 'F' },
-      { codigo: 3, nome: 'Pedro Miguel Oliveira', numero_documento: '456789123LA043', email: 'pedro@email.com', telefone: '925678901', data_nascimento: '2005-11-08', genero: 'M' },
-      { codigo: 4, nome: 'Ana Beatriz Sousa', numero_documento: '789123456LA044', email: 'ana@email.com', telefone: '926789012', data_nascimento: '2004-12-03', genero: 'F' },
-      { codigo: 5, nome: 'Carlos Eduardo Lima', numero_documento: '321654987LA045', email: 'carlos@email.com', telefone: '927890123', data_nascimento: '2005-01-28', genero: 'M' },
-      { codigo: 6, nome: 'Luísa Marques Pereira', numero_documento: '654987321LA046', email: 'luisa@email.com', telefone: '928901234', data_nascimento: '2004-09-14', genero: 'F' },
-      { codigo: 7, nome: 'Rafael Santos Almeida', numero_documento: '147258369LA047', email: 'rafael@email.com', telefone: '929012345', data_nascimento: '2005-05-19', genero: 'M' },
-      { codigo: 8, nome: 'Beatriz Gonçalves', numero_documento: '369258147LA048', email: 'beatriz@email.com', telefone: '930123456', data_nascimento: '2004-10-07', genero: 'F' },
-      { codigo: 9, nome: 'Miguel Ângelo Ferreira', numero_documento: '258147369LA049', email: 'miguel@email.com', telefone: '931234567', data_nascimento: '2005-02-11', genero: 'M' },
-      { codigo: 10, nome: 'Sofia Rodrigues Martins', numero_documento: '741852963LA050', email: 'sofia@email.com', telefone: '932345678', data_nascimento: '2004-08-25', genero: 'F' }
-    ];
-  }
-
-  private static getMockTurmasData(): TurmaReportData[] {
-    return [
-      {
-        turma: {
-          codigo: 1,
-          designacao: '10ª A - Manhã',
-          tb_classes: { designacao: '10ª Classe' },
-          tb_cursos: { designacao: 'Informática de Gestão' },
-          tb_salas: { designacao: 'Sala 101' },
-          tb_periodos: { designacao: 'Manhã' }
-        },
-        alunos: this.getMockStudents().slice(0, 5)
-      },
-      {
-        turma: {
-          codigo: 2,
-          designacao: '11ª B - Tarde',
-          tb_classes: { designacao: '11ª Classe' },
-          tb_cursos: { designacao: 'Contabilidade e Gestão' },
-          tb_salas: { designacao: 'Sala 102' },
-          tb_periodos: { designacao: 'Tarde' }
-        },
-        alunos: this.getMockStudents().slice(5, 10)
-      }
-    ];
   }
 }

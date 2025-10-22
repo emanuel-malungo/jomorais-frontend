@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
@@ -52,21 +52,22 @@ import {
   Printer,
   ChevronLeft,
   ChevronRight,
-  Archive,
-  ToggleLeft,
-  ToggleRight,
   MapPin,
   Clock,
   FileText,
   UserX,
 } from 'lucide-react';
-import { useTurmaManagerPaginated, useArchiveTurma } from '@/hooks';
+import { useTurmaManagerPaginated } from '@/hooks';
 import { TurmaReportService } from '@/services/turmaReport.service';
 import api from '@/utils/api.utils';
+import { ITurma } from '@/types/turma.types';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 
-import { useStatus } from '@/hooks/useStatusControl'
-import { usePeriodos } from '@/hooks';
-import { useCourses } from '@/hooks/useCourse';
+// Tipo para Ano Letivo
+interface AnoLectivo {
+  codigo: number;
+  designacao: string;
+}
 
 export default function TurmasPage() {
   const {
@@ -82,67 +83,18 @@ export default function TurmasPage() {
     refetch
   } = useTurmaManagerPaginated();
 
-  const { archiveTurma, isLoading: archivingTurma } = useArchiveTurma();
-
   const [periodoFilter, setPeriodoFilter] = useState("all");
   const [cursoFilter, setCursoFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const { status } = useStatus(1, 100, "");
-  const { courses } = useCourses(1, 100, "");
-  const { periodos, fetchPeriodos } = usePeriodos();
-
-  // Carregar períodos ao montar o componente
-  useEffect(() => {
-    fetchPeriodos(1, 100, "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const statusOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Status" }];
-    if (status && status.length > 0) {
-      status.forEach((s) => {
-        options.push({
-          value: s.codigo.toString(),
-          label: s.designacao
-        });
-      });
-    }
-    return options;
-  }, [status]);
-
-  const cursoOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Cursos" }];
-    if (courses && courses.length > 0) {
-      courses.forEach((c) => {
-        options.push({
-          value: c.codigo.toString(),
-          label: c.designacao
-        });
-      });
-    }
-    return options;
-  }, [courses]);
-
-  const periodoOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Períodos" }];
-    if (periodos && periodos.length > 0) {
-      periodos.forEach((p) => {
-        options.push({
-          value: p.codigo.toString(),
-          label: p.designacao
-        });
-      });
-    }
-    return options;
-  }, [periodos]);
+  const { statusOptions, courseOptions, periodoOptions } = useFilterOptions();
 
   // Estados para o modal de relatórios
   const [showReportModal, setShowReportModal] = useState(false);
-  const [selectedTurma, setSelectedTurma] = useState<any>(null);
+  const [selectedTurma, setSelectedTurma] = useState<ITurma | null>(null);
   const [reportType, setReportType] = useState<'single' | 'all'>('single');
-  const [selectedAnoLectivo, setSelectedAnoLectivo] = useState<any>(null);
-  const [anosLectivos, setAnosLectivos] = useState<any[]>([]);
+  const [selectedAnoLectivo, setSelectedAnoLectivo] = useState<AnoLectivo | null>(null);
+  const [anosLectivos, setAnosLectivos] = useState<AnoLectivo[]>([]);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [loadingAnosLectivos, setLoadingAnosLectivos] = useState(false);
 
@@ -179,8 +131,6 @@ export default function TurmasPage() {
       if (response.data.success) {
         setAnosLectivos(response.data.data);
       }
-    } catch (error) {
-      console.error('Erro ao carregar anos letivos:', error);
     } finally {
       setLoadingAnosLectivos(false);
     }
@@ -193,15 +143,14 @@ export default function TurmasPage() {
   };
 
   // Funções para geração de PDF
-  const generateStudentListPDF = async (turma: any) => {
+  const generateStudentListPDF = async (turma: ITurma) => {
     setIsGeneratingPDF(true);
     try {
-      console.log('Gerando PDF para turma:', turma);
       await TurmaReportService.generateSingleTurmaPDF(turma);
       alert(`PDF da turma ${turma.designacao} gerado com sucesso!`);
     } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao gerar PDF';
+      alert(errorMessage);
     } finally {
       setIsGeneratingPDF(false);
       setShowReportModal(false);
@@ -209,17 +158,16 @@ export default function TurmasPage() {
   };
 
   const generateAllTurmasPDF = async () => {
+    if (!selectedAnoLectivo) {
+      alert('Por favor, selecione um ano letivo');
+      return;
+    }
+
     setIsGeneratingPDF(true);
     try {
-
-      if (!selectedAnoLectivo) {
-        throw new Error('Ano letivo é obrigatório');
-      }
-
       await TurmaReportService.generateAllTurmasPDF(selectedAnoLectivo.codigo);
       alert(`PDF de todas as turmas do ano letivo ${selectedAnoLectivo.designacao} gerado com sucesso!`);
     } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       alert(`Erro ao gerar PDF: ${errorMessage}`);
     } finally {
@@ -238,50 +186,13 @@ export default function TurmasPage() {
 
   // Usar dados da paginação do servidor combinados com filtros locais
   const totalPages = pagination.totalPages;
-  const currentTurmas = filteredTurmas; // Aplicar filtros locais aos dados paginados
-
+  const currentTurmas = filteredTurmas;
 
   const handleEditTurma = (turmaId: number) => {
     window.location.href = `/admin/academic-management/turmas/edit/${turmaId}`;
   };
 
 
-
-  // Função para arquivar turma
-  const handleArchiveTurma = async (turmaId: number) => {
-    if (window.confirm("Tem certeza que deseja arquivar esta turma? Esta ação pode ser revertida.")) {
-      try {
-        await archiveTurma(turmaId, 'Arquivado');
-        refetch(); // Recarregar a lista
-      } catch (error) {
-        console.error("Erro ao arquivar turma:", error);
-      }
-    }
-  };
-
-  // Função para desativar turma
-  const handleDeactivateTurma = async (turmaId: number) => {
-    if (window.confirm("Tem certeza que deseja desativar esta turma? Esta ação pode ser revertida.")) {
-      try {
-        await archiveTurma(turmaId, 'Inativo');
-        refetch(); // Recarregar a lista
-      } catch (error) {
-        console.error("Erro ao desativar turma:", error);
-      }
-    }
-  };
-
-  // Função para ativar turma
-  const handleActivateTurma = async (turmaId: number) => {
-    if (window.confirm("Tem certeza que deseja ativar esta turma?")) {
-      try {
-        await archiveTurma(turmaId, 'Ativo');
-        refetch(); // Recarregar a lista
-      } catch (error) {
-        console.error("Erro ao ativar turma:", error);
-      }
-    }
-  };
 
   // Estados de loading e error
   if (isLoading) {
@@ -358,8 +269,6 @@ export default function TurmasPage() {
           accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
         />
 
-    
-
         <StatCard
           title="Turmas Inativas"
           value={stats.inactive.toString()}
@@ -399,7 +308,7 @@ export default function TurmasPage() {
             label: "Curso",
             value: cursoFilter,
             onChange: setCursoFilter,
-            options: cursoOptions,
+            options: courseOptions,
           },
           {
             label: "Status",
@@ -498,61 +407,6 @@ export default function TurmasPage() {
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-
-                          {/* Ações de status baseadas no status atual */}
-                          {turma.status === 'Ativo' && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => handleDeactivateTurma(turma.codigo)}
-                                className="text-orange-600"
-                                disabled={archivingTurma}
-                              >
-                                <ToggleLeft className="mr-2 h-4 w-4" />
-                                Desativar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleArchiveTurma(turma.codigo)}
-                                className="text-blue-600"
-                                disabled={archivingTurma}
-                              >
-                                <Archive className="mr-2 h-4 w-4" />
-                                Arquivar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-
-                          {turma.status === 'Inativo' && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => handleActivateTurma(turma.codigo)}
-                                className="text-green-600"
-                                disabled={archivingTurma}
-                              >
-                                <ToggleRight className="mr-2 h-4 w-4" />
-                                Ativar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleArchiveTurma(turma.codigo)}
-                                className="text-blue-600"
-                                disabled={archivingTurma}
-                              >
-                                <Archive className="mr-2 h-4 w-4" />
-                                Arquivar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-
-                          {turma.status === 'Arquivado' && (
-                            <DropdownMenuItem
-                              onClick={() => handleActivateTurma(turma.codigo)}
-                              className="text-green-600"
-                              disabled={archivingTurma}
-                            >
-                              <ToggleRight className="mr-2 h-4 w-4" />
-                              Reativar
-                            </DropdownMenuItem>
-                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -677,7 +531,7 @@ export default function TurmasPage() {
                 value={selectedAnoLectivo?.codigo?.toString() || ""}
                 onValueChange={(value) => {
                   const ano = anosLectivos.find(a => a.codigo.toString() === value);
-                  setSelectedAnoLectivo(ano);
+                  setSelectedAnoLectivo(ano || null);
                 }}
                 disabled={loadingAnosLectivos}
               >
@@ -741,7 +595,7 @@ export default function TurmasPage() {
                   value={selectedTurma?.codigo?.toString() || ""}
                   onValueChange={(value) => {
                     const turma = turmas.find(t => t.codigo.toString() === value);
-                    setSelectedTurma(turma);
+                    setSelectedTurma(turma || null);
                   }}
                 >
                   <SelectTrigger>

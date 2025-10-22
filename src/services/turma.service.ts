@@ -14,8 +14,9 @@ class TurmaService {
       }
       toast.error(apiResponse.message || "Erro ao criar turma")
       throw new Error(apiResponse.message || "Erro ao criar turma")
-    } catch (error: any) {
-      let errorMessage = error?.response?.data?.message || error?.message || "Erro ao criar turma"
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string }
+      let errorMessage = err?.response?.data?.message || err?.message || "Erro ao criar turma"
       
       // Verificar se é erro específico de sala já usada
       if (errorMessage.toLowerCase().includes('sala') && 
@@ -27,36 +28,29 @@ class TurmaService {
       }
       
       toast.error(errorMessage)
-      console.error("Erro ao criar turma:", error)
       throw new Error(errorMessage)
     }
   }
 
   async getAllTurmas(search = ""): Promise<ITurmaListResponse> {
-    console.log('TurmaService: Fazendo requisição para TODAS as turmas...', { search })
     const response = await api.get("/api/academic-management/turmas", {
       params: { page: 1, limit: 1000, search } // Buscar até 1000 registros
     })
-    console.log('TurmaService: Resposta da API (todas):', response.data)
     const apiResponse = response.data
 
     if (apiResponse.success) {
-      console.log('TurmaService: Dados de todas as turmas:', apiResponse.data)
       return { data: apiResponse.data, pagination: apiResponse.pagination }
     }
     throw new Error(apiResponse.message || "Erro ao buscar todas as turmas")
   }
 
   async getTurmas(page = 1, limit = 10, search = ""): Promise<ITurmaListResponse> {
-    console.log('TurmaService: Fazendo requisição para turmas...', { page, limit, search })
     const response = await api.get("/api/academic-management/turmas", {
       params: { page, limit, search }
     })
-    console.log('TurmaService: Resposta da API:', response.data)
     const apiResponse = response.data
 
     if (apiResponse.success) {
-      console.log('TurmaService: Dados das turmas:', apiResponse.data)
       return { data: apiResponse.data, pagination: apiResponse.pagination }
     }
     throw new Error(apiResponse.message || "Erro ao buscar turmas")
@@ -83,10 +77,10 @@ class TurmaService {
       }
       toast.error(apiResponse.message || "Erro ao atualizar turma")
       throw new Error(apiResponse.message || "Erro ao atualizar turma")
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar turma"
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string }
+      const errorMessage = err?.response?.data?.message || err?.message || "Erro ao atualizar turma"
       toast.error(errorMessage)
-      console.error("Erro ao atualizar turma:", error)
       throw error
     }
   }
@@ -102,10 +96,10 @@ class TurmaService {
         toast.error(apiResponse.message || "Erro ao deletar turma")
         throw new Error(apiResponse.message || "Erro ao deletar turma")
       }
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao deletar turma"
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string }
+      const errorMessage = err?.response?.data?.message || err?.message || "Erro ao deletar turma"
       toast.error(errorMessage)
-      console.error("Erro ao deletar turma:", error)
       throw error
     }
   }
@@ -130,9 +124,9 @@ class TurmaService {
         return apiResponse.data
       }
       throw new Error(apiResponse.message || "Erro ao validar disponibilidade da sala")
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao validar sala"
-      console.error("Erro ao validar sala:", error)
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string }
+      const errorMessage = err?.response?.data?.message || err?.message || "Erro ao validar sala"
       throw new Error(errorMessage)
     }
   }
@@ -151,10 +145,10 @@ class TurmaService {
       }
       toast.error(apiResponse.message || "Erro ao atualizar status da turma")
       throw new Error(apiResponse.message || "Erro ao atualizar status da turma")
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || "Erro ao atualizar status da turma"
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string }
+      const errorMessage = err?.response?.data?.message || err?.message || "Erro ao atualizar status da turma"
       toast.error(errorMessage)
-      console.error("Erro ao atualizar status da turma:", error)
       throw new Error(errorMessage)
     }
   }
