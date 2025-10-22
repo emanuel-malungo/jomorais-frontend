@@ -56,16 +56,24 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
   const { anosLectivos } = useAnosLectivos();
   const { mesesPendentes, mesesPagos, fetchMesesPendentes, clearMesesPendentes, refreshMesesPendentes, loading: mesesLoading, mensagem } = useMesesPendentesAluno();
 
-  // Buscar meses pendentes quando o ano letivo mudar (otimizado)
+  // Buscar meses pendentes quando o ano letivo mudar (otimizado com debounce)
   useEffect(() => {
     if (student && selectedAnoLectivo) {
       console.log('💰 Carregando dados financeiros:', { aluno: student.nome, anoLectivo: selectedAnoLectivo });
-      const startTime = performance.now();
       
-      fetchMesesPendentes(student.codigo, selectedAnoLectivo).then(() => {
-        const endTime = performance.now();
-        console.log(`✅ Dados financeiros carregados em ${(endTime - startTime).toFixed(2)}ms`);
-      });
+      // Debounce para evitar múltiplas chamadas
+      const timeoutId = setTimeout(() => {
+        const startTime = performance.now();
+        
+        fetchMesesPendentes(student.codigo, selectedAnoLectivo).then(() => {
+          const endTime = performance.now();
+          console.log(`✅ Dados financeiros carregados em ${(endTime - startTime).toFixed(2)}ms`);
+        }).catch((error) => {
+          console.error('❌ Erro ao carregar dados financeiros:', error);
+        });
+      }, 300); // Debounce de 300ms
+
+      return () => clearTimeout(timeoutId);
     }
   }, [student?.codigo, selectedAnoLectivo]); // Removido fetchMesesPendentes das dependências
 
@@ -148,9 +156,36 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span className="ml-3 text-gray-600">Carregando dados financeiros...</span>
+          <div className="space-y-6">
+            {/* Skeleton para informações do aluno */}
+            <div className="animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Skeleton para cards de resumo */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-20 bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Skeleton para seleção de ano */}
+            <div className="animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="h-10 bg-gray-200 rounded w-full"></div>
+            </div>
           </div>
         ) : !financialData ? (
           <div className="text-center py-12">

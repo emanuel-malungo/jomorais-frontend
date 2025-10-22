@@ -33,6 +33,8 @@ import {
 } from '@/components/ui/select';
 import { useStudentsConfirmed, useStudentFinancialData, usePaymentsList, useGenerateInvoicePDF } from '@/hooks/usePayments';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useAllTurmas } from '@/hooks/useTurma';
+import { useAllCourses } from '@/hooks/useCourse';
 import Container from '@/components/layout/Container';
 import NovoPaymentModal from './components/NovoPaymentModal';
 import StudentFinancialModal from './components/StudentFinancialModal';
@@ -54,6 +56,7 @@ const PagamentosPage = () => {
   const [paymentsSearchTerm, setPaymentsSearchTerm] = useState('');
   const [paymentsCurrentPage, setPaymentsCurrentPage] = useState(1);
   const [selectedTipoServico, setSelectedTipoServico] = useState<string>('all');
+  const [downloadingPaymentId, setDownloadingPaymentId] = useState<number | null>(null);
   
   // Debounce para busca (otimizado)
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -83,7 +86,11 @@ const PagamentosPage = () => {
     fetchPayments
   } = usePaymentsList();
 
-  const { generatePDF } = useGenerateInvoicePDF();
+  const { generatePDF, loading: pdfLoading } = useGenerateInvoicePDF();
+
+  // Hooks para filtros
+  const { turmas } = useAllTurmas();
+  const { courses } = useAllCourses();
 
   // Carregar alunos quando a página carrega ou filtros mudam
   useEffect(() => {
@@ -133,9 +140,12 @@ const PagamentosPage = () => {
 
   const handleDownloadInvoice = async (paymentId: number) => {
     try {
+      setDownloadingPaymentId(paymentId);
       await generatePDF(paymentId);
     } catch (error) {
       console.error('Erro ao baixar fatura:', error);
+    } finally {
+      setDownloadingPaymentId(null);
     }
   };
 
@@ -328,10 +338,17 @@ const PagamentosPage = () => {
                               onClick={() => handleDownloadInvoice(payment.codigo)}
                               variant="outline"
                               size="sm"
+                              disabled={downloadingPaymentId === payment.codigo}
                               className="text-blue-600 hover:text-blue-700 px-2 sm:px-3"
                             >
-                              <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                              <span className="hidden sm:inline">Fatura</span>
+                              {downloadingPaymentId === payment.codigo ? (
+                                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-blue-600 sm:mr-1"></div>
+                              ) : (
+                                <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                              )}
+                              <span className="hidden sm:inline">
+                                {downloadingPaymentId === payment.codigo ? 'Gerando...' : 'Fatura'}
+                              </span>
                             </Button>
                           </td>
                         </tr>
@@ -421,6 +438,11 @@ const PagamentosPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas as turmas</SelectItem>
+                    {turmas.map((turma) => (
+                      <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
+                        {turma.designacao}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select value={selectedCurso} onValueChange={setSelectedCurso}>
@@ -429,6 +451,11 @@ const PagamentosPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os cursos</SelectItem>
+                    {courses.map((curso) => (
+                      <SelectItem key={curso.codigo} value={curso.codigo.toString()}>
+                        {curso.designacao}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

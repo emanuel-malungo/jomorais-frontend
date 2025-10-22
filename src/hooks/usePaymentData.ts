@@ -124,7 +124,8 @@ const ABREVIACOES_CURSOS = {
   'ENFERMAGEM GERAL': ['E.G', 'EG', 'ENFERMAGEM', 'ENFERMAGEM GERAL'],
   'FARMACIA': ['F.M', 'FM', 'FARMACIA', 'FARMÁCIA'],
   'CIENCIAS ECONOMICAS JURIDICAS': ['C.E.J', 'CEJ', 'ECONOMICAS', 'JURIDICAS'],
-  'CIENCIAS FISICAS BIOLOGICAS': ['C.F.B', 'CFB', 'FISICAS', 'BIOLOGICAS']
+  'CIENCIAS FISICAS BIOLOGICAS': ['C.F.B', 'CFB', 'FISICAS', 'BIOLOGICAS'],
+  'GERAL': ['GERAL', 'ENSINO GERAL', 'PRIMARIO', 'PRIMÁRIA', 'BÁSICO']
 };
 
 // Função para detectar curso na string do tipo de serviço
@@ -269,8 +270,19 @@ export const findBestTipoServicoForAluno = (
     // 1. Deve ser PROPINA
     if (!nome.includes('PROPINA')) continue;
     
-    // 2. Verificar CURSO
-    const temCurso = detectarCursoNaTipoServico(nome, curso);
+    // 2. Verificar CURSO - ESPECIAL PARA GERAL
+    let temCurso = false;
+    if (curso === 'GERAL') {
+      // Para curso GERAL, priorizar pela CLASSE apenas
+      // Aceitar qualquer tipo de serviço que não seja específico de outro curso
+      const temOutroCurso = Object.keys(ABREVIACOES_CURSOS)
+        .filter(c => c !== 'GERAL')
+        .some(outroCurso => detectarCursoNaTipoServico(nome, outroCurso));
+      
+      temCurso = !temOutroCurso; // Se não tem outro curso específico, é válido para GERAL
+    } else {
+      temCurso = detectarCursoNaTipoServico(nome, curso);
+    }
     
     // 3. Verificar CLASSE
     const classeNoTipo = extrairNumeroClasse(nome);
@@ -313,7 +325,17 @@ export const findBestTipoServicoForAluno = (
       
       if (!nome.includes('PROPINA')) continue;
       
-      const temCurso = detectarCursoNaTipoServico(nome, curso);
+      // Aplicar mesma lógica especial para GERAL
+      let temCurso = false;
+      if (curso === 'GERAL') {
+        const temOutroCurso = Object.keys(ABREVIACOES_CURSOS)
+          .filter(c => c !== 'GERAL')
+          .some(outroCurso => detectarCursoNaTipoServico(nome, outroCurso));
+        
+        temCurso = !temOutroCurso;
+      } else {
+        temCurso = detectarCursoNaTipoServico(nome, curso);
+      }
       const classeNoTipo = extrairNumeroClasse(nome);
       const temClasse = classeNoTipo === classe;
       
