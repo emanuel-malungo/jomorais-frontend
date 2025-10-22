@@ -63,19 +63,19 @@ export default function SAFTExportPage() {
 
   // Configurar datas padrão e carregar dados iniciais
   useEffect(() => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    // Usar período com dados de teste: 30/09 a 30/10
+    const startDate = '2025-09-30';
+    const endDate = '2025-10-30';
     
     setConfig(prev => ({
       ...prev,
-      startDate: firstDay.toISOString().split('T')[0],
-      endDate: lastDay.toISOString().split('T')[0]
+      startDate,
+      endDate
     }));
 
     checkCryptoKeys();
     loadCompanyInfo();
-    loadStatistics(firstDay.toISOString().split('T')[0], lastDay.toISOString().split('T')[0]);
+    loadStatistics(startDate, endDate);
   }, []);
 
   const loadCompanyInfo = async () => {
@@ -110,11 +110,19 @@ export default function SAFTExportPage() {
 
   const loadStatistics = async (startDate: string, endDate: string) => {
     try {
+      console.log('🔄 Carregando estatísticas para:', { startDate, endDate });
       const stats = await SAFTService.getExportStatistics(startDate, endDate);
+      console.log('✅ Estatísticas recebidas:', stats);
+      console.log('📊 Valores específicos:', {
+        totalInvoices: stats.totalInvoices,
+        totalPayments: stats.totalPayments,
+        totalCustomers: stats.totalCustomers,
+        totalAmount: stats.totalAmount
+      });
       setStatistics(stats);
-      console.log('✅ Estatísticas carregadas:', stats);
     } catch (error: any) {
-      console.warn('⚠️ Erro ao carregar estatísticas, usando dados mock');
+      console.error('❌ Erro ao carregar estatísticas:', error);
+      console.warn('⚠️ Usando dados mock');
       setStatistics({
         totalInvoices: 156,
         totalPayments: 142,
@@ -353,7 +361,7 @@ IMPORTANTE: Manter esta chave segura e fazer backup!`;
                         style: 'currency', 
                         currency: 'AOA',
                         minimumFractionDigits: 0 
-                      }).format(statistics.totalAmount)}
+                      }).format(statistics.totalAmount || 0)}
                     </div>
                     <div className="text-sm text-muted-foreground">Total</div>
                   </div>
