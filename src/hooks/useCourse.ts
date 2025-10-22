@@ -1,26 +1,96 @@
 import { toast } from "react-toastify"
 import { getErrorMessage } from "@/utils/getErrorMessage.utils"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import CourseService from "@/services/course.service"
 import { ICourse, ICourseInput, ICourseListResponse } from "@/types/course.types"
+
+// Cache helper
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+interface CacheData<T> {
+  data: T;
+  timestamp: number;
+}
+
+function getCachedData<T>(key: string): T | null {
+  try {
+    const cached = sessionStorage.getItem(key);
+    if (!cached) return null;
+
+    const { data, timestamp }: CacheData<T> = JSON.parse(cached);
+    const now = Date.now();
+
+    if (now - timestamp < CACHE_TTL) {
+      console.log(`✅ Cache hit para ${key}`);
+      return data;
+    }
+
+    sessionStorage.removeItem(key);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedData<T>(key: string, data: T): void {
+  try {
+    const cacheData: CacheData<T> = {
+      data,
+      timestamp: Date.now(),
+    };
+    sessionStorage.setItem(key, JSON.stringify(cacheData));
+  } catch (error) {
+    console.warn(`Erro ao salvar cache para ${key}:`, error);
+  }
+}
 
 // Listar TODOS os cursos sem paginação
 export function useAllCourses(search = "", includeArchived = false) {
     const [courses, setCourses] = useState<ICourse[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const isMountedRef = useRef(true)
+    const fetchingRef = useRef(false)
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const fetchAllCourses = useCallback(async () => {
+        if (fetchingRef.current) return;
+
+        const cacheKey = `all-courses-${search}-${includeArchived}`;
+        
+        // Verificar cache primeiro
+        const cached = getCachedData<ICourse[]>(cacheKey);
+        if (cached) {
+            setCourses(cached);
+            setLoading(false);
+            return;
+        }
+
+        fetchingRef.current = true;
         try {
             setLoading(true)
             setError(null)
             const { data } = await CourseService.getAllCourses(search, includeArchived)
-            setCourses(data)
+            if (isMountedRef.current) {
+                setCourses(data)
+                setCachedData(cacheKey, data);
+            }
         } catch (err: unknown) {
-            const errorMessage = getErrorMessage(err, "Erro ao carregar cursos");
-            toast.error(errorMessage);
+            if (isMountedRef.current) {
+                const errorMessage = getErrorMessage(err, "Erro ao carregar cursos");
+                toast.error(errorMessage);
+            }
         } finally {
-            setLoading(false)
+            if (isMountedRef.current) {
+                setLoading(false)
+            }
+            fetchingRef.current = false;
         }
     }, [search, includeArchived])
 

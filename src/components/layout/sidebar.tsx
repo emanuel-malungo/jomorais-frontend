@@ -64,7 +64,7 @@ const menuItems: MenuItem[] = [
       { title: "Disciplinas", icon: BookOpen, href: "/admin/academic-management/discipline" },
       { title: "Classes", icon: GraduationCap, href: "/admin/academic-management/classes" },
       { title: "Turmas", icon: School, href: "/admin/academic-management/turmas" },
-      { title: "Notas", icon: FileText, href: "/admin/academic-management/notes" }
+      { title: "Trimestres", icon: FileText, href: "/admin/academic-management/notes" }
     ]
   },
   {

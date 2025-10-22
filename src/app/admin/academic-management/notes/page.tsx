@@ -257,13 +257,7 @@ export default function NotesPage() {
               <Calendar className="h-5 w-5 text-[#F9CD1D]" />
               <span>Trimestres Acadêmicos</span>
             </CardTitle>
-            <Button 
-              onClick={() => setShowCreateTrimestreModal(true)}
-              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Trimestre
-            </Button>
+
           </CardHeader>
           <CardContent>
             {trimestres && trimestres.length > 0 ? (

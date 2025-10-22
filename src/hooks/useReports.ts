@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   reportsService, 
   IReportFilters, 
@@ -6,6 +6,49 @@ import {
   IFinancialReport, 
   IAcademicReport 
 } from '@/services/reports.service';
+
+// Cache helper
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+interface CacheData<T> {
+  data: T;
+  timestamp: number;
+  filters: string;
+}
+
+function getCachedData<T>(key: string, filters: IReportFilters): T | null {
+  try {
+    const cached = sessionStorage.getItem(key);
+    if (!cached) return null;
+
+    const { data, timestamp, filters: cachedFilters }: CacheData<T> = JSON.parse(cached);
+    const now = Date.now();
+    const filtersMatch = JSON.stringify(filters) === cachedFilters;
+
+    if (now - timestamp < CACHE_TTL && filtersMatch) {
+      console.log(`✅ Cache hit para ${key}`);
+      return data;
+    }
+
+    sessionStorage.removeItem(key);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedData<T>(key: string, data: T, filters: IReportFilters): void {
+  try {
+    const cacheData: CacheData<T> = {
+      data,
+      timestamp: Date.now(),
+      filters: JSON.stringify(filters),
+    };
+    sessionStorage.setItem(key, JSON.stringify(cacheData));
+  } catch (error) {
+    console.warn(`Erro ao salvar cache para ${key}:`, error);
+  }
+}
 
 // ===============================
 // HOOK PARA RELATÓRIOS DE ALUNOS
@@ -15,21 +58,50 @@ export const useStudentReports = () => {
   const [report, setReport] = useState<IStudentReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+  const fetchingRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const generateReport = useCallback(async (filters: IReportFilters = {}) => {
+    if (fetchingRef.current) return;
+
     console.log('🔄 Hook useStudentReports: Iniciando geração de relatório...', filters);
+    
+    // Verificar cache primeiro
+    const cached = getCachedData<IStudentReport>('student-report', filters);
+    if (cached) {
+      setReport(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    fetchingRef.current = true;
     setIsLoading(true);
     setError(null);
     
     try {
       const reportData = await reportsService.generateStudentReport(filters);
-      console.log('✅ Hook useStudentReports: Relatório gerado com sucesso:', reportData);
-      setReport(reportData);
+      if (isMountedRef.current) {
+        console.log('✅ Hook useStudentReports: Relatório gerado com sucesso:', reportData);
+        setReport(reportData);
+        setCachedData('student-report', reportData, filters);
+      }
     } catch (err: unknown) {
-      console.error('❌ Hook useStudentReports: Erro ao gerar relatório:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao gerar relatório de alunos');
+      if (isMountedRef.current) {
+        console.error('❌ Hook useStudentReports: Erro ao gerar relatório:', err);
+        setError(err instanceof Error ? err.message : 'Erro ao gerar relatório de alunos');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+      fetchingRef.current = false;
     }
   }, []);
 
@@ -85,23 +157,52 @@ export const useFinancialReports = () => {
   const [report, setReport] = useState<IFinancialReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+  const fetchingRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const generateReport = useCallback(async (filters: IReportFilters = {}) => {
+    if (fetchingRef.current) return;
+
     console.log('🔄 Hook useFinancialReports: Iniciando geração de relatório...', filters);
+    
+    // Verificar cache primeiro
+    const cached = getCachedData<IFinancialReport>('financial-report', filters);
+    if (cached) {
+      setReport(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    fetchingRef.current = true;
     setIsLoading(true);
     setError(null);
     
     try {
       const reportData = await reportsService.generateFinancialReport(filters);
-      console.log('✅ Hook useFinancialReports: Relatório gerado com sucesso:', reportData);
-      setReport(reportData);
+      if (isMountedRef.current) {
+        console.log('✅ Hook useFinancialReports: Relatório gerado com sucesso:', reportData);
+        setReport(reportData);
+        setCachedData('financial-report', reportData, filters);
+      }
     } catch (err: unknown) {
-      console.error('❌ Hook useFinancialReports: Erro ao gerar relatório:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao gerar relatório financeiro';
-      console.error('❌ Mensagem de erro:', errorMessage);
-      setError(errorMessage);
+      if (isMountedRef.current) {
+        console.error('❌ Hook useFinancialReports: Erro ao gerar relatório:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Erro ao gerar relatório financeiro';
+        console.error('❌ Mensagem de erro:', errorMessage);
+        setError(errorMessage);
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+      fetchingRef.current = false;
     }
   }, []);
 
@@ -158,18 +259,46 @@ export const useAcademicReports = () => {
   const [report, setReport] = useState<IAcademicReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+  const fetchingRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const generateReport = useCallback(async (filters: IReportFilters = {}) => {
+    if (fetchingRef.current) return;
+
+    // Verificar cache primeiro
+    const cached = getCachedData<IAcademicReport>('academic-report', filters);
+    if (cached) {
+      setReport(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    fetchingRef.current = true;
     setIsLoading(true);
     setError(null);
     
     try {
       const reportData = await reportsService.generateAcademicReport(filters);
-      setReport(reportData);
+      if (isMountedRef.current) {
+        setReport(reportData);
+        setCachedData('academic-report', reportData, filters);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao gerar relatório acadêmico');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Erro ao gerar relatório acadêmico');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+      fetchingRef.current = false;
     }
   }, []);
 

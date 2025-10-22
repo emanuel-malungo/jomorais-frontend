@@ -1,6 +1,48 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import classService from "@/services/class.service"
 import { IClass, IClassInput, IPagination } from "@/types/class.types"
+
+// Cache helper
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+interface CacheData<T> {
+  data: T;
+  timestamp: number;
+  key: string;
+}
+
+function getCachedClasses(cacheKey: string): { data: IClass[], pagination: IPagination | null } | null {
+  try {
+    const cached = sessionStorage.getItem(cacheKey);
+    if (!cached) return null;
+
+    const { data, timestamp }: CacheData<{ data: IClass[], pagination: IPagination | null }> = JSON.parse(cached);
+    const now = Date.now();
+
+    if (now - timestamp < CACHE_TTL) {
+      console.log(`✅ Cache hit para ${cacheKey}`);
+      return data;
+    }
+
+    sessionStorage.removeItem(cacheKey);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedClasses(cacheKey: string, data: IClass[], pagination: IPagination | null): void {
+  try {
+    const cacheData: CacheData<{ data: IClass[], pagination: IPagination | null }> = {
+      data: { data, pagination },
+      timestamp: Date.now(),
+      key: cacheKey,
+    };
+    sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+  } catch (error) {
+    console.warn(`Erro ao salvar cache para ${cacheKey}:`, error);
+  }
+}
 
 // Hook para listar classes
 export const useClasses = () => {
@@ -8,26 +50,57 @@ export const useClasses = () => {
   const [pagination, setPagination] = useState<IPagination | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isMountedRef = useRef(true)
+  const fetchingRef = useRef(false)
 
-  const fetchClasses = async (page = 1, limit = 100, search = "") => {
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchClasses = useCallback(async (page = 1, limit = 100, search = "") => {
+    if (fetchingRef.current) return;
+
+    const cacheKey = `classes-${page}-${limit}-${search}`;
+    
+    // Verificar cache primeiro
+    const cached = getCachedClasses(cacheKey);
+    if (cached) {
+      setClasses(cached.data);
+      setPagination(cached.pagination);
+      setIsLoading(false);
+      return;
+    }
+
+    fetchingRef.current = true;
     try {
       setIsLoading(true)
       setError(null)
       const response = await classService.getClasses(page, limit, search)
-      setClasses(response.data)
-      setPagination(response.pagination)
+      if (isMountedRef.current) {
+        setClasses(response.data)
+        setPagination(response.pagination)
+        setCachedClasses(cacheKey, response.data, response.pagination);
+      }
     } catch (error: any) {
-      setError(error.message || "Erro ao buscar classes")
-      setClasses([])
+      if (isMountedRef.current) {
+        setError(error.message || "Erro ao buscar classes")
+        setClasses([])
+      }
     } finally {
-      setIsLoading(false)
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
+      fetchingRef.current = false;
     }
-  }
+  }, [])
 
   // Carregar classes automaticamente
   useEffect(() => {
     fetchClasses()
-  }, [])
+  }, [fetchClasses])
 
   return {
     classes,
