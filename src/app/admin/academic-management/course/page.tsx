@@ -33,28 +33,18 @@ import {
   Plus,
   MoreHorizontal,
   Edit,
-  Trash2,
-  BookOpen,
-  Users,
   ChevronLeft,
   ChevronRight,
-  Activity,
 } from 'lucide-react';
 
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { CourseModal } from '@/components/course/course-modal';
-import { ConfirmDeleteModal } from '@/components/course/confirm-delete-modal';
+import { useFilterOptions } from "@/hooks/useFilterOptions"
 
-import { useCourses, useDeleteCourse } from '@/hooks/useCourse';
+import { useCourses, useCourseStats } from '@/hooks/useCourse';
 import { ICourse } from '@/types/course.types';
-
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "1", label: "Ativo" },
-  { value: "0", label: "Inativo" },
-];
 
 export default function ListCoursePage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,15 +52,15 @@ export default function ListCoursePage() {
   const [searchTerm, setSearchTerm] = useState("");
   
   // Hooks para gerenciamento de cursos
-  const { courses = [], pagination, loading, error, refetch } = useCourses(currentPage, itemsPerPage, searchTerm);
-  const { deleteCourse, loading: deleting } = useDeleteCourse();
+  const { courses = [], pagination, loading, refetch } = useCourses(currentPage, itemsPerPage, searchTerm);
+  const { stats } = useCourseStats();
+
+  const { statusOptions } = useFilterOptions();
+
 
   // Estados do modal
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<ICourse | null>(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [courseToDelete, setCourseToDelete] = useState<ICourse | null>(null);
-
   // Filtros locais (aplicados nos dados já paginados da API)
   const [statusFilter, setStatusFilter] = useState("all");
   const [filteredCourses, setFilteredCourses] = useState<ICourse[]>([]);
@@ -106,30 +96,8 @@ export default function ListCoursePage() {
     setCourseModalOpen(true);
   };
 
-  const handleDeleteCourse = (course: ICourse) => {
-    setCourseToDelete(course);
-    setDeleteModalOpen(true);
-  };
-
-  const confirmDeleteCourse = async () => {
-    if (!courseToDelete) return;
-    
-    try {
-      await deleteCourse(courseToDelete.codigo);
-      setDeleteModalOpen(false);
-      setCourseToDelete(null);
-      refetch(); // Recarregar dados após exclusão
-    } catch (error) {
-      console.error('Erro ao excluir curso:', error);
-    }
-  };
-
   const handleCourseModalSuccess = () => {
     refetch(); // Recarregar dados após criar/editar
-  };
-
-  const handleViewCourse = (courseId: number) => {
-    window.location.href = `/admin/academic-management/course/details/${courseId}`;
   };
 
   return (
@@ -144,10 +112,10 @@ export default function ListCoursePage() {
       />
 
       {/* Stats Cards usando componente StatCard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total de Cursos"
-          value={totalItems.toString()}
+          value={(stats ? stats.total : totalItems).toString()}
           change="+5.2%"
           changeType="up"
           icon={GraduationCap}
@@ -158,7 +126,7 @@ export default function ListCoursePage() {
 
         <StatCard
           title="Cursos Ativos"
-          value={courses.filter((c: ICourse) => c.codigo_Status === 1).length.toString()}
+          value={(stats ? stats.active : courses.filter((c: ICourse) => c.codigo_Status === 1).length).toString()}
           change="+2.1%"
           changeType="up"
           icon={BookOpen}
@@ -169,7 +137,7 @@ export default function ListCoursePage() {
 
         <StatCard
           title="Cursos Inativos"
-          value={courses.filter((c: ICourse) => c.codigo_Status === 0).length.toString()}
+          value={(stats ? stats.inactive : courses.filter((c: ICourse) => c.codigo_Status === 0).length).toString()}
           change="+1.2%"
           changeType="up"
           icon={Users}
@@ -188,7 +156,7 @@ export default function ListCoursePage() {
           bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
           accentColor="bg-gradient-to-br from-purple-500 to-purple-600"
         />
-      </div>
+      </div> */}
 
       <FilterSearchCard
         title="Filtros e Busca"
@@ -292,14 +260,6 @@ export default function ListCoursePage() {
                             <DropdownMenuItem onClick={() => handleEditCourse(course)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteCourse(course)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -414,15 +374,6 @@ export default function ListCoursePage() {
         onSuccess={handleCourseModalSuccess}
       />
 
-      {/* Modal de confirmação para deletar curso */}
-      <ConfirmDeleteModal
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        onConfirm={confirmDeleteCourse}
-        title="Excluir Curso"
-        description={`Tem certeza que deseja excluir o curso "${courseToDelete?.designacao}"? Esta ação não pode ser desfeita.`}
-        loading={deleting}
-      />
     </Container>
   );
 }

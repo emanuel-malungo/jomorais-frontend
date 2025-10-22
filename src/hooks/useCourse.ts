@@ -1,3 +1,5 @@
+import { toast } from "react-toastify"
+import { getErrorMessage } from "@/utils/getErrorMessage.utils"
 import { useState, useEffect, useCallback } from "react"
 import CourseService from "@/services/course.service"
 import { ICourse, ICourseInput, ICourseListResponse } from "@/types/course.types"
@@ -14,8 +16,9 @@ export function useAllCourses(search = "", includeArchived = false) {
             setError(null)
             const { data } = await CourseService.getAllCourses(search, includeArchived)
             setCourses(data)
-        } catch (err: any) {
-            setError(err.message || "Erro ao carregar cursos")
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao carregar cursos");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -26,6 +29,34 @@ export function useAllCourses(search = "", includeArchived = false) {
     }, [fetchAllCourses])
 
     return { courses, loading, error, refetch: fetchAllCourses }
+}
+
+// Hook para obter estatísticas dos cursos (total, ativos, inativos)
+export function useCourseStats() {
+    const [stats, setStats] = useState<{ total: number; active: number; inactive: number } | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const fetchStats = useCallback(async () => {
+        try {
+            setLoading(true)
+            setError(null)
+            const data = await CourseService.getCourseStats()
+            if (data) setStats(data)
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao carregar estatísticas de cursos");
+            toast.error(errorMessage);
+            setError(errorMessage)
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        fetchStats()
+    }, [fetchStats])
+
+    return { stats, loading, error, refetch: fetchStats }
 }
 
 // Listar cursos com paginação e busca
@@ -42,8 +73,9 @@ export function useCourses(page = 1, limit = 10, search = "", includeArchived = 
             const { data, pagination } = await CourseService.getCourses(page, limit, search, includeArchived)
             setCourses(data)
             setPagination(pagination)
-        } catch (err: any) {
-            setError(err.message || "Erro ao carregar cursos")
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao carregar curso");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -69,8 +101,9 @@ export function useCourse(id?: number) {
             setError(null)
             const data = await CourseService.getCourseById(id)
             setCourse(data)
-        } catch (err: any) {
-            setError(err.message || "Erro ao carregar curso")
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao carregar curso");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -93,9 +126,9 @@ export function useCreateCourse() {
             setLoading(true)
             setError(null)
             return await CourseService.createCourse(payload)
-        } catch (err: any) {
-            setError(err.message || "Erro ao criar curso")
-            throw err
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao criar curso");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -114,9 +147,9 @@ export function useUpdateCourse(id: number) {
             setLoading(true)
             setError(null)
             return await CourseService.updateCourse(id, payload)
-        } catch (err: any) {
-            setError(err.message || "Erro ao atualizar curso")
-            throw err
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao atualizar curso");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -135,9 +168,9 @@ export function useArchiveCourse() {
             setLoading(true)
             setError(null)
             await CourseService.archiveCourse(id)
-        } catch (err: any) {
-            setError(err.message || "Erro ao arquivar curso")
-            throw err
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao criar curso");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -156,9 +189,9 @@ export function useUnarchiveCourse() {
             setLoading(true)
             setError(null)
             await CourseService.unarchiveCourse(id)
-        } catch (err: any) {
-            setError(err.message || "Erro ao restaurar curso")
-            throw err
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao restaurar curso");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
@@ -177,9 +210,9 @@ export function useDeleteCourse() {
             setLoading(true)
             setError(null)
             await CourseService.deleteCourse(id)
-        } catch (err: any) {
-            setError(err.message || "Erro ao deletar curso")
-            throw err
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Erro ao deletar curso");
+            toast.error(errorMessage);
         } finally {
             setLoading(false)
         }
