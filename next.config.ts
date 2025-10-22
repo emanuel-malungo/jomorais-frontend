@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8000/api/:path*',
+        destination: 'https://jomorais-backend-o5e5.onrender.com/api/:path*',
       },
     ];
   },
