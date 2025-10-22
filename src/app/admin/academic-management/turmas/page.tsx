@@ -62,6 +62,7 @@ import { TurmaReportService } from '@/services/turmaReport.service';
 import api from '@/utils/api.utils';
 import { ITurma } from '@/types/turma.types';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { toast } from 'react-toastify';
 
 // Tipo para Ano Letivo
 interface AnoLectivo {
@@ -147,10 +148,10 @@ export default function TurmasPage() {
     setIsGeneratingPDF(true);
     try {
       await TurmaReportService.generateSingleTurmaPDF(turma);
-      alert(`PDF da turma ${turma.designacao} gerado com sucesso!`);
+      toast.success(`PDF da turma ${turma.designacao} gerado com sucesso!`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao gerar PDF';
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsGeneratingPDF(false);
       setShowReportModal(false);
@@ -166,10 +167,9 @@ export default function TurmasPage() {
     setIsGeneratingPDF(true);
     try {
       await TurmaReportService.generateAllTurmasPDF(selectedAnoLectivo.codigo);
-      alert(`PDF de todas as turmas do ano letivo ${selectedAnoLectivo.designacao} gerado com sucesso!`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao gerar PDF: ${errorMessage}`);
+      toast.error(errorMessage);
     } finally {
       setIsGeneratingPDF(false);
       setShowReportModal(false);
@@ -191,8 +191,6 @@ export default function TurmasPage() {
   const handleEditTurma = (turmaId: number) => {
     window.location.href = `/admin/academic-management/turmas/edit/${turmaId}`;
   };
-
-
 
   // Estados de loading e error
   if (isLoading) {
@@ -327,9 +325,6 @@ export default function TurmasPage() {
               <School className="h-5 w-5" />
               <span>Lista de Turmas</span>
             </div>
-            <Badge variant="outline" className="text-sm">
-              {filteredTurmas.length} turmas encontradas
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
