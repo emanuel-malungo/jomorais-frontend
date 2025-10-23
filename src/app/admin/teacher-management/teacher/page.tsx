@@ -1,13 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import Container from '@/components/layout/Container';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
+import { Button } from '@/components/ui/button';
+import Container from '@/components/layout/Container';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -42,14 +39,13 @@ import {
   BookOpen,
 } from 'lucide-react';
 
-import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
+import { WelcomeHeader } from '@/components/dashboard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
-import { useDocentes, useEspecialidades } from '@/hooks/useTeacher';
 import { IDocente } from '@/types/teacher.types';
-
 import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { useDocentes, useEspecialidades } from '@/hooks/useTeacher';
 
 
 // Opções de especialidades serão geradas dinamicamente

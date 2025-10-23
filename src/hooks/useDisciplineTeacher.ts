@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
+import { getErrorMessage } from '@/utils/getErrorMessage.utils';
 import { disciplineTeacherService } from '@/services/disciplineTeacher.service';
-import { 
-  IDisciplinaDocente, 
-  IDisciplinaDocenteInput, 
-  IDisciplinaDocenteResponse 
-} from '@/types/disciplineTeacher.types';
+import { IDisciplinaDocente, IDisciplinaDocenteInput } from '@/types/disciplineTeacher.types';
 
 // Hook para listar disciplinas do docente
 export function useDisciplinasDocente(page: number = 1, limit: number = 10, search: string = '') {
@@ -20,28 +18,27 @@ export function useDisciplinasDocente(page: number = 1, limit: number = 10, sear
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDisciplinasDocente = async () => {
+  const fetchDisciplinasDocente = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await disciplineTeacherService.getDisciplinasDocente(page, limit, search);
-      
+
       if (response.success) {
         setData(response.data);
         setPagination(response.pagination);
-      } else {
-        setError(response.message || 'Erro ao carregar disciplinas do docente');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar disciplinas do docente');
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao carregar disciplinas do docente");
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, search]);
 
   useEffect(() => {
     fetchDisciplinasDocente();
-  }, [page, limit, search]);
+  }, [fetchDisciplinasDocente]);
 
   return {
     data,
@@ -61,19 +58,20 @@ export function useDisciplinaDocente(id: number) {
   useEffect(() => {
     const fetchDisciplinaDocente = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
         setError(null);
         const response = await disciplineTeacherService.getDisciplinaDocenteById(id);
-        
+
         if (response.success && response.data) {
           setData(response.data);
         } else {
           setError(response.message || 'Disciplina do docente não encontrada');
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar disciplina do docente');
+      } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err, "Erro ao carregar disciplina do docente");
+        toast.error(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -95,17 +93,14 @@ export function useCreateDisciplinaDocente() {
       setLoading(true);
       setError(null);
       const response = await disciplineTeacherService.createDisciplinaDocente(data);
-      
+
       if (response.success) {
         return response.data;
-      } else {
-        setError(response.message || 'Erro ao criar disciplina do docente');
-        return null;
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao criar disciplina do docente';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao criar disciplina do docente");
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -124,17 +119,14 @@ export function useUpdateDisciplinaDocente() {
       setLoading(true);
       setError(null);
       const response = await disciplineTeacherService.updateDisciplinaDocente(id, data);
-      
+
       if (response.success) {
         return response.data;
-      } else {
-        setError(response.message || 'Erro ao atualizar disciplina do docente');
-        return null;
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar disciplina do docente';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao atualizar disciplina do docente");
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -153,17 +145,14 @@ export function useDeleteDisciplinaDocente() {
       setLoading(true);
       setError(null);
       const response = await disciplineTeacherService.deleteDisciplinaDocente(id);
-      
+
       if (response.success) {
         return true;
-      } else {
-        setError(response.message || 'Erro ao excluir disciplina do docente');
-        return false;
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir disciplina do docente';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err, "Erro ao excluir disciplina do docente");
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -195,14 +184,13 @@ export function useEstatisticasDisciplinasDocente() {
         setLoading(true);
         setError(null);
         const response = await disciplineTeacherService.getEstatisticasDisciplinasDocente();
-        
+
         if (response.success && response.data) {
           setData(response.data);
-        } else {
-          setError(response.message || 'Erro ao carregar estatísticas');
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar estatísticas');
+      } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err, "Erro ao carregar estatísticas");
+        toast.error(errorMessage);
       } finally {
         setLoading(false);
       }

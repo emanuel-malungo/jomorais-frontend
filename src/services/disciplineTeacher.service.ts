@@ -1,16 +1,16 @@
 import { toast } from "react-toastify"
-import { 
-  IDisciplinaDocenteResponse, 
-  IDisciplinaDocenteInput, 
-  IDisciplinaDocenteActionResponse 
+import {
+  IDisciplinaDocenteResponse,
+  IDisciplinaDocenteInput,
+  IDisciplinaDocenteActionResponse
 } from '@/types/disciplineTeacher.types';
 import api from '@/utils/api.utils';
 
 class DisciplineTeacherService {
   // Listar disciplinas do docente com paginação
   async getDisciplinasDocente(
-    page: number = 1, 
-    limit: number = 10, 
+    page: number = 1,
+    limit: number = 10,
     search: string = ''
   ): Promise<IDisciplinaDocenteResponse> {
     const params = new URLSearchParams({
@@ -18,7 +18,6 @@ class DisciplineTeacherService {
       limit: limit.toString(),
       ...(search && { search })
     });
-
     const response = await api.get(`/api/academic-staff/disciplinas-docente?${params}`);
     return response.data;
   }
@@ -31,38 +30,29 @@ class DisciplineTeacherService {
 
   // Criar nova associação disciplina-docente
   async createDisciplinaDocente(data: IDisciplinaDocenteInput): Promise<IDisciplinaDocenteActionResponse> {
-    try {
-      const response = await api.post('/api/academic-staff/disciplinas-docente', data);
+    const response = await api.post('/api/academic-staff/disciplinas-docente', data);
+    if (response.data.success) {
       toast.success(response.data.message || "Disciplina associada ao docente com sucesso!");
-      return response.data;
-    } catch (error: any) {
-      toast.error(error?.message || "Erro ao associar disciplina ao docente");
-      throw error;
     }
+    return response.data;
   }
 
   // Atualizar associação disciplina-docente
   async updateDisciplinaDocente(id: number, data: IDisciplinaDocenteInput): Promise<IDisciplinaDocenteActionResponse> {
-    try {
-      const response = await api.put(`/api/academic-staff/disciplinas-docente/${id}`, data);
+    const response = await api.put(`/api/academic-staff/disciplinas-docente/${id}`, data);
+    if (response.data.success) {
       toast.success(response.data.message || "Associação atualizada com sucesso!");
-      return response.data;
-    } catch (error: any) {
-      toast.error(error?.message || "Erro ao atualizar associação");
-      throw error;
     }
+    return response.data;
   }
 
   // Excluir associação disciplina-docente
   async deleteDisciplinaDocente(id: number): Promise<IDisciplinaDocenteActionResponse> {
-    try {
-      const response = await api.delete(`/api/academic-staff/disciplinas-docente/${id}`);
+    const response = await api.delete(`/api/academic-staff/disciplinas-docente/${id}`);
+    if (response.data.success) {
       toast.success(response.data.message || "Associação removida com sucesso!");
-      return response.data;
-    } catch (error: any) {
-      toast.error(error?.message || "Erro ao remover associação");
-      throw error;
     }
+    return response.data;
   }
 
   // Obter estatísticas de disciplinas-docente
