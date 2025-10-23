@@ -282,10 +282,14 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     }));
   };
   const handleSelectAluno = async (aluno: any) => {
+    console.log('🎯 Selecionando aluno:', aluno.nome);
     setSelectedAluno(aluno);
     setFormData(prev => ({ ...prev, codigo_Aluno: aluno.codigo }));
-    setAlunoSearch(aluno.nome);
+    
+    // Limpar campo de busca e resultados
+    setAlunoSearch('');
     setShowAlunoResults(false);
+    clearAlunos();
     
     try {
       console.log('🔍 Buscando dados completos do aluno:', aluno.codigo);
