@@ -94,7 +94,28 @@ interface FormData {
 const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) => {
   // Função auxiliar para extrair dados acadêmicos priorizando confirmação mais recente
   const extractAcademicData = (alunoCompleto: any) => {
-    // Priorizar dados da confirmação mais recente se disponível
+    console.log('🔍 [extractAcademicData] Extraindo dados acadêmicos:', {
+      temDadosAcademicos: !!alunoCompleto?.dadosAcademicos,
+      isFromConfirmacao: alunoCompleto?.dadosAcademicos?.isFromConfirmacao,
+      dadosAcademicos: alunoCompleto?.dadosAcademicos
+    });
+    
+    // PRIORIDADE 1: Dados já processados da confirmação mais recente (atualizados no handleAlunoSelect)
+    if (alunoCompleto?.dadosAcademicos?.isFromConfirmacao) {
+      const dados = {
+        curso: alunoCompleto.dadosAcademicos.curso || 'Curso não especificado',
+        classe: alunoCompleto.dadosAcademicos.classe || 'Classe não especificada',
+        turma: alunoCompleto.dadosAcademicos.turma || 'Turma não especificada',
+        periodo: alunoCompleto.dadosAcademicos.periodo || 'Não informado',
+        anoLetivo: alunoCompleto.dadosAcademicos.anoLetivo || 'Não informado',
+        isFromConfirmacao: true,
+        sala: alunoCompleto.dadosAcademicos.sala || null
+      };
+      console.log('✅ [extractAcademicData] Usando dados da confirmação processada:', dados);
+      return dados;
+    }
+    
+    // PRIORIDADE 2: Dados da confirmação direta (hook useConfirmacaoMaisRecente)
     if (confirmacao?.turma) {
       const cursoMapeado = mapearCursoPorTurma(confirmacao.turma.designacao);
       const classeExtraida = extrairClasseDaTurma(confirmacao.turma.designacao);
@@ -110,30 +131,52 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       };
     }
     
-    // Fallback: tentar extrair dados da estrutura de matrícula/confirmação
+    // PRIORIDADE 3: Buscar na estrutura de matrícula/confirmação mais recente
     const matricula = alunoCompleto?.tb_matriculas;
-    const confirmacaoFallback = matricula?.tb_confirmacoes?.[0]; // Primeira confirmação
-    const turma = confirmacaoFallback?.tb_turmas;
+    let confirmacaoMaisRecente = null;
     
+    if (matricula?.tb_confirmacoes?.length > 0) {
+      // Ordenar confirmações por data mais recente
+      const confirmacoesSorted = [...matricula.tb_confirmacoes].sort((a, b) => {
+        const dataA = new Date(a.data_Confirmacao || 0);
+        const dataB = new Date(b.data_Confirmacao || 0);
+        return dataB.getTime() - dataA.getTime();
+      });
+      confirmacaoMaisRecente = confirmacoesSorted[0];
+    }
+    
+    const turma = confirmacaoMaisRecente?.tb_turmas;
+    
+    if (turma) {
+      const cursoMapeado = mapearCursoPorTurma(turma.designacao);
+      const classeExtraida = extrairClasseDaTurma(turma.designacao);
+      
+      return {
+        curso: cursoMapeado || turma.tb_cursos?.designacao || 'Curso não especificado',
+        classe: classeExtraida || turma.tb_classes?.designacao || 'Classe não especificada',
+        turma: turma.designacao || 'Turma não especificada',
+        periodo: turma.tb_periodos?.designacao || 'Não informado',
+        anoLetivo: confirmacaoMaisRecente?.tb_anos_lectivos?.designacao || 'Não informado',
+        isFromConfirmacao: true,
+        sala: turma.tb_salas?.designacao || null
+      };
+    }
+    
+    // FALLBACK: Dados básicos do aluno
     return {
-      curso: turma?.tb_cursos?.designacao || 
-             alunoCompleto?.dadosAcademicos?.curso || 
+      curso: alunoCompleto?.dadosAcademicos?.curso || 
              alunoCompleto?.curso || 
              'Curso não especificado',
-      classe: turma?.tb_classes?.designacao || 
-              alunoCompleto?.dadosAcademicos?.classe || 
+      classe: alunoCompleto?.dadosAcademicos?.classe || 
               alunoCompleto?.classe || 
               'Classe não especificada',
-      turma: turma?.designacao || 
-             alunoCompleto?.dadosAcademicos?.turma || 
+      turma: alunoCompleto?.dadosAcademicos?.turma || 
              alunoCompleto?.turma || 
              'Turma não especificada',
-      periodo: turma?.tb_periodos?.designacao || 
-               alunoCompleto?.periodo || 
-               'Não informado',
-      anoLetivo: confirmacaoFallback?.tb_anos_lectivos?.designacao || 'Não informado',
+      periodo: alunoCompleto?.periodo || 'Não informado',
+      anoLetivo: 'Não informado',
       isFromConfirmacao: false,
-      sala: turma?.tb_salas?.designacao || alunoCompleto?.sala || null
+      sala: alunoCompleto?.sala || null
     };
   };
 
@@ -301,17 +344,29 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           console.log('🏫 Turma da confirmação:', turmaConfirmacao.designacao);
           
           // Atualizar dados acadêmicos do aluno com informações da confirmação
-          setAlunoCompleto((prev: any) => ({
-            ...prev,
-            dadosAcademicos: {
-              ...prev?.dadosAcademicos,
-              curso: cursoMapeado,
-              classe: classeExtraida,
-              turma: turmaConfirmacao.designacao,
-              isFromConfirmacao: true,
-              anoLetivo: anoLetivoConfirmacao?.designacao || 'Não informado'
-            }
-          }));
+          console.log('🔄 [handleAlunoSelect] Atualizando dadosAcademicos com confirmação mais recente:', {
+            curso: cursoMapeado,
+            classe: classeExtraida,
+            turma: turmaConfirmacao.designacao,
+            isFromConfirmacao: true,
+            anoLetivo: anoLetivoConfirmacao?.designacao || 'Não informado'
+          });
+          
+          setAlunoCompleto((prev: any) => {
+            const novosDados = {
+              ...prev,
+              dadosAcademicos: {
+                ...prev?.dadosAcademicos,
+                curso: cursoMapeado,
+                classe: classeExtraida,
+                turma: turmaConfirmacao.designacao,
+                isFromConfirmacao: true,
+                anoLetivo: anoLetivoConfirmacao?.designacao || 'Não informado'
+              }
+            };
+            console.log('✅ [handleAlunoSelect] AlunoCompleto atualizado:', novosDados);
+            return novosDados;
+          });
         } else {
           console.log('⚠️ Turma não encontrada na confirmação mais recente');
         }
