@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   // Com o proxy do Next.js, não precisamos da baseURL
-  baseURL: "http://localhost:8000",
+  baseURL: "https://jomorais-backend-o5e5.onrender.com/",
   headers: {
     "Content-Type": "application/json",
   },
