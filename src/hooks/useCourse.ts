@@ -63,10 +63,12 @@ export function useAllCourses(search = "", includeArchived = false) {
         if (fetchingRef.current) return;
 
         const cacheKey = `all-courses-${search}-${includeArchived}`;
+        console.log('🔍 Buscando todos os cursos...', { search, includeArchived });
         
         // Verificar cache primeiro
         const cached = getCachedData<ICourse[]>(cacheKey);
         if (cached) {
+            console.log('✅ Cursos encontrados no cache:', cached.length);
             setCourses(cached);
             setLoading(false);
             return;
@@ -76,14 +78,18 @@ export function useAllCourses(search = "", includeArchived = false) {
         try {
             setLoading(true)
             setError(null)
+            console.log('📡 Fazendo requisição para API...');
             const { data } = await CourseService.getAllCourses(search, includeArchived)
+            console.log('📊 Cursos recebidos da API:', data.length);
             if (isMountedRef.current) {
                 setCourses(data)
                 setCachedData(cacheKey, data);
             }
         } catch (err: unknown) {
+            console.error('❌ Erro ao carregar cursos:', err);
             if (isMountedRef.current) {
                 const errorMessage = getErrorMessage(err, "Erro ao carregar cursos");
+                setError(errorMessage);
                 toast.error(errorMessage);
             }
         } finally {

@@ -29,8 +29,9 @@ import {
 } from 'lucide-react';
 import { useCreateTurma, useClasses, useSalas, usePeriodos } from '@/hooks';
 import { useAnosLectivos } from '@/hooks/useAnoLectivo';
-import { useCourses } from '@/hooks/useCourse';
+import { useAllCourses } from '@/hooks/useCourse';
 import { ITurmaInput } from '@/types/turma.types';
+import { ICourse } from '@/types/course.types';
 
 import * as yup from "yup";
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -87,7 +88,17 @@ export default function AddTurmaPage() {
   const { salas, fetchSalas, isLoading: salasLoading, error: salasError } = useSalas();
   const { periodos, fetchPeriodos, isLoading: periodosLoading, error: periodosError } = usePeriodos();
   const { anosLectivos, fetchAnosLectivos, isLoading: anosLoading, error: anosError } = useAnosLectivos();
-  const { courses, loading: coursesLoading, error: coursesError, refetch: fetchCourses } = useCourses();
+  const { courses, loading: coursesLoading, error: coursesError, refetch: fetchCourses } = useAllCourses();
+  
+  // Debug dos cursos
+  useEffect(() => {
+    console.log('📊 Estado dos cursos:', {
+      total: courses.length,
+      loading: coursesLoading,
+      error: coursesError,
+      cursos: courses.slice(0, 5).map(c => ({ codigo: c.codigo, nome: c.designacao }))
+    });
+  }, [courses, coursesLoading, coursesError]);
 
   const {
     control,
@@ -109,7 +120,9 @@ export default function AddTurmaPage() {
   });
 
   useEffect(() => {
+    console.log('🔄 Carregando dados do formulário...');
     fetchClasses(1, 100);
+    console.log('📚 Carregando cursos...');
     fetchCourses();
     fetchSalas(1, 100);
     fetchPeriodos(1, 100);
@@ -293,7 +306,7 @@ export default function AddTurmaPage() {
                               Erro ao carregar cursos
                             </SelectItem>
                           ) : courses.length > 0 ? (
-                            courses.map((curso) => (
+                            courses.map((curso: ICourse) => (
                               <SelectItem key={curso.codigo} value={curso.codigo.toString()}>
                                 {curso.designacao}
                               </SelectItem>
