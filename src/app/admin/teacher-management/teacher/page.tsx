@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Container from '@/components/layout/Container';
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardDescription,
+import {
+  Card, CardContent, CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -37,6 +38,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
+  Eye,
 } from 'lucide-react';
 
 import StatCard from '@/components/layout/StatCard';
@@ -46,6 +48,8 @@ import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { IDocente } from '@/types/teacher.types';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { useDocentes, useEspecialidades } from '@/hooks/useTeacher';
+
+import { useRouter } from 'next/navigation';
 
 
 // Opções de especialidades serão geradas dinamicamente
@@ -57,6 +61,8 @@ export default function ListTeacherPage() {
   const [especialidadeFilter, setEspecialidadeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+
+  const router = useRouter();
 
   const { statusOptions } = useFilterOptions();
 
@@ -72,8 +78,8 @@ export default function ListTeacherPage() {
 
   // Usar o hook com busca via API
   const { docentes, loading, pagination } = useDocentes(
-    currentPage, 
-    itemsPerPage, 
+    currentPage,
+    itemsPerPage,
     debouncedSearch
   );
   const { especialidades } = useEspecialidades();
@@ -129,6 +135,7 @@ export default function ListTeacherPage() {
         titleBtnRight='Novo Docente'
         iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
         onClickBtnRight={() => window.location.href = '/admin/teacher-management/teacher/add'}
+        description='Gerencie todos os docentes da instituição.'
       />
 
       {/* Stats Cards usando componente StatCard */}
@@ -290,7 +297,6 @@ export default function ListTeacherPage() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="text-sm font-medium">Código: {teacher.codigo}</p>
                           <p className="text-xs text-gray-500">ID Utilizador: {teacher.codigo_Utilizador}</p>
                         </div>
                       </TableCell>
@@ -329,6 +335,10 @@ export default function ListTeacherPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/teacher-management/teacher/details/${teacher.codigo || 0}`)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Visualizar
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEditTeacher(teacher.codigo || 0)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar

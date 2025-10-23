@@ -16,20 +16,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
+  DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   BookOpen,
   Plus,
@@ -39,19 +28,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Award,
+  MoreHorizontal,
 } from 'lucide-react';
-import { useFilterOptions } from '@/hooks/useFilterOptions';
 
 // Dados removidos - agora usando API real
 export default function TeacherDisciplinesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-
-  const { statusOptions } = useFilterOptions();
-
   // Estados para modal de criação/edição
   const [showModal, setShowModal] = useState(false);
   const [selectedDisciplineTeacher, setSelectedDisciplineTeacher] = useState<IDisciplinaDocente | null>(null);
@@ -154,14 +139,6 @@ export default function TeacherDisciplinesPage() {
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
         searchPlaceholder="Buscar por professor, disciplina ou curso..."
-        filters={[
-          {
-            label: "Status",
-            value: statusFilter,
-            onChange: setStatusFilter,
-            options: statusOptions,
-          },
-        ]}
       />
 
       {/* Tabela de Atribuições */}
@@ -233,9 +210,14 @@ export default function TeacherDisciplinesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleEditAssignment(discipline.codigo)}>
+                            <DropdownMenuItem onClick={() => handleEditAssignment(discipline.codigo || 0)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>

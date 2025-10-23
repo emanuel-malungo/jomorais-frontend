@@ -64,13 +64,14 @@ import {
   X,
   Calendar,
 } from 'lucide-react';
+import { WelcomeHeader } from '@/components/dashboard';
 
 export default function DirectorTurmaPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  
+
   // Hooks da API real
   const { data: directors, pagination, loading, error, refetch } = useDiretoresTurma(
     currentPage,
@@ -79,16 +80,16 @@ export default function DirectorTurmaPage() {
   );
   const { createDiretorTurma, loading: createLoading } = useCreateDiretorTurma();
   const { updateDiretorTurma, loading: updateLoading } = useUpdateDiretorTurma();
-  
+
   // Hooks para dados do modal
   const { docentes, loading: docentesLoading } = useDocentes(1, 100); // Carregar todos os professores
-  
+
   // Estados locais para turmas e anos letivos
   const [turmas, setTurmas] = useState<Array<{ codigo: number; designacao: string }>>([]);
   const [turmasLoading, setTurmasLoading] = useState(false);
   const [anosLectivos, setAnosLectivos] = useState<Array<{ codigo: number; designacao: string }>>([]);
   const [anosLoading, setAnosLoading] = useState(false);
-  
+
   // Estados para modal de criação/edição
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingDirector, setEditingDirector] = useState<IDiretorTurma | null>(null);
@@ -178,7 +179,7 @@ export default function DirectorTurmaPage() {
       ...prev,
       [field]: value
     }));
-    
+
     // Limpar erro do campo
     if (errors[field]) {
       setErrors(prev => ({
@@ -227,7 +228,7 @@ export default function DirectorTurmaPage() {
       // Modo criação
       result = await createDiretorTurma(input);
     }
-    
+
     if (result) {
       refetch(); // Recarregar lista
       handleCancelCreate(); // Fechar modal
@@ -235,7 +236,8 @@ export default function DirectorTurmaPage() {
   };
 
   // Estados de loading e error
-  if (loading) {
+  // Mostrar loader em tela inteira apenas na carga inicial (quando ainda não há dados)
+  if (loading && (!directors || directors.length === 0)) {
     return (
       <Container>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -265,40 +267,17 @@ export default function DirectorTurmaPage() {
 
   return (
     <Container>
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
-        <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
-                  <UserCheck className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-gray-900">
-                    Diretores de Turma
-                  </h1>
-                  <p className="text-gray-600 text-lg">
-                    Gestão de diretores de turma e suas atribuições
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={handleCreateClick}
-                className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Novo Diretor
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+
+      <WelcomeHeader
+        title="Gestão de Diretores de Turma"
+        titleBtnRight='Novo Diretor'
+        iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+        onClickBtnRight={() => handleCreateClick()}
+        description='Gerencie todos os diretores de turma na instituição.'
+      />
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total de Diretores"
           value={(directors?.length || 0).toString()}
@@ -342,7 +321,7 @@ export default function DirectorTurmaPage() {
           bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
           accentColor="bg-gradient-to-br from-purple-500 to-purple-600"
         />
-      </div>
+      </div> */}
 
       {/* Filtros e Busca */}
       <Card className="mb-6">
@@ -372,8 +351,15 @@ export default function DirectorTurmaPage() {
           <CardTitle>Lista de Diretores de Turma</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Se já há resultados, mostrar loader inline quando estiver carregando (por exemplo ao pesquisar) */}
           {directors && directors.length > 0 ? (
             <div className="overflow-x-auto">
+              {loading && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#F9CD1D] mr-2" />
+                  <span className="text-sm text-gray-600">Carregando...</span>
+                </div>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -431,20 +417,29 @@ export default function DirectorTurmaPage() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <UserCheck className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Nenhum diretor de turma encontrado
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {searchTerm ? 'Tente ajustar os filtros de busca.' : 'Comece adicionando um novo diretor de turma.'}
-              </p>
-              <Button
-                onClick={handleCreateClick}
-                className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Diretor
-              </Button>
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#F9CD1D] mr-3" />
+                  <span className="text-gray-600">Carregando diretores de turma...</span>
+                </div>
+              ) : (
+                <>
+                  <UserCheck className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Nenhum diretor de turma encontrado
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {searchTerm ? 'Tente ajustar os filtros de busca.' : 'Comece adicionando um novo diretor de turma.'}
+                  </p>
+                  <Button
+                    onClick={handleCreateClick}
+                    className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Diretor
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </CardContent>
@@ -495,12 +490,12 @@ export default function DirectorTurmaPage() {
               <span>{editingDirector ? 'Editar Diretor de Turma' : 'Novo Diretor de Turma'}</span>
             </DialogTitle>
             <DialogDescription>
-              {editingDirector 
-                ? 'Atualize as informações do diretor de turma.' 
+              {editingDirector
+                ? 'Atualize as informações do diretor de turma.'
                 : 'Atribua um professor como diretor de uma turma específica.'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6 py-4">
             {/* Seleção do Professor */}
             <div className="space-y-2">
@@ -631,7 +626,7 @@ export default function DirectorTurmaPage() {
               <X className="w-4 h-4 mr-2" />
               Cancelar
             </Button>
-            <Button 
+            <Button
               onClick={handleCreateSubmit}
               disabled={createLoading || updateLoading}
               className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90"
@@ -641,8 +636,8 @@ export default function DirectorTurmaPage() {
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              {(createLoading || updateLoading) 
-                ? (editingDirector ? 'Atualizando...' : 'Criando...') 
+              {(createLoading || updateLoading)
+                ? (editingDirector ? 'Atualizando...' : 'Criando...')
                 : (editingDirector ? 'Atualizar' : 'Criar Atribuição')}
             </Button>
           </DialogFooter>

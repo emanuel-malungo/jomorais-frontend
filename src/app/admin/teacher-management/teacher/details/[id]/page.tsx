@@ -15,12 +15,8 @@ import {
   ArrowLeft,
   Edit,
   User,
-  Mail,
-  Phone,
   GraduationCap,
   BookOpen,
-  Loader2,
-  AlertCircle,
 } from 'lucide-react';
 
 import { useDocente } from '@/hooks/useTeacher';
@@ -43,9 +39,11 @@ export default function TeacherDetailsPage() {
   if (loading) {
     return (
       <Container>
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-[#182F59]" />
-          <span className="ml-2 text-gray-600">Carregando dados do docente...</span>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#182F59]"></div>
+            <span className="text-lg text-gray-600">Carregando detalhes do docente...</span>
+          </div>
         </div>
       </Container>
     );
@@ -54,14 +52,13 @@ export default function TeacherDetailsPage() {
   if (error) {
     return (
       <Container>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-            <div>
-              <span className="text-red-700 font-medium">Erro ao carregar docente:</span>
-              <p className="text-red-600 text-sm mt-1">{error}</p>
-            </div>
-          </div>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <div className="text-red-500 text-lg font-semibold">Erro ao carregar dados do docente</div>
+          <p className="text-gray-600">{error}</p>
+          <Button onClick={() => router.back()} variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
         </div>
       </Container>
     );
@@ -70,8 +67,13 @@ export default function TeacherDetailsPage() {
   if (!teacher) {
     return (
       <Container>
-        <div className="text-center py-8">
-          <p className="text-gray-500">Docente não encontrado</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <div className="text-gray-500 text-lg font-semibold">Docente não encontrado</div>
+          <p className="text-gray-600">Não foi possível encontrar o docente com ID {teacherId}</p>
+          <Button onClick={() => router.back()} variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
         </div>
       </Container>
     );
@@ -80,182 +82,147 @@ export default function TeacherDetailsPage() {
   return (
     <Container>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="sm" onClick={handleBack}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{teacher.nome}</h1>
-            <p className="text-gray-600">
-              {teacher.tb_especialidade?.designacao || 'Especialidade não informada'}
-            </p>
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
+            <div className="space-y-3">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </Button>
+                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
+                  <User className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    {teacher.nome}
+                  </h1>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">Detalhes do Docente</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm max-w-2xl">
+                Visualize todas as informações detalhadas do docente, incluindo dados pessoais
+                e acadêmicos.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={handleEdit}
+                className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+              >
+                <Edit className="w-5 h-5 mr-2" />
+                Editar Docente
+              </Button>
+            </div>
           </div>
         </div>
-        <Button onClick={handleEdit} className="bg-[#3B6C4D] hover:bg-[#2d5016]">
-          <Edit className="w-4 h-4 mr-2" />
-          Editar
-        </Button>
+
+        {/* Decorative elements */}
+        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#FFC506]/5 rounded-full"></div>
+        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
       </div>
 
-      {/* Cards de Informações */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-gradient-to-br from-blue-50 via-white to-blue-50/50">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Status</p>
-                <p className="text-2xl font-bold text-[#182F59]">
-                  {teacher.status === 1 ? 'Ativo' : 'Inativo'}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-[#182F59] to-[#1a3260] rounded-lg flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
-              </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
+              <User className="h-6 w-6 text-white" />
             </div>
-          </CardContent>
-        </Card>
+            <Badge variant="outline" className="text-xs">
+              {teacher.status === 1 ? 'Ativo' : 'Inativo'}
+            </Badge>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-[#182F59]">Status</p>
+            <p className="text-2xl font-bold text-gray-900">{teacher.status === 1 ? 'Ativo' : 'Inativo'}</p>
+          </div>
+        </div>
 
-        <Card className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Disciplinas</p>
-                <p className="text-2xl font-bold text-emerald-600">
-                  {teacher.tb_disciplinas_docente?.length || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
+              <BookOpen className="h-6 w-6 text-white" />
             </div>
-          </CardContent>
-        </Card>
+            <Badge variant="default" className="text-xs bg-emerald-100 text-emerald-800">
+              {teacher.tb_disciplinas_docente?.length || 0}
+            </Badge>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-emerald-600">Disciplinas</p>
+            <p className="text-2xl font-bold text-gray-900">{teacher.tb_disciplinas_docente?.length || 0}</p>
+          </div>
+        </div>
 
-        <Card className="bg-gradient-to-br from-amber-50 via-white to-amber-50/50">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Turmas</p>
-                <p className="text-2xl font-bold text-amber-600">
-                  {teacher.tb_directores_turmas?.length || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#FFC107] shadow-sm">
+              <GraduationCap className="h-6 w-6 text-white" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 via-white to-purple-50/50">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Código</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {teacher.codigo}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Badge variant="outline" className="text-xs">
+              {teacher.tb_directores_turmas?.length || 0}
+            </Badge>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Turmas</p>
+            <p className="text-2xl font-bold text-gray-900">{teacher.tb_directores_turmas?.length || 0}</p>
+          </div>
+        </div>
       </div>
 
       {/* Informações Detalhadas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Informações Pessoais */}
         <Card>
           <CardHeader>
             <CardTitle>Informações Pessoais</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <User className="w-5 h-5 text-gray-400" />
+            <div className="grid grid-cols-1 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Nome Completo</p>
-                <p className="font-medium">{teacher.nome}</p>
+                <label className="text-sm font-medium text-gray-500">Nome Completo</label>
+                <p className="text-sm font-semibold text-gray-900">{teacher.nome}</p>
               </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Mail className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium">{teacher.email || 'N/A'}</p>
+                <label className="text-sm font-medium text-gray-500">Email</label>
+                <p className="text-sm font-semibold text-gray-900">{teacher.email || 'N/A'}</p>
               </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Phone className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Contacto</p>
-                <p className="font-medium">{teacher.contacto || 'N/A'}</p>
+                <label className="text-sm font-medium text-gray-500">Contacto</label>
+                <p className="text-sm font-semibold text-gray-900">{teacher.contacto || 'N/A'}</p>
               </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <User className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">ID Utilizador</p>
-                <p className="font-medium">{teacher.user_id || 'N/A'}</p>
+                <label className="text-sm font-medium text-gray-500">ID Utilizador</label>
+                <p className="text-sm font-semibold text-gray-900">{teacher.user_id || 'N/A'}</p>
               </div>
-            </div>
-
-            <div className="pt-4">
-              <Badge 
-                variant={teacher.status === 1 ? "default" : "secondary"}
-                className={teacher.status === 1 ? "bg-emerald-100 text-emerald-800" : ""}
-              >
-                {teacher.status === 1 ? "Ativo" : "Inativo"}
-              </Badge>
             </div>
           </CardContent>
         </Card>
 
-        {/* Informações Acadêmicas */}
         <Card>
           <CardHeader>
             <CardTitle>Informações Acadêmicas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <GraduationCap className="w-5 h-5 text-gray-400" />
+            <div className="grid grid-cols-1 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Especialidade</p>
-                <p className="font-medium">{teacher.tb_especialidade?.designacao || 'N/A'}</p>
+                <label className="text-sm font-medium text-gray-500">Especialidade</label>
+                <p className="text-sm font-semibold text-gray-900">{teacher.tb_especialidade?.designacao || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Disciplinas Lecionadas</label>
+                <p className="text-sm font-semibold text-gray-900">{teacher.tb_disciplinas_docente?.length || 0} disciplina(s)</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Turmas Dirigidas</label>
+                <p className="text-sm font-semibold text-gray-900">{teacher.tb_directores_turmas?.length || 0} turma(s)</p>
               </div>
             </div>
-
-            <div className="flex items-center space-x-3">
-              <BookOpen className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-600">Disciplinas Lecionadas</p>
-                <p className="font-medium">{teacher.tb_disciplinas_docente?.length || 0} disciplina(s)</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <User className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-600">Turmas Dirigidas</p>
-                <p className="font-medium">{teacher.tb_directores_turmas?.length || 0} turma(s)</p>
-              </div>
-            </div>
-
-            {teacher.codigo_disciplina && (
-              <div className="flex items-center space-x-3">
-                <BookOpen className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-600">Disciplina Principal</p>
-                  <p className="font-medium">Código: {teacher.codigo_disciplina}</p>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
