@@ -4,19 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Users, 
-  Search, 
-  Filter,
   DollarSign,
   Calendar,
   FileText,
   Eye,
-  Download,
-  Printer
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +32,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useAllTurmas } from '@/hooks/useTurma';
 import { useAllCourses } from '@/hooks/useCourse';
 import Container from '@/components/layout/Container';
+import WelcomeHeader from '@/components/layout/WelcomeHeader';
+import StatCard from '@/components/layout/StatCard';
+import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import NovoPaymentModal from './components/NovoPaymentModal';
 import StudentFinancialModal from './components/StudentFinancialModal';
 
@@ -44,7 +43,11 @@ const PagamentosPage = () => {
   const [showNewPaymentModal, setShowNewPaymentModal] = useState(false);
   const [showStudentsModal, setShowStudentsModal] = useState(false);
   const [showFinancialModal, setShowFinancialModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<{
+    codigo: number;
+    nome: string;
+    n_documento_identificacao: string;
+  } | null>(null);
 
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -86,7 +89,7 @@ const PagamentosPage = () => {
     fetchPayments
   } = usePaymentsList();
 
-  const { generatePDF, loading: pdfLoading } = useGenerateInvoicePDF();
+  const { generatePDF } = useGenerateInvoicePDF();
 
   // Hooks para filtros
   const { turmas } = useAllTurmas();
@@ -105,17 +108,18 @@ const PagamentosPage = () => {
       const cursoId = selectedCurso !== 'all' ? parseInt(selectedCurso) : undefined;
       fetchStudents(currentPage, 100, debouncedSearchTerm, turmaId, cursoId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showStudentsModal, currentPage, debouncedSearchTerm, selectedTurma, selectedCurso]);
 
   // Carregar pagamentos quando a página carrega ou filtros mudam
   useEffect(() => {
     const tipoServico = selectedTipoServico !== 'all' ? selectedTipoServico : undefined;
     fetchPayments(paymentsCurrentPage, 10, debouncedPaymentsSearch, tipoServico);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentsCurrentPage, debouncedPaymentsSearch, selectedTipoServico]);
 
   // Handlers
-  const handleViewStudent = async (student: any) => {
-    console.log('👁️ Abrindo dados financeiros para:', student.nome);
+  const handleViewStudent = async (student: { codigo: number; nome: string; n_documento_identificacao: string }) => {
     setSelectedStudent(student);
     setShowFinancialModal(true);
     
@@ -163,243 +167,219 @@ const PagamentosPage = () => {
 
   return (
     <Container>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gestão de Pagamentos</h1>
-            <p className="text-gray-600 mt-1">
-              Gerencie pagamentos de propinas e outros serviços
-            </p>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <Button
-              onClick={() => setShowStudentsModal(true)}
-              variant="outline"
-              className="px-4 sm:px-6 py-3 rounded-xl font-semibold border-2 border-blue-500 text-blue-500 hover:bg-blue-50 text-sm sm:text-base"
-            >
-              <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              <span className="hidden sm:inline">Ver Estado dos </span>Alunos
-            </Button>
+      {/* Header seguindo padrão do Dashboard */}
+      <WelcomeHeader
+        title="Gestão de Pagamentos"
+        description="Gerencie pagamentos de propinas e outros serviços financeiros da instituição. Registre transações, acompanhe pagamentos e mantenha os dados sempre atualizados."
+        titleBtnLeft='Ver Estado dos Alunos'
+        iconBtnLeft={<Users className="w-5 h-5 mr-2" />}
+        onClickBtnLeft={() => setShowStudentsModal(true)}
+        titleBtnRight='Novo Pagamento'
+        iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+        onClickBtnRight={() => setShowNewPaymentModal(true)}
+      />
 
-            <Button
-              onClick={() => setShowNewPaymentModal(true)}
-              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white px-4 sm:px-6 py-3 rounded-xl font-semibold text-sm sm:text-base"
-            >
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Novo Pagamento
-            </Button>
-          </div>
-        </div>
+      {/* Stats Cards usando componente StatCard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total Pagamentos"
+          value="1,234"
+          change="+20.1% vs mês anterior"
+          changeType="up"
+          icon={FileText}
+          color="text-[#182F59]"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
+        />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Pagamentos</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">1,234</div>
-              <p className="text-xs text-muted-foreground">+20.1% em relação ao mês anterior</p>
-            </CardContent>
-          </Card>
+        <StatCard
+          title="Valor Total"
+          value="45.231.000 Kz"
+          change="+15.3% vs mês anterior"
+          changeType="up"
+          icon={DollarSign}
+          color="text-emerald-600"
+          bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
+          accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
+        />
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">45.231.000 Kz</div>
-              <p className="text-xs text-muted-foreground">+15.3% em relação ao mês anterior</p>
-            </CardContent>
-          </Card>
+        <StatCard
+          title="Pagamentos Hoje"
+          value="23"
+          change="+5 vs ontem"
+          changeType="up"
+          icon={Calendar}
+          color="text-purple-600"
+          bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
+          accentColor="bg-gradient-to-br from-purple-500 to-purple-600"
+        />
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pagamentos Hoje</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">23</div>
-              <p className="text-xs text-muted-foreground">+5 em relação a ontem</p>
-            </CardContent>
-          </Card>
+        <StatCard
+          title="Alunos Ativos"
+          value="573"
+          change="Alunos confirmados"
+          changeType="neutral"
+          icon={Users}
+          color="text-blue-600"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-blue-500 to-blue-600"
+        />
+      </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Alunos Ativos</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">573</div>
-              <p className="text-xs text-muted-foreground">Alunos confirmados</p>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Filtros e Busca */}
+      <FilterSearchCard
+        title="Filtros e Busca de Pagamentos"
+        searchPlaceholder="Buscar por nome do aluno, documento, fatura..."
+        searchValue={paymentsSearchTerm}
+        onSearchChange={setPaymentsSearchTerm}
+        filters={[
+          {
+            label: "Tipo de Serviço",
+            value: selectedTipoServico,
+            onChange: setSelectedTipoServico,
+            options: [
+              { value: "all", label: "Todos os Serviços" },
+              { value: "propina", label: "Propinas" },
+              { value: "outros", label: "Outros Serviços" }
+            ],
+            width: "w-48"
+          }
+        ]}
+      />
 
-        {/* Payments List */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <CardTitle>Pagamentos Processados</CardTitle>
-              
-              <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
-                {/* Search */}
-                <div className="relative flex-1 lg:flex-none">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Buscar por aluno..."
-                    value={paymentsSearchTerm}
-                    onChange={(e) => setPaymentsSearchTerm(e.target.value)}
-                    className="pl-10 w-full lg:w-64"
-                  />
-                </div>
-                
-                {/* Filter by Service Type */}
-                <Select value={selectedTipoServico} onValueChange={setSelectedTipoServico}>
-                  <SelectTrigger className="w-full lg:w-48">
-                    <SelectValue placeholder="Tipo de Serviço" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os Serviços</SelectItem>
-                    <SelectItem value="propina">Propinas</SelectItem>
-                    <SelectItem value="outros">Outros Serviços</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
+      {/* Payments List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Lista de Pagamentos ({payments.length} na página)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
             {paymentsLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="text-gray-500 mt-2">Carregando pagamentos...</p>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#182F59]"></div>
+                  <span>Carregando página {paymentsCurrentPage}...</span>
+                </div>
               </div>
             ) : paymentsError ? (
-              <div className="text-center py-8 text-red-500">
-                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Erro ao carregar pagamentos: {paymentsError}</p>
+              <div className="text-center py-8">
+                <div className="flex flex-col items-center space-y-2">
+                  <FileText className="h-12 w-12 text-red-400" />
+                  <p className="text-red-500">Erro ao carregar pagamentos: {paymentsError}</p>
+                </div>
               </div>
             ) : payments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum pagamento encontrado</p>
-                {(debouncedPaymentsSearch || selectedTipoServico !== 'all') && (
-                  <p className="text-sm mt-2">Tente ajustar os filtros de busca</p>
-                )}
+              <div className="text-center py-8">
+                <div className="flex flex-col items-center space-y-2">
+                  <FileText className="h-12 w-12 text-gray-400" />
+                  <p className="text-gray-500">Nenhum pagamento encontrado</p>
+                  {(debouncedPaymentsSearch || selectedTipoServico !== 'all') && (
+                    <p className="text-sm text-gray-400">Tente ajustar os filtros de busca</p>
+                  )}
+                </div>
               </div>
             ) : (
-              <>
-                {/* Payments Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[800px]">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm">Aluno</th>
-                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm hidden sm:table-cell">Serviço</th>
-                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm hidden md:table-cell">Mês/Ano</th>
-                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm">Valor</th>
-                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm hidden lg:table-cell">Data</th>
-                        <th className="text-left py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm hidden xl:table-cell">Fatura</th>
-                        <th className="text-center py-3 px-2 sm:px-4 font-medium text-gray-900 text-sm">Ações</th>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Aluno</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Serviço</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Mês/Ano</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Valor</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Data</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Fatura</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-900">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.map((payment) => (
+                      <tr key={payment.codigo} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium text-gray-900">{payment.aluno?.nome}</p>
+                            <p className="text-sm text-gray-500">{payment.aluno?.n_documento_identificacao}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-gray-900">{payment.tipoServico?.designacao}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-gray-900">{payment.mes}/{payment.ano}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="font-medium text-green-600">{formatCurrency(payment.preco)}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-gray-900">{formatDate(payment.data)}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-sm text-gray-600">{payment.fatura}</p>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <Button
+                            onClick={() => handleDownloadInvoice(payment.codigo)}
+                            variant="outline"
+                            size="sm"
+                            disabled={downloadingPaymentId === payment.codigo}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            {downloadingPaymentId === payment.codigo ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1"></div>
+                                Gerando...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="w-4 h-4 mr-1" />
+                                Fatura
+                              </>
+                            )}
+                          </Button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {payments.map((payment: any) => (
-                        <tr key={payment.codigo} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-2 sm:px-4">
-                            <div>
-                              <p className="font-medium text-gray-900 text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{payment.aluno?.nome}</p>
-                              <p className="text-xs sm:text-sm text-gray-500 sm:hidden">{payment.tipoServico?.designacao}</p>
-                              <p className="text-xs text-gray-500">{payment.aluno?.n_documento_identificacao}</p>
-                            </div>
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 hidden sm:table-cell">
-                            <p className="text-gray-900 text-sm">{payment.tipoServico?.designacao}</p>
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 hidden md:table-cell">
-                            <p className="text-gray-900 text-sm">{payment.mes}/{payment.ano}</p>
-                          </td>
-                          <td className="py-3 px-2 sm:px-4">
-                            <p className="font-medium text-green-600 text-sm sm:text-base">{formatCurrency(payment.preco)}</p>
-                            <p className="text-xs text-gray-500 md:hidden">{payment.mes}/{payment.ano}</p>
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 hidden lg:table-cell">
-                            <p className="text-gray-900 text-sm">{formatDate(payment.data)}</p>
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 hidden xl:table-cell">
-                            <p className="text-sm text-gray-600">{payment.fatura}</p>
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 text-center">
-                            <Button
-                              onClick={() => handleDownloadInvoice(payment.codigo)}
-                              variant="outline"
-                              size="sm"
-                              disabled={downloadingPaymentId === payment.codigo}
-                              className="text-blue-600 hover:text-blue-700 px-2 sm:px-3"
-                            >
-                              {downloadingPaymentId === payment.codigo ? (
-                                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-blue-600 sm:mr-1"></div>
-                              ) : (
-                                <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                              )}
-                              <span className="hidden sm:inline">
-                                {downloadingPaymentId === payment.codigo ? 'Gerando...' : 'Fatura'}
-                              </span>
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Pagination */}
-                {paymentsPagination.totalPages > 1 && (
-                  <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
-                    <p className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
-                      Mostrando {((paymentsPagination.currentPage - 1) * paymentsPagination.itemsPerPage) + 1} a{' '}
-                      {Math.min(paymentsPagination.currentPage * paymentsPagination.itemsPerPage, paymentsPagination.totalItems)} de{' '}
-                      {paymentsPagination.totalItems} pagamentos
-                    </p>
-                    
-                    <div className="flex gap-2 items-center">
-                      <Button
-                        onClick={() => setPaymentsCurrentPage(paymentsPagination.currentPage - 1)}
-                        disabled={paymentsPagination.currentPage === 1}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs sm:text-sm px-2 sm:px-3"
-                      >
-                        <span className="hidden sm:inline">Anterior</span>
-                        <span className="sm:hidden">Ant</span>
-                      </Button>
-                      
-                      <span className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-blue-100 text-blue-800 rounded">
-                        {paymentsPagination.currentPage} de {paymentsPagination.totalPages}
-                      </span>
-                      
-                      <Button
-                        onClick={() => setPaymentsCurrentPage(paymentsPagination.currentPage + 1)}
-                        disabled={paymentsPagination.currentPage === paymentsPagination.totalPages}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs sm:text-sm px-2 sm:px-3"
-                      >
-                        <span className="hidden sm:inline">Próximo</span>
-                        <span className="sm:hidden">Prox</span>
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          
+          {/* Paginação */}
+          {paymentsPagination.totalPages > 1 && (
+            <div className="flex items-center justify-between space-x-2 py-4">
+              <div className="text-sm text-gray-500">
+                Mostrando {((paymentsPagination.currentPage - 1) * paymentsPagination.itemsPerPage) + 1} a{' '}
+                {Math.min(paymentsPagination.currentPage * paymentsPagination.itemsPerPage, paymentsPagination.totalItems)} de{' '}
+                {paymentsPagination.totalItems} pagamentos
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPaymentsCurrentPage(paymentsPagination.currentPage - 1)}
+                  disabled={paymentsPagination.currentPage === 1 || paymentsLoading}
+                >
+                  Anterior
+                </Button>
+                <span className="px-3 py-1 text-sm bg-[#182F59] text-white rounded">
+                  {paymentsPagination.currentPage} de {paymentsPagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPaymentsCurrentPage(paymentsPagination.currentPage + 1)}
+                  disabled={paymentsPagination.currentPage === paymentsPagination.totalPages || paymentsLoading}
+                >
+                  Próximo
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Modal Novo Pagamento */}
       <NovoPaymentModal
