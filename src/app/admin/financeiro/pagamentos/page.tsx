@@ -491,7 +491,7 @@ const PagamentosPage = () => {
                           <Button
                             onClick={() => handleViewStudent(student)}
                             size="sm"
-                            variant="outline"
+                            #variant="outline"
                             className="text-blue-600 hover:text-blue-800 px-2 sm:px-3 text-xs sm:text-sm"
                           >
                             <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
