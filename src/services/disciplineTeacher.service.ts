@@ -64,6 +64,27 @@ class DisciplineTeacherService {
       throw error;
     }
   }
+
+  // Obter estatísticas de disciplinas-docente
+  async getEstatisticasDisciplinasDocente(): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      resumo: {
+        totalAtribuicoes: number;
+        professoresAtivos: number;
+        cursosUnicos: number;
+        disciplinasUnicas: number;
+      };
+      rankings: {
+        topDocentes: Array<{ codigo: number; nome: string; totalAtribuicoes: number }>;
+        topCursos: Array<{ codigo: number; nome: string; totalAtribuicoes: number }>;
+      };
+    };
+  }> {
+    const response = await api.get('/api/academic-staff/disciplinas-docente/estatisticas');
+    return response.data;
+  }
 }
 
 export const disciplineTeacherService = new DisciplineTeacherService();

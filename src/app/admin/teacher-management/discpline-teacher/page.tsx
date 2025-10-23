@@ -1,17 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
-import { useDisciplinasDocente, useDeleteDisciplinaDocente } from '@/hooks/useDisciplineTeacher';
+import { useDisciplinasDocente, useEstatisticasDisciplinasDocente } from '@/hooks/useDisciplineTeacher';
 import { IDisciplinaDocente } from '@/types/disciplineTeacher.types';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { DisciplineTeacherModal } from '@/components/discipline-teacher/discipline-teacher-modal';
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
@@ -37,69 +29,47 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   BookOpen,
   Plus,
-  MoreHorizontal,
   Edit,
-  Trash2,
   GraduationCap,
   Clock,
   ChevronLeft,
   ChevronRight,
   Award,
 } from 'lucide-react';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 
 // Dados removidos - agora usando API real
-
-
-const statusOptions = [
-  { value: "all", label: "Todos os Status" },
-  { value: "ativo", label: "Ativo" },
-  { value: "inativo", label: "Inativo" },
-];
-
 export default function TeacherDisciplinesPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  
-  // Estados para modal de confirmação de exclusão
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number; nome: string } | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const { statusOptions } = useFilterOptions();
 
   // Estados para modal de criação/edição
   const [showModal, setShowModal] = useState(false);
   const [selectedDisciplineTeacher, setSelectedDisciplineTeacher] = useState<IDisciplinaDocente | null>(null);
 
-  // Hooks da API
-  const { data: disciplines, pagination, loading, error, refetch } = useDisciplinasDocente(currentPage, itemsPerPage, searchTerm);
-  const { deleteDisciplinaDocente, loading: deleteLoading } = useDeleteDisciplinaDocente();
+  // Debounce do searchTerm para evitar muitas requisições
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); // Resetar para primeira página ao buscar
+    }, 500);
 
-  const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-    try {
-      setDeletingId(itemToDelete.id);
-      await deleteDisciplinaDocente(itemToDelete.id);
-      await refetch(); // Recarregar dados
-      setShowDeleteModal(false);
-      setItemToDelete(null);
-    } catch (error) {
-      console.error('Erro ao excluir disciplina do docente:', error);
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  // Hooks da API - Agora usando debouncedSearch
+  const { data: disciplines, pagination, loading, error, refetch } = useDisciplinasDocente(currentPage, itemsPerPage, debouncedSearch);
+  const { data: estatisticas, loading: loadingStats } = useEstatisticasDisciplinasDocente();
 
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
-    setItemToDelete(null);
-  };
 
   const handleEditAssignment = (assignmentId: number) => {
     const discipline = disciplines?.find(d => d.codigo === assignmentId);
@@ -109,11 +79,11 @@ export default function TeacherDisciplinesPage() {
     }
   };
 
-  // Estatísticas baseadas nos dados reais da API
-  const totalAtribuicoes = disciplines?.length || 0;
-  const professoresUnicos = disciplines ? [...new Set(disciplines.map(d => d.tb_docente.nome))].length : 0;
-  const cursosUnicos = disciplines ? [...new Set(disciplines.map(d => d.tb_cursos.designacao))].length : 0;
-  const disciplinasUnicas = disciplines ? [...new Set(disciplines.map(d => d.tb_disciplinas.designacao))].length : 0;
+  // Estatísticas vindas da API
+  const totalAtribuicoes = estatisticas?.resumo.totalAtribuicoes || 0;
+  const professoresAtivos = estatisticas?.resumo.professoresAtivos || 0;
+  const cursosUnicos = estatisticas?.resumo.cursosUnicos || 0;
+  const disciplinasUnicas = estatisticas?.resumo.disciplinasUnicas || 0;
 
   return (
     <Container>
@@ -122,7 +92,7 @@ export default function TeacherDisciplinesPage() {
         title="Disciplinas do Docente"
         description="Gerencie as atribuições de disciplinas aos professores. Visualize horários, cargas horárias e organize a distribuição das disciplinas por docente."
         iconMain={<BookOpen className="h-8 w-8 text-white" />}
-   
+
         onClickBtnLeft={() => console.log("Exportar")}
         titleBtnRight="Nova Atribuição"
         iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
@@ -137,9 +107,9 @@ export default function TeacherDisciplinesPage() {
         <StatCard
           icon={BookOpen}
           title="Total de Atribuições"
-          value={totalAtribuicoes.toString()}
-          change="+8.3%"
-          changeType="up"
+          value={loadingStats ? '...' : totalAtribuicoes.toString()}
+          change={`${pagination.totalItems} na página`}
+          changeType="neutral"
           color="text-[#182F59]"
           bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
           accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
@@ -148,8 +118,8 @@ export default function TeacherDisciplinesPage() {
         <StatCard
           icon={GraduationCap}
           title="Professores Ativos"
-          value={professoresUnicos.toString()}
-          change="Ativos"
+          value={loadingStats ? '...' : professoresAtivos.toString()}
+          change="Com atribuições"
           changeType="neutral"
           color="text-emerald-600"
           bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
@@ -159,9 +129,9 @@ export default function TeacherDisciplinesPage() {
         <StatCard
           icon={Clock}
           title="Cursos Únicos"
-          value={cursosUnicos.toString()}
-          change="+5.2%"
-          changeType="up"
+          value={loadingStats ? '...' : cursosUnicos.toString()}
+          change="Com disciplinas atribuídas"
+          changeType="neutral"
           color="text-[#FFD002]"
           bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
           accentColor="bg-gradient-to-br from-[#FFD002] to-[#FFC107]"
@@ -170,8 +140,8 @@ export default function TeacherDisciplinesPage() {
         <StatCard
           icon={Award}
           title="Disciplinas Únicas"
-          value={disciplinasUnicas.toString()}
-          change="Ativas"
+          value={loadingStats ? '...' : disciplinasUnicas.toString()}
+          change="Atribuídas a docentes"
           changeType="neutral"
           color="text-purple-600"
           bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
@@ -183,7 +153,7 @@ export default function TeacherDisciplinesPage() {
       <FilterSearchCard
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
-        searchPlaceholder="Buscar por professor, disciplina, turma ou sala..."
+        searchPlaceholder="Buscar por professor, disciplina ou curso..."
         filters={[
           {
             label: "Status",
@@ -200,11 +170,11 @@ export default function TeacherDisciplinesPage() {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <BookOpen className="h-5 w-5" />
-              <span>Atribuições de Disciplinas</span>
+              <span>
+                Atribuições de Disciplinas
+                {debouncedSearch && ` - Resultados para "${debouncedSearch}"`}
+              </span>
             </div>
-            <Badge variant="outline" className="text-sm">
-              {pagination.totalItems} atribuições encontradas
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -263,19 +233,6 @@ export default function TeacherDisciplinesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              className="h-8 w-8 p-0"
-                              disabled={deletingId === discipline.codigo}
-                            >
-                              {deletingId === discipline.codigo ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-300"></div>
-                              ) : (
-                                <MoreHorizontal className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleEditAssignment(discipline.codigo)}>
@@ -287,9 +244,9 @@ export default function TeacherDisciplinesPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {pagination.totalPages > 1 && (
@@ -313,9 +270,9 @@ export default function TeacherDisciplinesPage() {
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
-                    
+
                     const pages = [];
-                    
+
                     // Primeira página
                     if (adjustedStartPage > 1) {
                       pages.push(
@@ -332,7 +289,7 @@ export default function TeacherDisciplinesPage() {
                         pages.push(<span key="ellipsis1" className="px-2">...</span>);
                       }
                     }
-                    
+
                     // Páginas do meio
                     for (let i = adjustedStartPage; i <= endPage; i++) {
                       pages.push(
@@ -347,7 +304,7 @@ export default function TeacherDisciplinesPage() {
                         </Button>
                       );
                     }
-                    
+
                     // Última página
                     if (endPage < pagination.totalPages) {
                       if (endPage < pagination.totalPages - 1) {
@@ -364,7 +321,7 @@ export default function TeacherDisciplinesPage() {
                         </Button>
                       );
                     }
-                    
+
                     return pages;
                   })()}
                 </div>
@@ -399,43 +356,6 @@ export default function TeacherDisciplinesPage() {
         }}
       />
 
-      {/* Modal de Confirmação de Exclusão */}
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="h-5 w-5 text-red-600" />
-              </div>
-              <span>Confirmar Exclusão</span>
-            </DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir a atribuição de disciplina: <strong>{itemToDelete?.nome}</strong>?
-              <br />
-              <span className="text-red-600 text-sm mt-2 block">Esta ação não pode ser desfeita.</span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancelDelete} disabled={deleteLoading}>
-              Cancelar
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleConfirmDelete}
-              disabled={deleteLoading}
-            >
-              {deleteLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Excluindo...
-                </>
-              ) : (
-                'Excluir'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Container>
   );
 }

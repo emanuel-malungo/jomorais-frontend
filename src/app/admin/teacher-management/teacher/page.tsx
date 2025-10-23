@@ -49,7 +49,7 @@ import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { useDocentes, useEspecialidades } from '@/hooks/useTeacher';
 import { IDocente } from '@/types/teacher.types';
 
-import { useStatus } from '@/hooks/useStatusControl';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 
 
 // Opções de especialidades serão geradas dinamicamente
@@ -62,7 +62,7 @@ export default function ListTeacherPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  const { status } = useStatus(1, 100, ""); 
+  const { statusOptions } = useFilterOptions();
 
   // Debounce do searchTerm para evitar muitas requisições
   useEffect(() => {
@@ -73,19 +73,6 @@ export default function ListTeacherPage() {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
-
-  const statusOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Todos os Status" }];
-    if (status && status.length > 0) {
-      status.forEach((s) => {
-        options.push({
-          value: s.codigo.toString(),
-          label: s.designacao
-        });
-      });
-    }
-    return options;
-  }, [status]);
 
   // Usar o hook com busca via API
   const { docentes, loading, pagination } = useDocentes(

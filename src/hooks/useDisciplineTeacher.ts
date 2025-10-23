@@ -171,3 +171,45 @@ export function useDeleteDisciplinaDocente() {
 
   return { deleteDisciplinaDocente, loading, error };
 }
+
+// Hook para obter estatísticas de disciplinas-docente
+export function useEstatisticasDisciplinasDocente() {
+  const [data, setData] = useState<{
+    resumo: {
+      totalAtribuicoes: number;
+      professoresAtivos: number;
+      cursosUnicos: number;
+      disciplinasUnicas: number;
+    };
+    rankings: {
+      topDocentes: Array<{ codigo: number; nome: string; totalAtribuicoes: number }>;
+      topCursos: Array<{ codigo: number; nome: string; totalAtribuicoes: number }>;
+    };
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchEstatisticas = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await disciplineTeacherService.getEstatisticasDisciplinasDocente();
+        
+        if (response.success && response.data) {
+          setData(response.data);
+        } else {
+          setError(response.message || 'Erro ao carregar estatísticas');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar estatísticas');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEstatisticas();
+  }, []);
+
+  return { data, loading, error };
+}
