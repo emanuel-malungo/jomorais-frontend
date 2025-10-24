@@ -38,10 +38,10 @@ export default function SAFTExportPage() {
     includePayments: true,
     companyInfo: {
       nif: '',
-      name: '',
-      address: '',
-      city: 'Luanda',
-      postalCode: '',
+      name: 'COMPLEXO ESCOLAR PRIVADO JOMORAIS',
+      address: 'Cabinda, Angola',
+      city: 'Cabinda',
+      postalCode: '1000',
       phone: '',
       email: ''
     },

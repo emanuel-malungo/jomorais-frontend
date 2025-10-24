@@ -59,7 +59,7 @@ export class TurmaReportService {
     // Título do instituto centralizado
     doc.setFontSize(18);
     doc.setTextColor(249, 205, 29); // Amarelo JOMORAIS
-    doc.text('INSTITUTO MÉDIO POLITÉCNICO JOMORAIS', pageWidth / 2, yPosition, { align: 'center' });
+    doc.text('COMPLEXO ESCOLAR PRIVADO JOMORAIS', pageWidth / 2, yPosition, { align: 'center' });
     
     yPosition += 12;
     
