@@ -145,14 +145,12 @@ export function useDeleteDisciplinaDocente() {
       setLoading(true);
       setError(null);
       const response = await disciplineTeacherService.deleteDisciplinaDocente(id);
-
-      if (response.success) {
-        return true;
-      }
-
+      return response;
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Erro ao excluir disciplina do docente");
+      setError(errorMessage);
       toast.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }

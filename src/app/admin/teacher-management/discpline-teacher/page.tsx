@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
-import { useDisciplinasDocente, useEstatisticasDisciplinasDocente } from '@/hooks/useDisciplineTeacher';
+import { useDisciplinasDocente, useEstatisticasDisciplinasDocente, useDeleteDisciplinaDocente } from '@/hooks/useDisciplineTeacher';
 import { IDisciplinaDocente } from '@/types/disciplineTeacher.types';
 import { DisciplineTeacherModal } from '@/components/discipline-teacher/discipline-teacher-modal';
+import { ConfirmDeleteDisciplinaDocenteModal } from '@/components/discipline-teacher/confirm-delete-disciplina-docente-modal';
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'react-toastify';
 import {
   Card,
   CardContent,
@@ -29,6 +31,7 @@ import {
   ChevronRight,
   Award,
   MoreHorizontal,
+  Trash2,
 } from 'lucide-react';
 
 // Dados removidos - agora usando API real
@@ -40,6 +43,11 @@ export default function TeacherDisciplinesPage() {
   // Estados para modal de criação/edição
   const [showModal, setShowModal] = useState(false);
   const [selectedDisciplineTeacher, setSelectedDisciplineTeacher] = useState<IDisciplinaDocente | null>(null);
+  
+  // Estados para modal de exclusão
+  const [disciplinaDocenteToDelete, setDisciplinaDocenteToDelete] = useState<IDisciplinaDocente | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<{ success?: boolean; message?: string } | null>(null);
 
   // Debounce do searchTerm para evitar muitas requisições
   useEffect(() => {
@@ -54,6 +62,7 @@ export default function TeacherDisciplinesPage() {
   // Hooks da API - Agora usando debouncedSearch
   const { data: disciplines, pagination, loading, error, refetch } = useDisciplinasDocente(currentPage, itemsPerPage, debouncedSearch);
   const { data: estatisticas, loading: loadingStats } = useEstatisticasDisciplinasDocente();
+  const { deleteDisciplinaDocente, loading: deleteLoading, error: deleteError } = useDeleteDisciplinaDocente();
 
 
   const handleEditAssignment = (assignmentId: number) => {
@@ -61,6 +70,40 @@ export default function TeacherDisciplinesPage() {
     if (discipline) {
       setSelectedDisciplineTeacher(discipline);
       setShowModal(true);
+    }
+  };
+  
+  // Handlers para exclusão
+  const handleDeleteClick = (disciplinaDocente: IDisciplinaDocente) => {
+    setDisciplinaDocenteToDelete(disciplinaDocente);
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!disciplinaDocenteToDelete?.codigo) return;
+
+    try {
+      const result = await deleteDisciplinaDocente(disciplinaDocenteToDelete.codigo);
+      setDeleteResult(result);
+      toast.success('Atribuição excluída com sucesso!');
+      
+      setTimeout(() => {
+        setDeleteModalOpen(false);
+        setDisciplinaDocenteToDelete(null);
+        setDeleteResult(null);
+        refetch();
+      }, 2000);
+    } catch (error) {
+      console.error('Erro ao excluir atribuição:', error);
+    }
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setDisciplinaDocenteToDelete(null);
+      setDeleteResult(null);
     }
   };
 
@@ -221,6 +264,10 @@ export default function TeacherDisciplinesPage() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteClick(discipline)} className="text-red-600">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -336,6 +383,17 @@ export default function TeacherDisciplinesPage() {
           refetch();
           setSelectedDisciplineTeacher(null);
         }}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteDisciplinaDocenteModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        disciplinaDocenteItem={disciplinaDocenteToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
       />
 
     </Container>
