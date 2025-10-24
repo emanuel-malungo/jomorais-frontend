@@ -123,13 +123,13 @@ class SAFTService {
         data: {
           companyID: 'AO123456789',
           registrationNumber: '123456789',
-          name: 'COMPLEXO ESCOLAR PRIVADO JOMORAIS',
-          businessName: 'COMPLEXO ESCOLAR PRIVADO JOMORAIS',
+          name: 'INSTITUTO MÉDIO POLITÉCNICO JO MORAIS',
+          businessName: 'INSTITUTO MÉDIO POLITÉCNICO JO MORAIS',
           address: {
-            addressDetail: 'Cabinda, Angola',
-            city: 'Cabinda',
+            addressDetail: 'Luanda, Angola',
+            city: 'Luanda',
             postalCode: '1000',
-            region: 'Cabinda',
+            region: 'Luanda',
             country: 'AO'
           },
           contacts: {
@@ -1310,13 +1310,13 @@ class SAFTService {
     <CompanyID>${companyData?.companyID || 'AO123456789'}</CompanyID>
     <TaxRegistrationNumber>${companyData?.taxRegistrationNumber || '123456789'}</TaxRegistrationNumber>
     <TaxAccountingBasis>F</TaxAccountingBasis>
-    <CompanyName>${companyData?.name || 'COMPLEXO ESCOLAR PRIVADO JOMORAIS'}</CompanyName>
-    <BusinessName>${companyData?.businessName || companyData?.name || 'COMPLEXO ESCOLAR PRIVADO JOMORAIS'}</BusinessName>
+    <CompanyName>${companyData?.name || 'INSTITUTO MÉDIO POLITÉCNICO JO MORAIS'}</CompanyName>
+    <BusinessName>${companyData?.businessName || companyData?.name || 'INSTITUTO MÉDIO POLITÉCNICO JO MORAIS'}</BusinessName>
     <CompanyAddress>
-      <AddressDetail>${companyData?.address?.addressDetail || 'Cabinda, Angola'}</AddressDetail>
-      <City>${companyData?.address?.city || 'Cabinda'}</City>
+      <AddressDetail>${companyData?.address?.addressDetail || 'Luanda, Angola'}</AddressDetail>
+      <City>${companyData?.address?.city || 'Luanda'}</City>
       <PostalCode>${companyData?.address?.postalCode || '1000'}</PostalCode>
-      <Region>${companyData?.address?.region || 'Cabinda'}</Region>
+      <Region>${companyData?.address?.region || 'Luanda'}</Region>
       <Country>${companyData?.address?.country || 'AO'}</Country>
     </CompanyAddress>
     <FiscalYear>${startDate.getFullYear()}</FiscalYear>

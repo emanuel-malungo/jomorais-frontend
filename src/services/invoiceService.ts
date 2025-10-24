@@ -280,8 +280,8 @@ export class InvoiceService {
         }
       },
       instituicao: {
-        nome: 'COMPLEXO ESCOLAR PRIVADO JOMORAIS',
-        endereco: 'Cabinda, Angola',
+        nome: 'INSTITUTO MÉDIO POLITÉCNICO JO MORAIS',
+        endereco: 'Luanda, Angola',
         telefone: '+244 XXX XXX XXX',
         email: 'info@JOMORAIS.ao'
       }
