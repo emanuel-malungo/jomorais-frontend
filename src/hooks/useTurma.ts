@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
+import { toast } from "react-toastify"
 import turmaService from "@/services/turma.service"
 import { ITurma, ITurmaInput, ITurmaListResponse } from "@/types/turma.types"
 
@@ -161,11 +162,13 @@ export const useDeleteTurma = () => {
     try {
       setIsLoading(true)
       setError(null)
-      await turmaService.deleteTurma(id)
-      return true
+      const response = await turmaService.deleteTurma(id)
+      return response
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Erro ao deletar turma")
-      throw error
+      const errorMessage = error instanceof Error ? error.message : "Erro ao deletar turma"
+      setError(errorMessage)
+      toast.error(errorMessage)
+      throw new Error(errorMessage)
     } finally {
       setIsLoading(false)
     }

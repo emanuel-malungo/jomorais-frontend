@@ -56,13 +56,15 @@ import {
   Clock,
   FileText,
   UserX,
+  Trash2,
 } from 'lucide-react';
-import { useTurmaManagerPaginated } from '@/hooks';
+import { useTurmaManagerPaginated, useDeleteTurma } from '@/hooks';
 import { TurmaReportService } from '@/services/turmaReport.service';
 import api from '@/utils/api.utils';
 import { ITurma } from '@/types/turma.types';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { toast } from 'react-toastify';
+import { ConfirmDeleteTurmaModal } from '@/components/turma/confirm-delete-turma-modal';
 
 // Tipo para Ano Letivo
 interface AnoLectivo {
@@ -98,8 +100,19 @@ export default function TurmasPage() {
   const [anosLectivos, setAnosLectivos] = useState<AnoLectivo[]>([]);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [loadingAnosLectivos, setLoadingAnosLectivos] = useState(false);
-  const [allTurmas, setAllTurmas] = useState<any[]>([]);
+  const [allTurmas, setAllTurmas] = useState<ITurma[]>([]);
   const [loadingAllTurmas, setLoadingAllTurmas] = useState(false);
+
+  // Estados para exclusão
+  const [turmaToDelete, setTurmaToDelete] = useState<ITurma | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean | string>;
+    info?: string;
+  } | null>(null);
+
+  const { deleteTurma, isLoading: deleteLoading, error: deleteError } = useDeleteTurma();
 
   // Filtrar turmas no frontend (enquanto backend não suporta filtros adicionais)
   const filteredTurmas = useMemo(() => {
@@ -170,7 +183,7 @@ export default function TurmasPage() {
         
         // Filtrar por ano letivo se especificado
         if (anoLectivoId) {
-          todasTurmas = todasTurmas.filter((turma: any) => turma.codigo_AnoLectivo === anoLectivoId);
+          todasTurmas = todasTurmas.filter((turma: ITurma) => turma.codigo_AnoLectivo === anoLectivoId);
           console.log(`✅ Carregadas ${todasTurmas.length} turmas do ano letivo ${anoLectivoId}`);
         } else {
           console.log(`✅ Carregadas ${todasTurmas.length} turmas para o select`);
@@ -241,6 +254,54 @@ export default function TurmasPage() {
 
   const handleEditTurma = (turmaId: number) => {
     window.location.href = `/admin/academic-management/turmas/edit/${turmaId}`;
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = (turma: ITurma) => {
+    setTurmaToDelete(turma);
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!turmaToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteTurma(turmaToDelete.codigo) as any;
+      
+      // Se chegou aqui, a exclusão foi bem-sucedida
+      toast.success('Turma excluída com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: response?.tipo || 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Turma excluída com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        refetch();
+        setDeleteModalOpen(false);
+        setTurmaToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      // O erro já foi tratado e exibido pelo hook
+      console.error('Erro ao excluir turma:', error);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setTurmaToDelete(null);
+      setDeleteResult(null);
+    }
   };
 
   // Estados de loading e error
@@ -452,6 +513,13 @@ export default function TurmasPage() {
                           <DropdownMenuItem onClick={() => handleEditTurma(turma.codigo)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteClick(turma)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -726,6 +794,17 @@ export default function TurmasPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteTurmaModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        turmaItem={turmaToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
     </Container>
   );
 }
