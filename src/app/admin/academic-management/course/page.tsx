@@ -35,16 +35,19 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 
 import { WelcomeHeader } from '@/components/dashboard';
-import StatCard from '@/components/layout/StatCard';
+// import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { CourseModal } from '@/components/course/course-modal';
+import { ConfirmDeleteCourseModal } from '@/components/course/confirm-delete-course-modal';
 import { useFilterOptions } from "@/hooks/useFilterOptions"
 
-import { useCourses, useCourseStats } from '@/hooks/useCourse';
+import { useCourses, useDeleteCourse, /*useCourseStats*/ } from '@/hooks/useCourse';
 import { ICourse } from '@/types/course.types';
+import { toast } from 'react-toastify';
 
 export default function ListCoursePage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -53,7 +56,10 @@ export default function ListCoursePage() {
   
   // Hooks para gerenciamento de cursos
   const { courses = [], pagination, loading, refetch } = useCourses(currentPage, itemsPerPage, searchTerm);
-  const { stats } = useCourseStats();
+  // const { stats } = useCourseStats();
+
+  // Hook para exclusão de curso
+  const { deleteCourse, loading: deleteLoading, error: deleteError } = useDeleteCourse();
 
   const { statusOptions } = useFilterOptions();
 
@@ -61,6 +67,20 @@ export default function ListCoursePage() {
   // Estados do modal
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<ICourse | null>(null);
+  
+  // Estados do modal de exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<{
+    codigo: number;
+    designacao: string;
+    status: number;
+  } | null>(null);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean | string>;
+    info?: string;
+  } | null>(null);
+  
   // Filtros locais (aplicados nos dados já paginados da API)
   const [statusFilter, setStatusFilter] = useState("all");
   const [filteredCourses, setFilteredCourses] = useState<ICourse[]>([]);
@@ -98,6 +118,59 @@ export default function ListCoursePage() {
 
   const handleCourseModalSuccess = () => {
     refetch(); // Recarregar dados após criar/editar
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = (course: ICourse) => {
+    setCourseToDelete({
+      codigo: course.codigo,
+      designacao: course.designacao,
+      status: course.codigo_Status || 0
+    });
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!courseToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteCourse(courseToDelete.codigo) as any;
+      
+      // Se chegou aqui, a exclusão foi bem-sucedida
+      toast.success('Curso excluído com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: response?.tipo || 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Curso excluído com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        refetch();
+        setDeleteModalOpen(false);
+        setCourseToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      // O erro já foi tratado e exibido pelo hook
+      // Apenas garantir que o modal não feche
+      console.error('Erro ao excluir curso:', error);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setCourseToDelete(null);
+      setDeleteResult(null);
+    }
   };
 
   return (
@@ -261,6 +334,14 @@ export default function ListCoursePage() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(course)}
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -372,6 +453,17 @@ export default function ListCoursePage() {
         onOpenChange={setCourseModalOpen}
         course={selectedCourse}
         onSuccess={handleCourseModalSuccess}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteCourseModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        course={courseToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
       />
 
     </Container>

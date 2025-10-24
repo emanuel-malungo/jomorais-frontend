@@ -285,10 +285,13 @@ export function useDeleteCourse() {
         try {
             setLoading(true)
             setError(null)
-            await CourseService.deleteCourse(id)
+            const response = await CourseService.deleteCourse(id)
+            return response
         } catch (err: unknown) {
             const errorMessage = getErrorMessage(err, "Erro ao deletar curso");
+            setError(errorMessage)
             toast.error(errorMessage);
+            throw new Error(errorMessage)
         } finally {
             setLoading(false)
         }
