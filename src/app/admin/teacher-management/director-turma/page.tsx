@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useDiretoresTurma, useCreateDiretorTurma, useUpdateDiretorTurma } from '@/hooks/useDirectorTurma';
+import { useDiretoresTurma, useCreateDiretorTurma, useUpdateDiretorTurma, useDeleteDiretorTurma } from '@/hooks/useDirectorTurma';
 import { IDiretorTurma, IDiretorTurmaInput } from '@/types/directorTurma.types';
 import { useDocentes } from '@/hooks/useTeacher';
 import turmaService from '@/services/turma.service';
 import anoLectivoService from '@/services/anoLectivo.service';
 import Container from '@/components/layout/Container';
-import StatCard from '@/components/layout/StatCard';
+import { ConfirmDeleteDiretorTurmaModal } from '@/components/director-turma/confirm-delete-diretor-turma-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'react-toastify';
 import {
   Card,
   CardContent,
@@ -54,15 +55,13 @@ import {
   Plus,
   MoreHorizontal,
   Edit,
-  Users,
-  GraduationCap,
   ChevronLeft,
   ChevronRight,
   Loader2,
   AlertCircle,
   Save,
   X,
-  Calendar,
+  Trash2,
 } from 'lucide-react';
 import { WelcomeHeader } from '@/components/dashboard';
 
@@ -80,6 +79,7 @@ export default function DirectorTurmaPage() {
   );
   const { createDiretorTurma, loading: createLoading } = useCreateDiretorTurma();
   const { updateDiretorTurma, loading: updateLoading } = useUpdateDiretorTurma();
+  const { deleteDiretorTurma, loading: deleteLoading, error: deleteError } = useDeleteDiretorTurma();
 
   // Hooks para dados do modal
   const { docentes, loading: docentesLoading } = useDocentes(1, 100); // Carregar todos os professores
@@ -101,6 +101,11 @@ export default function DirectorTurmaPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Estados para modal de exclusão
+  const [diretorTurmaToDelete, setDiretorTurmaToDelete] = useState<IDiretorTurma | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<{ success?: boolean; message?: string } | null>(null);
+
 
   const handleEditDirector = (director: IDiretorTurma) => {
     setEditingDirector(director);
@@ -111,6 +116,40 @@ export default function DirectorTurmaPage() {
       designacao: director.designacao || "",
     });
     setShowCreateModal(true);
+  };
+
+  // Handlers para exclusão
+  const handleDeleteClick = (diretorTurma: IDiretorTurma) => {
+    setDiretorTurmaToDelete(diretorTurma);
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!diretorTurmaToDelete?.codigo) return;
+
+    try {
+      const result = await deleteDiretorTurma(diretorTurmaToDelete.codigo);
+      setDeleteResult(result);
+      toast.success('Diretor de turma removido com sucesso!');
+      
+      setTimeout(() => {
+        setDeleteModalOpen(false);
+        setDiretorTurmaToDelete(null);
+        setDeleteResult(null);
+        refetch();
+      }, 2000);
+    } catch (error) {
+      console.error('Erro ao remover diretor de turma:', error);
+    }
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setDiretorTurmaToDelete(null);
+      setDeleteResult(null);
+    }
   };
 
   // Funções para carregar dados
@@ -407,6 +446,13 @@ export default function DirectorTurmaPage() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(director)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -643,6 +689,17 @@ export default function DirectorTurmaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteDiretorTurmaModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        diretorTurmaItem={diretorTurmaToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
 
     </Container>
   );

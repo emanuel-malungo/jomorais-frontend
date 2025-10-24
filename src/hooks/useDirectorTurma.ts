@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import { directorTurmaService } from '@/services/directorTurma.service';
 import {
   IDiretorTurma,
@@ -134,15 +135,17 @@ export function useDeleteDiretorTurma() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const deleteDiretorTurma = async (id: number): Promise<boolean> => {
+  const deleteDiretorTurma = async (id: number) => {
     try {
       setLoading(true);
       setError(null);
-      await directorTurmaService.deleteDiretorTurma(id);
-      return true;
+      const response = await directorTurmaService.deleteDiretorTurma(id);
+      return response;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao excluir diretor de turma');
-      return false;
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir diretor de turma';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
