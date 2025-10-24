@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
+import { toast } from "react-toastify"
 import classService from "@/services/class.service"
 import { IClass, IClassInput, IPagination } from "@/types/class.types"
 
@@ -207,11 +208,13 @@ export const useDeleteClass = () => {
     try {
       setIsLoading(true)
       setError(null)
-      await classService.deleteClass(id)
-      return true
+      const response = await classService.deleteClass(id)
+      return response
     } catch (error: any) {
-      setError(error.message || "Erro ao deletar classe")
-      throw error
+      const errorMessage = error.message || "Erro ao deletar classe";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false)
     }

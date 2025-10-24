@@ -1,6 +1,7 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,19 +28,36 @@ import {
 
 import {
   GraduationCap, Plus,
-  MoreHorizontal, Edit,
+  MoreHorizontal, Edit, Trash2,
   Download,
   BookOpen, ChevronLeft,
   ChevronRight, CheckCircle, XCircle,
 } from 'lucide-react';
 
-import { useClassManager } from '@/hooks/useClass';
+import { useClassManager, useDeleteClass } from '@/hooks/useClass';
 import { ClassModal } from '@/components/classes/classes-modal';
+import { ConfirmDeleteClassModal } from '@/components/classes/confirm-delete-class-modal';
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { IClass } from '@/types/class.types';
 
 export default function ClassesPage() {
+  // Estados para exclusão
+  const [classToDelete, setClassToDelete] = useState<{
+    codigo: number;
+    designacao: string;
+    status: number;
+    notaMaxima?: number;
+    exame?: boolean;
+  } | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean | string>;
+    info?: string;
+  } | null>(null);
+
   const {
     classes,
     pagination,
@@ -53,15 +71,70 @@ export default function ClassesPage() {
     isModalOpen,
     handleSearch,
     handlePageChange,
-    handleLimitChange,
     openCreateModal,
     openEditModal,
     closeModal,
     refetch,
   } = useClassManager();
 
+  const { deleteClass, isLoading: deleteLoading, error: deleteError } = useDeleteClass();
+
   const handleModalSuccess = () => {
     refetch();
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = (classItem: IClass) => {
+    setClassToDelete({
+      codigo: classItem.codigo,
+      designacao: classItem.designacao,
+      status: classItem.status || 0,
+      notaMaxima: classItem.notaMaxima,
+      exame: classItem.exame
+    });
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!classToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteClass(classToDelete.codigo) as any;
+      
+      // Se chegou aqui, a exclusão foi bem-sucedida
+      toast.success('Classe excluída com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: response?.tipo || 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Classe excluída com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        refetch();
+        setDeleteModalOpen(false);
+        setClassToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      // O erro já foi tratado e exibido pelo hook
+      console.error('Erro ao excluir classe:', error);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setClassToDelete(null);
+      setDeleteResult(null);
+    }
   };
 
   return (
@@ -232,6 +305,13 @@ export default function ClassesPage() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(classe)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -341,6 +421,17 @@ export default function ClassesPage() {
         onOpenChange={closeModal}
         classItem={selectedClass}
         onSuccess={handleModalSuccess}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteClassModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        classItem={classToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
       />
 
     </Container>
