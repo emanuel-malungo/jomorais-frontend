@@ -2,19 +2,26 @@ import { useState, useEffect, useCallback } from "react";
 import usersService from "@/services/users.service";
 
 interface IUser {
-  id: string;
+  codigo: number;
   nome: string;
-  email: string;
-  perfil: string;
-  status: string;
+  user: string;
+  passe?: string;
+  codigo_Tipo_Utilizador: number;
+  estadoActual: string;
+  dataCadastro: string;
+  loginStatus?: string;
+  tb_tipos_utilizador?: {
+    codigo: number;
+    designacao: string;
+  };
 }
 
 interface IUserInput {
   nome: string;
-  email: string;
-  perfil: string;
-  status: string;
-  senha?: string;
+  user: string;
+  passe?: string;
+  codigo_Tipo_Utilizador: number;
+  estadoActual: string;
 }
 
 export function useUsersLegacy(initialPage = 1, initialLimit = 10) {
@@ -70,24 +77,13 @@ export function useCreateUser() {
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('token');
+      const response = await usersService.createLegacyUser(userData);
       
-      const response = await fetch('/api/users/legacy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(userData)
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || 'Erro ao criar usuário');
+      if (!response.success) {
+        throw new Error(response.message || 'Erro ao criar usuário');
       }
 
-      return data.data;
+      return response.data;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar usuário';
       setError(errorMessage);
@@ -105,29 +101,18 @@ export function useUpdateUser() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateUser = useCallback(async (id: string, userData: Partial<IUserInput>) => {
+  const updateUser = useCallback(async (id: string | number, userData: Partial<IUserInput>) => {
     try {
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('token');
+      const response = await usersService.updateLegacyUser(Number(id), userData);
       
-      const response = await fetch(`/api/users/legacy/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(userData)
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || 'Erro ao atualizar usuário');
+      if (!response.success) {
+        throw new Error(response.message || 'Erro ao atualizar usuário');
       }
 
-      return data.data;
+      return response.data;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar usuário';
       setError(errorMessage);
@@ -145,27 +130,18 @@ export function useDeleteUser() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const deleteUser = useCallback(async (id: string) => {
+  const deleteUser = useCallback(async (id: string | number) => {
     try {
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('token');
+      const response = await usersService.deleteLegacyUser(Number(id));
       
-      const response = await fetch(`/api/users/legacy/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || 'Erro ao excluir usuário');
+      if (!response.success) {
+        throw new Error(response.message || 'Erro ao excluir usuário');
       }
 
-      return data;
+      return response;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir usuário';
       setError(errorMessage);

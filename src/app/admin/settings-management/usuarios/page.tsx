@@ -41,7 +41,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { useUsersLegacy, useDeleteUser } from '@/hooks/useUsers';
+import { useUsersLegacy, useDeleteUser, useUpdateUser } from '@/hooks/useUsers';
 import { UserModal } from '@/components/users/users-modal';
 import { ConfirmDeleteModal } from '@/components/users/confirm-delete-modal';
 import { useToast, ToastContainer } from '@/components/ui/toast';
@@ -78,6 +78,7 @@ export default function UsuariosPage() {
 
   const { users, meta, loading, error, page, setPage, refetch } = useUsersLegacy(1, 10);
   const { deleteUser, loading: deletingUser } = useDeleteUser();
+  const { updateUser, loading: updatingUser } = useUpdateUser();
   const { success, error: showError } = useToast();
 
   const getTipoUsuarioColor = (designacao: string) => {
@@ -143,11 +144,13 @@ export default function UsuariosPage() {
   };
 
   const handleEditUser = (user: Usuario) => {
+    console.log('🔧 Editando usuário:', user);
     setSelectedUser(user);
     setUserModalOpen(true);
   };
 
   const handleDeleteUser = (user: Usuario) => {
+    console.log('🗑️ Excluindo usuário:', user);
     setUserToDelete(user);
     setDeleteModalOpen(true);
   };
@@ -344,7 +347,7 @@ export default function UsuariosPage() {
                                   <Eye className="mr-2 h-4 w-4" />
                                   Visualizar
                                 </DropdownMenuItem>
-                                {/* <DropdownMenuItem onClick={() => handleEditUser(usuario)}>
+                                <DropdownMenuItem onClick={() => handleEditUser(usuario)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Editar
                                 </DropdownMenuItem>
@@ -355,7 +358,7 @@ export default function UsuariosPage() {
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Excluir
-                                </DropdownMenuItem> */}
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
