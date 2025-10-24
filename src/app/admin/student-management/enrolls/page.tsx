@@ -39,8 +39,10 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
-import { useMatriculas, useMatriculasStatistics } from '@/hooks/useMatricula';
+import { useMatriculas, useMatriculasStatistics, useDeleteMatricula } from '@/hooks/useMatricula';
+import { ConfirmDeleteEnrollmentModal } from '@/components/enrollment/confirm-delete-enrollment-modal';
 
 import { useRouter } from 'next/navigation';
 import StatCard from '@/components/layout/StatCard';
@@ -48,6 +50,7 @@ import { WelcomeHeader } from '@/components/dashboard';
 import { calculateAge } from '@/utils/calculateAge.utils';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { toast } from 'react-toastify';
 
 export default function EnrollmentsListPage() {
   // Estados para filtros
@@ -75,6 +78,24 @@ export default function EnrollmentsListPage() {
   const router = useRouter();
   const { statusOptions, courseOptions } = useFilterOptions();
 
+  // Hook para exclusão de matrícula
+  const { deleteMatricula, loading: deleteLoading, error: deleteError } = useDeleteMatricula();
+
+  // Estados do modal de exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [enrollmentToDelete, setEnrollmentToDelete] = useState<{
+    codigo: number;
+    alunoNome: string;
+    cursoNome: string;
+    dataMatricula: string;
+    hasConfirmacoes: boolean;
+  } | null>(null);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean>;
+    info?: string;
+  } | null>(null);
+
   // Debounce para busca
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -92,6 +113,60 @@ export default function EnrollmentsListPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-AO');
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = (enrollment: typeof matriculas[0]) => {
+    setEnrollmentToDelete({
+      codigo: enrollment.codigo,
+      alunoNome: enrollment.tb_alunos.nome,
+      cursoNome: enrollment.tb_cursos.designacao,
+      dataMatricula: enrollment.data_Matricula,
+      hasConfirmacoes: !!(enrollment.tb_confirmacoes && enrollment.tb_confirmacoes.length > 0)
+    });
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!enrollmentToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteMatricula(enrollmentToDelete.codigo) as any;
+      
+      toast.success('Matrícula excluída com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: 'cascade_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Matrícula excluída com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        refetch();
+        setDeleteModalOpen(false);
+        setEnrollmentToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao excluir matrícula';
+      console.error('Erro ao excluir matrícula:', error);
+      toast.error(errorMessage);
+    }
+  };
+
+  // Handler para fechar modal
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setEnrollmentToDelete(null);
+      setDeleteResult(null);
+    }
   };
 
   return (
@@ -310,6 +385,13 @@ export default function EnrollmentsListPage() {
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(enrollment)}
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -411,6 +493,17 @@ export default function EnrollmentsListPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteEnrollmentModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        enrollment={enrollmentToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
 
     </Container>
   );

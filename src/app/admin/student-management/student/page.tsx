@@ -38,21 +38,24 @@ import {
   Phone,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 
 import StatCard from '@/components/layout/StatCard';
 import { WelcomeHeader } from '@/components/dashboard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { ConfirmDeleteStudentModal } from '@/components/student/confirm-delete-student-modal';
 
 import { useRouter } from 'next/navigation';
 import useStudent from '@/hooks/useStudent';
 import { calculateAge } from '@/utils/calculateAge.utils';
 import useFilterOptions from '@/hooks/useFilterOptions';
 import { AlunosStatistics } from '@/types/student.types';
+import { toast } from 'react-toastify';
 
 export default function ListStudentPage() {
 
-  const { students, loading, pagination, getAllStudents, getAlunosStatistics } = useStudent();
+  const { students, loading, pagination, getAllStudents, getAlunosStatistics, deleteStudent } = useStudent();
   const router = useRouter();
 
   // Usar hook de opções de filtros
@@ -67,6 +70,22 @@ export default function ListStudentPage() {
   // Estatísticas
   const [statistics, setStatistics] = useState<AlunosStatistics | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+
+  // Modal de exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<{
+    codigo: number;
+    nome: string;
+    documento?: string;
+    status: number;
+  } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean>;
+    info?: string;
+  } | null>(null);
 
     // Carregar estatísticas quando filtros mudarem
   useEffect(() => {
@@ -97,6 +116,66 @@ export default function ListStudentPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, statusFilter, courseFilter]);
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = (student: typeof students[0]) => {
+    setStudentToDelete({
+      codigo: student.codigo,
+      nome: student.nome,
+      documento: student.n_documento_identificacao,
+      status: student.codigo_Status
+    });
+    setDeleteError(null);
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return;
+
+    try {
+      setDeleteLoading(true);
+      setDeleteError(null);
+
+      // Chama o serviço de exclusão
+      const response = await deleteStudent(studentToDelete.codigo);
+      
+      // Se chegou aqui, a exclusão foi bem-sucedida
+      toast.success('Aluno excluído com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: 'cascade_delete',
+        detalhes: (response as any)?.detalhes || {},
+        info: (response as any)?.info
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        getAllStudents(currentPage, itemsPerPage, searchTerm, statusFilter, courseFilter);
+        setDeleteModalOpen(false);
+        setStudentToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error: any) {
+      console.error('Erro ao excluir aluno:', error);
+      setDeleteError(error.message || 'Erro ao excluir aluno. Tente novamente.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Handler para fechar modal
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setStudentToDelete(null);
+      setDeleteError(null);
+      setDeleteResult(null);
+    }
+  };
 
   // Os estudantes já vêm filtrados do backend
   const displayStudents = students;
@@ -306,6 +385,13 @@ export default function ListStudentPage() {
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(student)}
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -410,6 +496,17 @@ export default function ListStudentPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteStudentModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        student={studentToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
     </Container>
   );
 }
