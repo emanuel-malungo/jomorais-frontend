@@ -118,10 +118,13 @@ export function useDeleteDiscipline() {
         try {
             setLoading(true)
             setError(null)
-            await DisciplineService.deleteDiscipline(id)
+            const response = await DisciplineService.deleteDiscipline(id)
+            return response
         } catch (err: unknown) {
             const errorMessage = getErrorMessage(err, "Erro ao deletar disciplina");
+            setError(errorMessage);
             toast.error(errorMessage);
+            throw new Error(errorMessage);
         } finally {
             setLoading(false)
         }

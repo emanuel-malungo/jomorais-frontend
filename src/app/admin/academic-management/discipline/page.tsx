@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ import {
   Plus,
   MoreHorizontal,
   Edit,
+  Trash2,
   Clock,
   GraduationCap,
   ChevronLeft,
@@ -45,8 +47,9 @@ import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { DisciplineModal } from '@/components/discipline/discipline-modal';
+import { ConfirmDeleteDisciplineModal } from '@/components/discipline/confirm-delete-discipline-modal';
 
-import { useDisciplines, useDisciplineStatistics } from '@/hooks/useDiscipline';
+import { useDisciplines, useDisciplineStatistics, useDeleteDiscipline } from '@/hooks/useDiscipline';
 import { useCourses } from '@/hooks/useCourse';
 import { IDiscipline } from '@/types/discipline.types';
 
@@ -58,14 +61,29 @@ export default function ListDisciplinePage() {
   const [itemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [tipoFilter, setTipoFilter] = useState("all");
+  const [tipoFilter] = useState("all");
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedDiscipline, setSelectedDiscipline] = useState<IDiscipline | null>(null);
   const [showModal, setShowModal] = useState(false);
+  
+  // Estados para exclusão
+  const [disciplineToDelete, setDisciplineToDelete] = useState<{
+    codigo: number;
+    designacao: string;
+    status: number;
+    tb_cursos?: { designacao: string };
+  } | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean | string>;
+    info?: string;
+  } | null>(null);
 
   const { disciplines, loading, pagination, refetch } = useDisciplines(currentPage, itemsPerPage, searchTerm);
-  const { courses, loading: coursesLoading } = useCourses(1, 100);
+  const { courses } = useCourses(1, 100);
   const { statistics, loading: statsLoading } = useDisciplineStatistics();
+  const { deleteDiscipline, loading: deleteLoading, error: deleteError } = useDeleteDiscipline();
 
   const { statusOptions } = useFilterOptions();
 
@@ -113,6 +131,59 @@ export default function ListDisciplinePage() {
     refetch();
     setShowModal(false);
     setSelectedDiscipline(null);
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = (discipline: IDiscipline) => {
+    setDisciplineToDelete({
+      codigo: discipline.codigo,
+      designacao: discipline.designacao,
+      status: discipline.status || 0,
+      tb_cursos: discipline.tb_cursos
+    });
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!disciplineToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteDiscipline(disciplineToDelete.codigo) as any;
+      
+      // Se chegou aqui, a exclusão foi bem-sucedida
+      toast.success('Disciplina excluída com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: response?.tipo || 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Disciplina excluída com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        refetch();
+        setDeleteModalOpen(false);
+        setDisciplineToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      // O erro já foi tratado e exibido pelo hook
+      console.error('Erro ao excluir disciplina:', error);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setDisciplineToDelete(null);
+      setDeleteResult(null);
+    }
   };
 
 
@@ -343,6 +414,13 @@ export default function ListDisciplinePage() {
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteClick(discipline)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -400,6 +478,13 @@ export default function ListDisciplinePage() {
                             <DropdownMenuItem onClick={() => { setSelectedDiscipline(discipline); setShowModal(true) }}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(discipline)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -563,6 +648,17 @@ export default function ListDisciplinePage() {
         discipline={selectedDiscipline}
         courses={courses}
         onSuccess={handleModalSuccess}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteDisciplineModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        discipline={disciplineToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
       />
     </Container>
   );
