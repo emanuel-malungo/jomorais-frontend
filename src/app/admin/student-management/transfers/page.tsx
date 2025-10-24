@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,15 +39,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 
 import { WelcomeHeader } from '@/components/dashboard';
 // import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { ConfirmDeleteTransferModal } from '@/components/transfer/confirm-delete-transfer-modal';
 
-import { useTransfers } from '@/hooks/useTransfer';
+import { useTransfers, useDeleteTransfer } from '@/hooks/useTransfer';
 import { useStatus } from '@/hooks/useStatusControl';
 import { ITransfer } from '@/types/transfer.types';
+import { toast } from 'react-toastify';
 
 
 // Mapeamento dos motivos de transferência
@@ -97,6 +100,26 @@ export default function TransfersListPage() {
 
   // Hooks da API
   const { transfers, pagination, loading, error, refetch } = useTransfers(currentPage, itemsPerPage, searchTerm);
+
+  // Hook para exclusão de transferência
+  const { deleteTransfer, loading: deleteLoading, error: deleteError } = useDeleteTransfer();
+
+  // Estados do modal de exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [transferToDelete, setTransferToDelete] = useState<{
+    codigo: number;
+    alunoNome: string;
+    escolaDestino: string;
+    motivo: string;
+    dataTransferencia?: string;
+    isRecent: boolean;
+    diasDesdeTransferencia?: number;
+  } | null>(null);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean | string>;
+    info?: string;
+  } | null>(null);
 
 
 
@@ -161,6 +184,78 @@ export default function TransfersListPage() {
   //     return { status: 'Erro', color: 'bg-red-100 text-red-800' };
   //   }
   // };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = (transfer: ITransfer) => {
+    // Calcular dias desde a transferência
+    const hoje = new Date();
+    let dataTransf: Date | null = null;
+    let diasDesde = 0;
+    
+    if (transfer.dataTransferencia && typeof transfer.dataTransferencia === 'string') {
+      try {
+        dataTransf = new Date(transfer.dataTransferencia);
+        diasDesde = Math.floor((hoje.getTime() - dataTransf.getTime()) / (1000 * 60 * 60 * 24));
+      } catch {
+        diasDesde = 0;
+      }
+    }
+    
+    const isRecent = diasDesde <= 7; // Considera recente se foi há menos de 7 dias
+    
+    setTransferToDelete({
+      codigo: transfer.codigo,
+      alunoNome: transfer.tb_alunos.nome,
+      escolaDestino: getEscolaNome(transfer),
+      motivo: getMotivoDesignacao(transfer),
+      dataTransferencia: typeof transfer.dataTransferencia === 'string' ? transfer.dataTransferencia : undefined,
+      isRecent,
+      diasDesdeTransferencia: diasDesde
+    });
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!transferToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteTransfer(transferToDelete.codigo) as any;
+      
+      toast.success('Transferência excluída com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Transferência excluída com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        refetch();
+        setDeleteModalOpen(false);
+        setTransferToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao excluir transferência';
+      console.error('Erro ao excluir transferência:', error);
+      toast.error(errorMessage);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setTransferToDelete(null);
+      setDeleteResult(null);
+    }
+  };
 
 
 
@@ -333,7 +428,13 @@ export default function TransfersListPage() {
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(transfer)}
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -437,6 +538,18 @@ export default function TransfersListPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteTransferModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        transfer={transferToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
+
     </Container>
   );
 }

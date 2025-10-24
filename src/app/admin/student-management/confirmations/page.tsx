@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useConfirmations, useConfirmationsStatistics, useConfirmation } from '@/hooks/useConfirmation';
+import { useConfirmations, useConfirmationsStatistics, useConfirmation, useDeleteConfirmation } from '@/hooks/useConfirmation';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { ConfirmDeleteConfirmationModal } from '@/components/confirmation/confirm-delete-confirmation-modal';
 import {
   Dialog,
   DialogContent,
@@ -47,12 +48,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Loader2
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 
 import { WelcomeHeader } from '@/components/dashboard';
 import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { toast } from 'react-toastify';
 
 export default function ConfirmationsListPage() {
 
@@ -74,6 +77,24 @@ export default function ConfirmationsListPage() {
     fetchConfirmationManual,
     clearConfirmation 
   } = useConfirmation();
+
+  // Hook para exclusão de confirmação
+  const { deleteConfirmation, loading: deleteLoading, error: deleteError } = useDeleteConfirmation();
+
+  // Estados do modal de exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [confirmationToDelete, setConfirmationToDelete] = useState<{
+    codigo: number;
+    alunoNome: string;
+    turmaNome: string;
+    dataConfirmacao: string;
+    isLastConfirmation: boolean;
+  } | null>(null);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean>;
+    info?: string;
+  } | null>(null);
 
   // Usar o hook useFilterOptions para obter as opções de filtros
   const {
@@ -173,6 +194,63 @@ export default function ConfirmationsListPage() {
       age--;
     }
     return age;
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = async (confirmationItem: typeof confirmations[0]) => {
+    // Verificar se é a última confirmação (não temos essa informação no tipo atual, então assumimos false)
+    const isLast = false;
+    
+    setConfirmationToDelete({
+      codigo: confirmationItem.codigo,
+      alunoNome: confirmationItem.tb_matriculas?.tb_alunos?.nome || 'N/A',
+      turmaNome: confirmationItem.tb_turmas?.designacao || 'N/A',
+      dataConfirmacao: confirmationItem.data_Confirmacao || new Date().toISOString(),
+      isLastConfirmation: isLast
+    });
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!confirmationToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteConfirmation(confirmationToDelete.codigo) as any;
+      
+      toast.success('Confirmação excluída com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Confirmação excluída com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        fetchConfirmations();
+        setDeleteModalOpen(false);
+        setConfirmationToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao excluir confirmação';
+      console.error('Erro ao excluir confirmação:', error);
+      toast.error(errorMessage);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setConfirmationToDelete(null);
+      setDeleteResult(null);
+    }
   };
 
   return (
@@ -378,6 +456,14 @@ export default function ConfirmationsListPage() {
                             <DropdownMenuItem onClick={() => handleEditConfirmation(confirmation.codigo)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(confirmation)}
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -611,6 +697,17 @@ export default function ConfirmationsListPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteConfirmationModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        confirmation={confirmationToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
 
     </Container>
   );
