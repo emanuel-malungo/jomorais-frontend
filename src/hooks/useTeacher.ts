@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import { IDocente, IDocenteInput, IEspecialidade, IDocenteListResponse } from '@/types/teacher.types';
 import teacherService from '@/services/teacher.service';
 
@@ -157,15 +158,17 @@ export function useDeleteDocente() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const deleteDocente = async (id: number): Promise<boolean> => {
+  const deleteDocente = async (id: number) => {
     try {
       setLoading(true)
       setError(null)
-      await teacherService.deleteDocente(id)
-      return true
+      const response = await teacherService.deleteDocente(id)
+      return response
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao excluir docente')
-      return false
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir docente'
+      setError(errorMessage)
+      toast.error(errorMessage)
+      throw new Error(errorMessage)
     } finally {
       setLoading(false)
     }

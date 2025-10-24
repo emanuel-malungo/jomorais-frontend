@@ -39,6 +39,7 @@ import {
   ChevronRight,
   BookOpen,
   Eye,
+  Trash2,
 } from 'lucide-react';
 
 import StatCard from '@/components/layout/StatCard';
@@ -47,9 +48,11 @@ import FilterSearchCard from '@/components/layout/FilterSearchCard';
 
 import { IDocente } from '@/types/teacher.types';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
-import { useDocentes, useEspecialidades } from '@/hooks/useTeacher';
+import { useDocentes, useEspecialidades, useDeleteDocente } from '@/hooks/useTeacher';
+import { ConfirmDeleteDocenteModal } from '@/components/teacher/confirm-delete-docente-modal';
 
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 
 
 // Opções de especialidades serão geradas dinamicamente
@@ -65,6 +68,17 @@ export default function ListTeacherPage() {
   const router = useRouter();
 
   const { statusOptions } = useFilterOptions();
+
+  // Estados para exclusão
+  const [docenteToDelete, setDocenteToDelete] = useState<IDocente | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean | string>;
+    info?: string;
+  } | null>(null);
+
+  const { deleteDocente, loading: deleteLoading, error: deleteError } = useDeleteDocente();
 
   // Debounce do searchTerm para evitar muitas requisições
   useEffect(() => {
@@ -124,6 +138,51 @@ export default function ListTeacherPage() {
 
   const handleEditTeacher = (teacherId: number) => {
     window.location.href = `/admin/teacher-management/teacher/edit/${teacherId}`;
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = (docente: IDocente) => {
+    setDocenteToDelete(docente);
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!docenteToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteDocente(docenteToDelete.codigo) as any;
+      
+      // Se chegou aqui, a exclusão foi bem-sucedida
+      toast.success('Docente excluído com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: response?.tipo || 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Docente excluído com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      // O erro já foi tratado e exibido pelo hook
+      console.error('Erro ao excluir docente:', error);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setDocenteToDelete(null);
+      setDeleteResult(null);
+    }
   };
 
 
@@ -343,6 +402,10 @@ export default function ListTeacherPage() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteClick(teacher)} className="text-red-600">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -447,6 +510,16 @@ export default function ListTeacherPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDocenteModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        docenteItem={docenteToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
     </Container>
   );
 }
