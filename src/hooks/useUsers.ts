@@ -142,8 +142,18 @@ export function useDeleteUser() {
       }
 
       return response;
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir usuário';
+    } catch (err: any) {
+      console.error('Erro detalhado ao excluir usuário:', err);
+      
+      // Extrair mensagem de erro mais específica
+      let errorMessage = 'Erro ao excluir usuário';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -152,4 +162,43 @@ export function useDeleteUser() {
   }, []);
 
   return { deleteUser, loading, error };
+}
+
+// Hook para desativar usuário
+export function useDeactivateUser() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const deactivateUser = useCallback(async (id: string | number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await usersService.deactivateLegacyUser(Number(id));
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Erro ao desativar usuário');
+      }
+
+      return response;
+    } catch (err: any) {
+      console.error('Erro detalhado ao desativar usuário:', err);
+      
+      // Extrair mensagem de erro mais específica
+      let errorMessage = 'Erro ao desativar usuário';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { deactivateUser, loading, error };
 }

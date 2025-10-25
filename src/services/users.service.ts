@@ -69,4 +69,17 @@ export default class UsersService {
       throw error;
     }
   }
+
+  /**
+   * Desativar usuário legado
+   */
+  static async deactivateLegacyUser(id: number) {
+    try {
+      const response = await api.patch(`/api/users/legacy/${id}/deactivate`);
+      return response.data;
+    } catch (error) {
+      console.error(`Erro ao desativar usuário legado com ID ${id}:`, error);
+      throw error;
+    }
+  }
 }

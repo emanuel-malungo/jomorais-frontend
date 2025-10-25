@@ -41,9 +41,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { useUsersLegacy, useDeleteUser, useUpdateUser } from '@/hooks/useUsers';
+import { useUsersLegacy, useDeleteUser, useUpdateUser, useDeactivateUser } from '@/hooks/useUsers';
 import { UserModal } from '@/components/users/users-modal';
-import { ConfirmDeleteModal } from '@/components/users/confirm-delete-modal';
+import { AdvancedDeleteModal } from '@/components/users/advanced-delete-modal';
 import { useToast, ToastContainer } from '@/components/ui/toast';
 
 import WelcomeHeader from '@/components/layout/WelcomeHeader';
@@ -78,6 +78,7 @@ export default function UsuariosPage() {
 
   const { users, meta, loading, error, page, setPage, refetch } = useUsersLegacy(1, 10);
   const { deleteUser, loading: deletingUser } = useDeleteUser();
+  const { deactivateUser, loading: deactivatingUser } = useDeactivateUser();
   const { updateUser, loading: updatingUser } = useUpdateUser();
   const { success, error: showError } = useToast();
 
@@ -155,18 +156,33 @@ export default function UsuariosPage() {
     setDeleteModalOpen(true);
   };
 
-  const confirmDeleteUser = async () => {
+  const confirmDeleteUser = async (action: 'delete' | 'deactivate') => {
     if (!userToDelete) return;
     
     try {
-      await deleteUser(userToDelete.codigo);
-      success('Usuário excluído com sucesso!', 'O usuário foi removido do sistema.');
+      if (action === 'delete') {
+        console.log('🗑️ Tentando excluir usuário:', userToDelete.codigo);
+        await deleteUser(userToDelete.codigo);
+        success('Usuário excluído com sucesso!', 'O usuário e todos os dados relacionados foram removidos do sistema.');
+      } else {
+        console.log('🔒 Tentando desativar usuário:', userToDelete.codigo);
+        await deactivateUser(userToDelete.codigo);
+        success('Usuário desativado com sucesso!', 'O usuário foi desativado mas seus dados foram preservados.');
+      }
+      
       setDeleteModalOpen(false);
       setUserToDelete(null);
       refetch(); // Recarregar a lista
-    } catch (error) {
-      console.error('Erro ao excluir usuário:', error);
-      showError('Erro ao excluir usuário', error instanceof Error ? error.message : 'Ocorreu um erro inesperado.');
+    } catch (error: any) {
+      console.error(`❌ Erro ao ${action === 'delete' ? 'excluir' : 'desativar'} usuário:`, error);
+      
+      // Mostrar mensagem de erro mais específica
+      const errorMessage = error.message || 'Ocorreu um erro inesperado.';
+      showError(`Erro ao ${action === 'delete' ? 'excluir' : 'desativar'} usuário`, errorMessage);
+      
+      // Fechar modal mesmo com erro para permitir nova tentativa
+      setDeleteModalOpen(false);
+      setUserToDelete(null);
     }
   };
 
@@ -426,13 +442,12 @@ export default function UsuariosPage() {
         onSuccess={handleUserModalSuccess}
       />
 
-      <ConfirmDeleteModal
+      <AdvancedDeleteModal
         open={deleteModalOpen}
         onOpenChange={setDeleteModalOpen}
         onConfirm={confirmDeleteUser}
-        title="Confirmar Exclusão de Usuário"
-        description={`Tem certeza que deseja excluir o usuário "${userToDelete?.nome}"? Esta ação não pode ser desfeita.`}
-        loading={deletingUser}
+        userName={userToDelete?.nome}
+        loading={deletingUser || deactivatingUser}
       />
 
       {/* Toast Notifications */}

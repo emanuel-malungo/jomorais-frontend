@@ -31,6 +31,7 @@ import {
   TrendingUp,
   Shield,
 } from "lucide-react"
+import { usePermissions } from "@/hooks/usePermissions"
 
 export interface MenuItem {
   title: string
@@ -116,6 +117,7 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps) {
   const pathname = usePathname()
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+  const { permissions, canAccess } = usePermissions()
 
   // Auto-expandir menu que contém a página ativa
   useEffect(() => {
@@ -133,8 +135,9 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
     }
 
     const newExpanded = new Set<string>()
+    const currentVisibleItems = filterMenuItems(menuItems)
     
-    menuItems.forEach((item) => {
+    currentVisibleItems.forEach((item) => {
       if (item.children) {
         const hasActiveChild = item.children.some(child => 
           child.href && isActive(child.href)
@@ -172,6 +175,68 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
     setExpandedItems(newExpanded)
   }
 
+  // Filtrar itens do menu baseado nas permissões
+  const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
+    return items.filter(item => {
+      // Dashboard sempre visível
+      if (item.href === "/admin") return true;
+      
+      // Verificar permissões por título do menu
+      switch (item.title) {
+        case "Gestão de Alunos":
+          return permissions.canAccessStudentManagement;
+        case "Gestão Acadêmica":
+          return permissions.canAccessAcademicManagement;
+        case "Professores":
+          return permissions.canAccessAcademicManagement; // Professores faz parte da gestão acadêmica
+        case "Financeiro":
+          return permissions.canAccessFinancial;
+        case "Relatórios":
+          return permissions.canAccessReports;
+        case "Configurações":
+          return permissions.canAccessSettings;
+        default:
+          return true;
+      }
+    }).map(item => {
+      // Se o item tem filhos, filtrar os filhos também
+      if (item.children) {
+        const filteredChildren = item.children.filter(child => {
+          if (!child.href) return true;
+          
+          // Filtrar sub-itens financeiros especificamente
+          if (item.title === "Financeiro") {
+            if (child.href.includes('/pagamentos')) {
+              return permissions.canAccessPayments;
+            }
+            if (child.href.includes('/relatorios-vendas') || child.href.includes('/financial')) {
+              return permissions.canAccessFinancialReports;
+            }
+            if (child.href.includes('/saft')) {
+              return permissions.canAccessSAFT;
+            }
+            if (child.href.includes('/services') || child.href.includes('/credit-notes')) {
+              return permissions.canAccessFinancialSettings;
+            }
+          }
+          
+          return canAccess.menuItem(child.href);
+        });
+        
+        // Se não há filhos visíveis, não mostrar o item pai
+        if (filteredChildren.length === 0 && item.children.length > 0) {
+          return null;
+        }
+        
+        return { ...item, children: filteredChildren };
+      }
+      
+      return item;
+    }).filter(Boolean) as MenuItem[];
+  }
+
+  const visibleMenuItems = filterMenuItems(menuItems);
+
   const SidebarContent = () => (
     <div className={cn(
       "flex h-full flex-col bg-white shadow-lg transition-all duration-300 border-r border-gray-200",
@@ -206,7 +271,7 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <TooltipProvider delayDuration={0}>
           <div className="space-y-1">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               if (!item.children) {
                 // Item simples
                 return (

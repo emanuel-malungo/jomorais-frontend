@@ -38,6 +38,7 @@ import {
 
 import StatCard from '@/components/layout/StatCard';
 import WelcomeHeader from '@/components/layout/WelcomeHeader';
+import { UserPermissionsDebug } from '@/components/debug/UserPermissionsDebug';
 
 
 export default function Dashboard() {
@@ -63,7 +64,7 @@ export default function Dashboard() {
 
   return (
     <ProtectedRoute>
-      <Container onLogout={logout}>
+      <Container>
         {/* Welcome Header */}
         <WelcomeHeader
           iconMain={<Users className="w-8 h-8 text-white" />}
@@ -322,6 +323,11 @@ export default function Dashboard() {
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
+        </div>
+
+        {/* Debug de Permissões - Remover em produção */}
+        <div className="mt-8">
+          <UserPermissionsDebug />
         </div>
       </Container>
     </ProtectedRoute>
