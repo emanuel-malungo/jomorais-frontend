@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  X, 
   User, 
   Calendar,
   DollarSign,
@@ -12,7 +11,6 @@ import {
   CreditCard,
   Phone,
   Mail,
-  MapPin,
   GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,9 +31,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { IStudentFinancialData } from '@/hooks/usePayments';
-import { useAnosLectivos, useMesesPendentesAluno } from '@/hooks/usePaymentData';
+import { 
+  useAnosLectivos, 
+  useMesesPendentesAluno,
+  useConfirmacaoMaisRecente,
+  mapearCursoPorTurma,
+  extrairClasseDaTurma
+} from '@/hooks/usePaymentData';
+
+interface DadosConfirmacao {
+  curso: string;
+  classe: string;
+  turma: string;
+  periodo: string;
+  anoLetivo: string;
+  sala: string | null;
+}
 
 interface StudentFinancialModalProps {
   open: boolean;
@@ -53,8 +65,84 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
   loading
 }) => {
   const [selectedAnoLectivo, setSelectedAnoLectivo] = useState<number | null>(null);
+  const [dadosConfirmacao, setDadosConfirmacao] = useState<DadosConfirmacao | null>(null);
+  
   const { anosLectivos } = useAnosLectivos();
   const { mesesPendentes, mesesPagos, fetchMesesPendentes, clearMesesPendentes, refreshMesesPendentes, loading: mesesLoading, mensagem } = useMesesPendentesAluno();
+  const { confirmacao, fetchConfirmacaoMaisRecente } = useConfirmacaoMaisRecente();
+
+  // Função para extrair dados acadêmicos priorizando confirmação mais recente
+  const extractAcademicData = useCallback(() => {
+    if (!confirmacao) {
+      return {
+        curso: financialData?.aluno?.curso || 'Curso não especificado',
+        classe: 'Classe não especificada',
+        turma: financialData?.aluno?.turma || 'Turma não especificada',
+        periodo: 'Não informado',
+        anoLetivo: 'Não informado',
+        sala: null
+      };
+    }
+    
+    // Extrair estruturas da confirmação (aceitar diferentes formatos)
+    const turmaConfirmacao = confirmacao.turma || confirmacao.tb_turmas;
+    const anoLetivoConfirmacao = confirmacao.anoLetivo || confirmacao.tb_anos_lectivos;
+    
+    // Se não tiver o objeto completo do ano letivo, buscar na lista usando o código
+    let anoLetivoDesignacao = anoLetivoConfirmacao?.designacao;
+    if (!anoLetivoDesignacao && confirmacao.codigo_Ano_lectivo && anosLectivos.length > 0) {
+      const anoEncontrado = anosLectivos.find(ano => ano.codigo === confirmacao.codigo_Ano_lectivo);
+      anoLetivoDesignacao = anoEncontrado?.designacao || 'Não informado';
+    }
+    
+    if (!turmaConfirmacao?.designacao) {
+      return {
+        curso: financialData?.aluno?.curso || 'Curso não especificado',
+        classe: 'Classe não especificada',
+        turma: financialData?.aluno?.turma || 'Turma não especificada',
+        periodo: 'Não informado',
+        anoLetivo: anoLetivoDesignacao || 'Não informado',
+        sala: null
+      };
+    }
+    
+    const cursoMapeado = mapearCursoPorTurma(turmaConfirmacao.designacao);
+    const classeExtraida = extrairClasseDaTurma(turmaConfirmacao.designacao);
+    
+    const dados = {
+      curso: cursoMapeado || turmaConfirmacao.tb_cursos?.designacao || 'Curso não especificado',
+      classe: classeExtraida || turmaConfirmacao.tb_classes?.designacao || 'Classe não especificada',
+      turma: turmaConfirmacao.designacao || 'Turma não especificada',
+      periodo: turmaConfirmacao.tb_periodos?.designacao || 'Não informado',
+      anoLetivo: anoLetivoDesignacao || 'Não informado',
+      sala: turmaConfirmacao.tb_salas?.designacao || null
+    };
+    
+    console.log('✅ [StudentFinancialModal] Dados acadêmicos da confirmação:', dados);
+    
+    return dados;
+  }, [confirmacao, financialData?.aluno, anosLectivos]);
+
+  // Buscar confirmação mais recente quando o aluno mudar
+  useEffect(() => {
+    if (student?.codigo && open) {
+      fetchConfirmacaoMaisRecente(student.codigo)
+        .then(() => {
+          console.log('✅ [StudentFinancialModal] Confirmação mais recente carregada para aluno:', student.codigo);
+        })
+        .catch((error) => {
+          console.error('❌ [StudentFinancialModal] Erro ao buscar confirmação:', error);
+        });
+    }
+  }, [student?.codigo, open, fetchConfirmacaoMaisRecente]);
+
+  // Atualizar dados da confirmação quando confirmação mudar
+  useEffect(() => {
+    if (confirmacao) {
+      const dados = extractAcademicData();
+      setDadosConfirmacao(dados);
+    }
+  }, [confirmacao, extractAcademicData]);
 
   // Buscar meses pendentes quando o ano letivo mudar (otimizado com debounce)
   useEffect(() => {
@@ -75,7 +163,8 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
 
       return () => clearTimeout(timeoutId);
     }
-  }, [student?.codigo, selectedAnoLectivo]); // Removido fetchMesesPendentes das dependências
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student?.codigo, selectedAnoLectivo]);
 
   // Definir ano letivo padrão
   useEffect(() => {
@@ -89,11 +178,14 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
     if (open && student) {
       clearMesesPendentes();
       setSelectedAnoLectivo(null);
+      setDadosConfirmacao(null);
     } else if (!open) {
       clearMesesPendentes();
       setSelectedAnoLectivo(null);
+      setDadosConfirmacao(null);
     }
-  }, [open, student?.codigo]); // Removido clearMesesPendentes das dependências
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, student?.codigo]);
 
   // Escutar eventos de pagamento criado para atualizar automaticamente
   useEffect(() => {
@@ -130,16 +222,6 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
-  const getStatusColor = (status: string) => {
-    return status === 'PAGO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-  };
-
-  const getStatusIcon = (status: string) => {
-    return status === 'PAGO' ? 
-      <CheckCircle className="w-4 h-4 text-green-600" /> : 
-      <XCircle className="w-4 h-4 text-red-600" />;
   };
 
   return (
@@ -220,19 +302,6 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                         {financialData.aluno.email || 'N/A'}
                       </p>
                     </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Curso</label>
-                      <p className="font-medium flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4 text-gray-400" />
-                        {financialData.aluno.curso}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Turma</label>
-                      <p className="font-medium">{financialData.aluno.turma}</p>
-                    </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Telefone</label>
                       <p className="font-medium flex items-center gap-2">
@@ -240,6 +309,64 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                         {financialData.aluno.telefone || 'N/A'}
                       </p>
                     </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Curso</label>
+                      <p className="font-medium flex items-center gap-2">
+                        <GraduationCap className="w-4 h-4 text-gray-400" />
+                        {dadosConfirmacao?.curso || financialData.aluno.curso || 'N/A'}
+                      </p>
+                      {dadosConfirmacao?.curso && (
+                        <span className="text-xs text-blue-600">
+                          (Confirmação mais recente)
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Classe</label>
+                      <p className="font-medium">
+                        {dadosConfirmacao?.classe || 'N/A'}
+                      </p>
+                      {dadosConfirmacao?.classe && (
+                        <span className="text-xs text-blue-600">
+                          (Confirmação mais recente)
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Turma</label>
+                      <p className="font-medium">
+                        {dadosConfirmacao?.turma || financialData.aluno.turma || 'N/A'}
+                      </p>
+                      {dadosConfirmacao?.turma && (
+                        <span className="text-xs text-blue-600">
+                          (Confirmação mais recente)
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Período</label>
+                      <p className="font-medium">
+                        {dadosConfirmacao?.periodo || 'N/A'}
+                      </p>
+                    </div>
+                    {dadosConfirmacao?.sala && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Sala</label>
+                        <p className="font-medium">
+                          {dadosConfirmacao.sala}
+                        </p>
+                      </div>
+                    )}
+                    {dadosConfirmacao?.anoLetivo && dadosConfirmacao.anoLetivo !== 'Não informado' && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Ano Letivo Atual</label>
+                        <p className="font-medium">
+                          {dadosConfirmacao.anoLetivo}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
