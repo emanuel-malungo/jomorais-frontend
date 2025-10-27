@@ -539,6 +539,7 @@ export const usePaymentsList = () => {
       
       if (response.data.success) {
         setPayments(response.data.data);
+		console.log('Pagamentos recebidos:', response.data.data);
         setPagination(response.data.pagination);
       } else {
         throw new Error(response.data.message || 'Erro ao buscar pagamentos');

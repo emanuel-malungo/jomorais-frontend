@@ -89,6 +89,7 @@ const PagamentosPage = () => {
     fetchPayments
   } = usePaymentsList();
 
+
   const { generatePDF } = useGenerateInvoicePDF();
 
   // Hooks para filtros
@@ -313,7 +314,7 @@ const PagamentosPage = () => {
                           <p className="text-gray-900">{payment.tipoServico?.designacao}</p>
                         </td>
                         <td className="py-3 px-4">
-                          <p className="text-gray-900">{payment.mes}/{payment.ano}</p>
+                          <p className="text-gray-900">{payment.mes}</p>
                         </td>
                         <td className="py-3 px-4">
                           <p className="font-medium text-green-600">{formatCurrency(payment.preco)}</p>
