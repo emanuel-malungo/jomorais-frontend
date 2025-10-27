@@ -113,6 +113,12 @@ const PagamentosPage = () => {
 
   // Carregar pagamentos quando a página carrega ou filtros mudam
   useEffect(() => {
+    // Reset página quando filtros mudam (mas não quando é mudança de página)
+    if (paymentsCurrentPage !== 1 && (debouncedPaymentsSearch || selectedTipoServico !== 'all')) {
+      setPaymentsCurrentPage(1);
+      return;
+    }
+    
     const tipoServico = selectedTipoServico !== 'all' ? selectedTipoServico : undefined;
     fetchPayments(paymentsCurrentPage, 10, debouncedPaymentsSearch, tipoServico);
   // eslint-disable-next-line react-hooks/exhaustive-deps
