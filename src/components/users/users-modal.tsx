@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { UserPlus, UserCog, Eye, EyeOff } from 'lucide-react'
 import { useCreateUser, useUpdateUser } from '@/hooks/useUsers'
+import { UserType } from '@/types/auth.types'
 
 interface Usuario {
   codigo: number;
@@ -42,13 +43,15 @@ interface UserModalProps {
   onOpenChange: (open: boolean) => void
   user?: Usuario | null
   onSuccess?: () => void
+  userTypes?: UserType[]
 }
 
 export function UserModal({ 
   open, 
   onOpenChange, 
   user = null,
-  onSuccess 
+  onSuccess,
+  userTypes = []
 }: UserModalProps) {
   const [formData, setFormData] = useState({
     nome: '',
@@ -273,9 +276,19 @@ export function UserModal({
                 <SelectValue placeholder="Selecione o tipo de usuário" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">Administrador</SelectItem>
-                <SelectItem value="2">Operador</SelectItem>
-                <SelectItem value="3">Assistente Administrativo</SelectItem>
+                {userTypes.length > 0 ? (
+                  userTypes.map((tipo) => (
+                    <SelectItem key={tipo.codigo} value={tipo.codigo.toString()}>
+                      {tipo.designacao}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <>
+                    <SelectItem value="6">Administrador</SelectItem>
+                    <SelectItem value="2">Operador</SelectItem>
+                    <SelectItem value="9">Assistente Administrativo</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
             {errors.codigo_Tipo_Utilizador && (

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useTipoServico, useUpdateTipoServico, useMoedas, useCategorias } from '@/hooks/useFinancialService';
 import { ITipoServicoInput } from '@/types/financialService.types';
+import { toast } from 'react-toastify';
 
 export default function EditService() {
   const params = useParams();
@@ -75,9 +76,12 @@ export default function EditService() {
       console.log('📤 Atualizando serviço:', formData);
       const response = await updateTipoServico(serviceId, formData);
       console.log('✅ Serviço atualizado com sucesso:', response);
+      toast.success('Serviço atualizado com sucesso!');
       router.push(`/admin/finance-management/services/details/${params.id}`);
     } catch (error) {
       console.error('❌ Erro ao atualizar serviço:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar serviço';
+      toast.error(errorMessage);
     }
   };
 

@@ -171,7 +171,19 @@ export function canAccessRoute(path: string, permissions: UserPermissions): bool
     return permissions.canAccessAcademicManagement;
   }
   
-  // Rotas financeiras
+  // Rotas de gestão financeira (finance-management)
+  if (path.startsWith('/admin/finance-management')) {
+    if (path.includes('/services')) {
+      return permissions.canAccessFinancialSettings; // Serviços financeiros são configurações
+    }
+    if (path.includes('/categories')) {
+      return permissions.canAccessFinancialSettings;
+    }
+    // Para outras rotas de finance-management, verificar acesso geral
+    return permissions.canAccessFinancial;
+  }
+  
+  // Rotas financeiras (financeiro)
   if (path.startsWith('/admin/financeiro')) {
     if (path.includes('/pagamentos')) {
       return permissions.canAccessPayments;

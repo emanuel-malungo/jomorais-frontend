@@ -237,7 +237,16 @@ class FinancialServiceService {
     }
   }
 
-  static async deleteTipoServico(id: number): Promise<{ success: boolean; message: string }> {
+  static async deleteTipoServico(id: number): Promise<{ 
+    success: boolean; 
+    message: string;
+    deleted?: {
+      pagamentos: number;
+      propinasClasse: number;
+      servicosAluno: number;
+      servicosTurma: number;
+    }
+  }> {
     try {
       const response = await api.delete(`/api/financial-services/tipos-servicos/${id}`);
       return response.data;

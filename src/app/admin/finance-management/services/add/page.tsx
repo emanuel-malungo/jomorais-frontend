@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useCreateTipoServico, useMoedas, useCategorias } from '@/hooks/useFinancialService';
 import { ITipoServicoInput } from '@/types/financialService.types';
+import { toast } from 'react-toastify';
 
 export default function AddService() {
   const router = useRouter();
@@ -51,9 +52,12 @@ export default function AddService() {
       console.log('📤 Enviando dados para API:', formData);
       const response = await createTipoServico(formData);
       console.log('✅ Serviço criado com sucesso:', response);
+      toast.success('Serviço criado com sucesso!');
       router.push('/admin/finance-management/services');
     } catch (error) {
       console.error('❌ Erro ao criar serviço:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao criar serviço';
+      toast.error(errorMessage);
     }
   };
 

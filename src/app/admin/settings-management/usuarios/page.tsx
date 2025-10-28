@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Container from '@/components/layout/Container';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -42,6 +41,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useUsersLegacy, useDeleteUser, useUpdateUser, useDeactivateUser } from '@/hooks/useUsers';
+import { useUserTypes } from '@/hooks/useAuth';
 import { UserModal } from '@/components/users/users-modal';
 import { AdvancedDeleteModal } from '@/components/users/advanced-delete-modal';
 import { useToast, ToastContainer } from '@/components/ui/toast';
@@ -49,6 +49,7 @@ import { useToast, ToastContainer } from '@/components/ui/toast';
 import WelcomeHeader from '@/components/layout/WelcomeHeader';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import StatCard from '@/components/layout/StatCard';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 
 interface Usuario {
   codigo: number;
@@ -81,6 +82,10 @@ export default function UsuariosPage() {
   const { deactivateUser, loading: deactivatingUser } = useDeactivateUser();
   const { updateUser, loading: updatingUser } = useUpdateUser();
   const { success, error: showError } = useToast();
+  
+  // Buscar tipos de usuário da API
+  const { userTypes, loading: loadingUserTypes } = useUserTypes();
+  const { statusOptions } = useFilterOptions();
 
   const getTipoUsuarioColor = (designacao: string) => {
     switch (designacao.toLowerCase()) {
@@ -133,10 +138,14 @@ export default function UsuariosPage() {
     return (users as Usuario[])?.filter((u) => u.estadoActual === 'Activo').length || 0;
   };
 
-  const getTiposUsuario = () => {
-    const tipos = (users as Usuario[])?.map((u) => u.tb_tipos_utilizador?.designacao).filter(Boolean) || [];
-    return [...new Set(tipos)];
-  };
+  // Usar tipos de usuário da API ao invés de extrair dos usuários
+  const tipoUsuarioOptions = [
+    { value: "all", label: "Todos os Tipos" },
+    ...userTypes.map((tipo) => ({ 
+      value: tipo.designacao, 
+      label: tipo.designacao 
+    }))
+  ];
 
   // Funções para manipular modais
   const handleNewUser = () => {
@@ -145,13 +154,11 @@ export default function UsuariosPage() {
   };
 
   const handleEditUser = (user: Usuario) => {
-    console.log('🔧 Editando usuário:', user);
     setSelectedUser(user);
     setUserModalOpen(true);
   };
 
   const handleDeleteUser = (user: Usuario) => {
-    console.log('🗑️ Excluindo usuário:', user);
     setUserToDelete(user);
     setDeleteModalOpen(true);
   };
@@ -161,11 +168,9 @@ export default function UsuariosPage() {
     
     try {
       if (action === 'delete') {
-        console.log('🗑️ Tentando excluir usuário:', userToDelete.codigo);
         await deleteUser(userToDelete.codigo);
         success('Usuário excluído com sucesso!', 'O usuário e todos os dados relacionados foram removidos do sistema.');
       } else {
-        console.log('🔒 Tentando desativar usuário:', userToDelete.codigo);
         await deactivateUser(userToDelete.codigo);
         success('Usuário desativado com sucesso!', 'O usuário foi desativado mas seus dados foram preservados.');
       }
@@ -259,21 +264,14 @@ export default function UsuariosPage() {
             label: "Tipo de Usuário",
             value: selectedTipoUsuario,
             onChange: setSelectedTipoUsuario,
-            options: [
-              { value: "all", label: "Todos os Tipos" },
-              ...getTiposUsuario().map((tipo) => ({ value: tipo as string, label: tipo as string }))
-            ],
+            options: tipoUsuarioOptions,
             width: "w-48"
           },
           {
             label: "Status",
             value: selectedStatus,
             onChange: setSelectedStatus,
-            options: [
-              { value: "all", label: "Todos os Status" },
-              { value: "Activo", label: "Ativo" },
-              { value: "Desactivo", label: "Inativo" }
-            ],
+            options: statusOptions,
             width: "w-48"
           }
         ]}
@@ -440,6 +438,7 @@ export default function UsuariosPage() {
         onOpenChange={setUserModalOpen}
         user={selectedUser}
         onSuccess={handleUserModalSuccess}
+        userTypes={userTypes}
       />
 
       <AdvancedDeleteModal

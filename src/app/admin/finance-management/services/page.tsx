@@ -30,13 +30,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -44,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+
 import {
   FileText,
   Plus,
@@ -53,16 +47,17 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Activity,
   CreditCard,
   Receipt,
   Settings,
   DollarSign,
   Search,
+  Loader2,
 } from 'lucide-react';
 import { useTiposServicos, useDeleteTipoServico, useRelatorioFinanceiro } from '@/hooks/useFinancialService';
 import { ITipoServicoFilter, TipoServicoEnum, StatusServicoEnum } from '@/types/financialService.types';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 
 // Opções de filtros
 const tipoServicoOptions = [
@@ -105,83 +100,28 @@ export default function ServicesPage() {
     setCurrentPage(1);
   }, [debouncedSearchTerm, tipoServicoFilter, statusFilter]);
 
-  // Filtros para API - Temporariamente desabilitados devido a erro 400
+  // Filtros para API - ATIVADOS com busca
   const filters = useMemo((): ITipoServicoFilter => ({
-    // search: debouncedSearchTerm || undefined,
-    // tipoServico: tipoServicoFilter !== "all" ? tipoServicoFilter : undefined,
-    // status: statusFilter !== "all" ? statusFilter : undefined,
+    search: debouncedSearchTerm || undefined,
+    tipoServico: tipoServicoFilter !== "all" ? tipoServicoFilter : undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
   }), [debouncedSearchTerm, tipoServicoFilter, statusFilter]);
 
-  // Hooks da API - Carregar TODOS os serviços para pesquisa local
-  const { tiposServicos: allTiposServicos, loading, error, pagination, refetch } = useTiposServicos(1, 1000, filters); // Carregar até 1000 serviços
+  // Hooks da API - Carregar serviços com filtros
+  const { tiposServicos: allTiposServicos, loading, error, pagination, refetch } = useTiposServicos(currentPage, itemsPerPage, filters);
+  const { relatorio } = useRelatorioFinanceiro();
+  const { deleteTipoServico } = useDeleteTipoServico();
 
-  // Filtros locais para pesquisa em TODOS os dados carregados
-  const filteredTiposServicos = useMemo(() => {
-    if (!allTiposServicos) return [];
-    
-    let filtered = [...allTiposServicos];
-    
-    // Filtro por busca
-    if (debouncedSearchTerm) {
-      const searchLower = debouncedSearchTerm.toLowerCase();
-      filtered = filtered.filter(servico => 
-        servico.designacao?.toLowerCase().includes(searchLower) ||
-        servico.descricao?.toLowerCase().includes(searchLower) ||
-        servico.tipoServico?.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    // Filtro por tipo de serviço
-    if (tipoServicoFilter !== "all") {
-      filtered = filtered.filter(servico => 
-        servico.tipoServico === tipoServicoFilter
-      );
-    }
-    
-    // Filtro por status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(servico => 
-        servico.status === statusFilter
-      );
-    }
-    
-    return filtered;
-  }, [allTiposServicos, debouncedSearchTerm, tipoServicoFilter, statusFilter]);
-
-  // Paginação local dos resultados filtrados
-  const paginatedTiposServicos = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredTiposServicos.slice(startIndex, endIndex);
-  }, [filteredTiposServicos, currentPage, itemsPerPage]);
-
-  // Cálculo da paginação local
-  const localPagination = useMemo(() => {
-    const totalItems = filteredTiposServicos.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    return {
-      currentPage,
-      totalPages,
-      totalItems,
-      itemsPerPage,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1
-    };
-  }, [filteredTiposServicos.length, currentPage, itemsPerPage]);
-  const { relatorio, loading: relatorioLoading } = useRelatorioFinanceiro();
-  const { deleteTipoServico, loading: deleteLoading } = useDeleteTipoServico();
-
-  // Debug logs
+  // Debug logs (removido filteredTiposServicos para evitar aviso)
   useEffect(() => {
     console.log('🔍 Filtros atuais:', filters);
     console.log('📊 Dados carregados:', { 
       allTiposServicos: allTiposServicos?.length || 0, 
-      filteredTiposServicos: filteredTiposServicos?.length || 0,
       loading, 
       error,
       pagination 
     });
-  }, [filters, allTiposServicos, filteredTiposServicos, loading, error, pagination]);
+  }, [filters, allTiposServicos, loading, error, pagination]);
 
   // Funções de navegação
   const handleViewService = (serviceId: number) => {
@@ -201,26 +141,44 @@ export default function ServicesPage() {
     if (!deletingServiceId) return;
     
     try {
-      await deleteTipoServico(deletingServiceId);
+      const response = await deleteTipoServico(deletingServiceId);
+      
+      // Só continua se a resposta for bem-sucedida
+      if (!response || !response.success) {
+        throw new Error(response?.message || 'Erro ao excluir serviço');
+      }
+      
+      // Verificar se há informações sobre dependências deletadas
+      const deleted = response?.deleted;
+      if (deleted && (deleted.pagamentos > 0 || deleted.propinasClasse > 0 || deleted.servicosAluno > 0 || deleted.servicosTurma > 0)) {
+        const dependenciasMsg = [];
+        if (deleted.pagamentos > 0) dependenciasMsg.push(`${deleted.pagamentos} pagamento(s)`);
+        if (deleted.propinasClasse > 0) dependenciasMsg.push(`${deleted.propinasClasse} propina(s)`);
+        if (deleted.servicosAluno > 0) dependenciasMsg.push(`${deleted.servicosAluno} serviço(s) de aluno`);
+        if (deleted.servicosTurma > 0) dependenciasMsg.push(`${deleted.servicosTurma} serviço(s) de turma`);
+        
+        toast.success(`Serviço excluído com sucesso! Também foram removidos: ${dependenciasMsg.join(', ')}`);
+      } else {
+        toast.success('Serviço excluído com sucesso!');
+      }
+      
       setShowDeleteModal(false);
       setDeletingServiceId(null);
       refetch(); // Recarregar a lista
     } catch (error) {
       console.error('Erro ao excluir serviço:', error);
+      const errorWithResponse = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = errorWithResponse.response?.data?.message || errorWithResponse.message || 'Erro ao excluir serviço';
+      toast.error(errorMessage);
+      // NÃO fecha o modal em caso de erro para o usuário ver o que aconteceu
     }
   };
 
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
-    setDeletingServiceId(null);
-  };
+  const deletingService = allTiposServicos?.find(s => s.codigo === deletingServiceId);
 
 
   // Estatísticas dos serviços baseadas na API
-  const totalServicos = pagination?.totalItems || 0;
   const servicosAtivos = relatorio?.resumo?.servicosAtivos || 0;
-  const servicosComMulta = relatorio?.resumo?.servicosComMulta || 0;
-  const servicosComDesconto = relatorio?.resumo?.servicosComDesconto || 0;
   
   // Valor temporário para totalArrecadado (até API ser atualizada)
   // Usando um valor mockado baseado no número de serviços ativos
@@ -245,11 +203,6 @@ export default function ServicesPage() {
     }).format(value);
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Não pago";
-    return new Date(dateString).toLocaleDateString('pt-AO');
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case StatusServicoEnum.ACTIVO:
@@ -260,35 +213,6 @@ export default function ServicesPage() {
         return "bg-gray-100 text-gray-800";
     }
   };
-
-  // Estados de interface
-  if (loading) {
-    return (
-      <Container>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Carregando serviços...</p>
-          </div>
-        </div>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container>
-        <div className="text-center py-12">
-          <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Erro ao carregar serviços</h2>
-          <p className="text-muted-foreground mb-6">{error}</p>
-          <Button onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        </div>
-      </Container>
-    );
-  }
 
   return (
     <Container>
@@ -370,17 +294,7 @@ export default function ServicesPage() {
         ]}
       />
 
-      {/* Info sobre filtros */}
-      {(debouncedSearchTerm || tipoServicoFilter !== "all" || statusFilter !== "all") && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            🔍 Pesquisa em TODOS os serviços carregados • 
-            <span className="font-semibold ml-1">
-              {filteredTiposServicos.length} de {allTiposServicos?.length || 0} resultados
-            </span>
-          </p>
-        </div>
-      )}
+
 
       {/* Tabela de Serviços */}
       <Card>
@@ -396,6 +310,30 @@ export default function ServicesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Erro ao carregar */}
+          {error && (
+            <div className="text-center py-12">
+              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-foreground mb-2">Erro ao carregar serviços</h2>
+              <p className="text-muted-foreground mb-6">{error}</p>
+              <Button onClick={() => refetch()}>
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+
+          {/* Loading na tabela */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-[#F9CD1D] mx-auto mb-4" />
+                <p className="text-muted-foreground">Carregando serviços...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Tabela */}
+          {!loading && !error && (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -412,9 +350,9 @@ export default function ServicesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedTiposServicos?.length === 0 ? (
+                {allTiposServicos?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
+                    <TableCell colSpan={9} className="text-center py-12">
                       <div className="flex flex-col items-center space-y-4">
                         <Search className="h-12 w-12 text-muted-foreground" />
                         <div>
@@ -442,7 +380,7 @@ export default function ServicesPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedTiposServicos?.map((service) => (
+                  allTiposServicos?.map((service) => (
                   <TableRow key={service.codigo}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -521,22 +459,20 @@ export default function ServicesPage() {
               </TableBody>
             </Table>
           </div>
+          )}
 
           {/* Paginação */}
-          {localPagination && localPagination.totalPages > 1 && (
+          {!loading && !error && pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
               <div className="text-sm text-gray-500">
-                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, localPagination.totalItems)} de {localPagination.totalItems} serviços
-                {(debouncedSearchTerm || tipoServicoFilter !== "all" || statusFilter !== "all") && (
-                  <span className="text-[#3B6C4D] font-medium"> (filtrados de {allTiposServicos?.length || 0} total)</span>
-                )}
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, pagination.totalItems)} de {pagination.totalItems} serviços
               </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
+                  disabled={!pagination.hasPreviousPage}
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Anterior
@@ -544,7 +480,7 @@ export default function ServicesPage() {
                 <div className="flex items-center space-x-1">
                   {(() => {
                     const maxPagesToShow = 5;
-                    const totalPages = localPagination.totalPages;
+                    const totalPages = pagination.totalPages;
                     const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
                     const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
                     const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
@@ -593,7 +529,7 @@ export default function ServicesPage() {
                           key={totalPages}
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(localPagination.totalPages)}
+                          onClick={() => setCurrentPage(pagination.totalPages)}
                         >
                           {totalPages}
                         </Button>
@@ -606,8 +542,8 @@ export default function ServicesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, localPagination.totalPages))}
-                  disabled={!localPagination.hasNextPage}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                  disabled={!pagination.hasNextPage}
                 >
                   Próximo
                   <ChevronRight className="h-4 w-4" />
@@ -617,6 +553,49 @@ export default function ServicesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o serviço <strong>{deletingService?.designacao}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-amber-600">⚠️ Atenção:</strong> Esta ação não pode ser desfeita!
+            </p>
+            <p className="text-sm text-muted-foreground">
+              O serviço será excluído <strong>juntamente com todas as suas dependências</strong>, incluindo:
+            </p>
+            <ul className="text-sm text-muted-foreground list-disc list-inside ml-2 space-y-1">
+              <li>Serviços de turma associados</li>
+              <li>Serviços de aluno associados</li>
+              <li>Propinas de classe associadas</li>
+              <li>Pagamentos relacionados</li>
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setDeletingServiceId(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+            >
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }
