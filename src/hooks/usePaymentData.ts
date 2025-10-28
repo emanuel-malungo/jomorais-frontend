@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import api from '@/utils/api.utils';
 
 export interface IAnoLectivo {
@@ -389,8 +389,28 @@ export const useConfirmacaoMaisRecente = () => {
   const [confirmacao, setConfirmacao] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Usar useRef para cache para evitar dependências circulares
+  const cacheRef = useRef<{ alunoId: number | null; data: any }>({ 
+    alunoId: null, 
+    data: null 
+  });
 
-  const fetchConfirmacaoMaisRecente = async (alunoId: number) => {
+  const fetchConfirmacaoMaisRecente = useCallback(async (alunoId: number) => {
+    // Verificar cache para evitar requisições desnecessárias
+    if (cacheRef.current.alunoId === alunoId && cacheRef.current.data) {
+      console.log(`🔄 [useConfirmacaoMaisRecente] Cache hit para aluno ${alunoId}`);
+      setConfirmacao(cacheRef.current.data);
+      return cacheRef.current.data;
+    }
+
+    // Verificar se já está carregando para o mesmo aluno
+    if (loading) {
+      console.log(`⏳ [useConfirmacaoMaisRecente] Já carregando para aluno ${alunoId}, ignorando...`);
+      return null;
+    }
+
+    console.log(`🔍 [useConfirmacaoMaisRecente] Fazendo nova requisição para aluno ${alunoId}`);
     setLoading(true);
     setError(null);
     
@@ -452,6 +472,8 @@ export const useConfirmacaoMaisRecente = () => {
         
         const confirmacaoMaisRecente = confirmacoesSorted[0];
         
+        // Atualizar cache e estado
+        cacheRef.current = { alunoId, data: confirmacaoMaisRecente };
         setConfirmacao(confirmacaoMaisRecente);
         return confirmacaoMaisRecente;
       } else {
@@ -466,13 +488,20 @@ export const useConfirmacaoMaisRecente = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Sem dependências para evitar recriação
+
+  const clearCache = useCallback(() => {
+    cacheRef.current = { alunoId: null, data: null };
+    setConfirmacao(null);
+    setError(null);
+  }, []);
 
   return {
     confirmacao,
     loading,
     error,
-    fetchConfirmacaoMaisRecente
+    fetchConfirmacaoMaisRecente,
+    clearCache
   };
 };
 
@@ -952,7 +981,7 @@ export const useValidateBordero = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const validateBordero = async (bordero: string, excludeId?: number) => {
+  const validateBordero = useCallback(async (bordero: string, excludeId?: number) => {
     setLoading(true);
     setError(null);
     
@@ -974,7 +1003,7 @@ export const useValidateBordero = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Sem dependências para evitar recriação
 
   return {
     validateBordero,

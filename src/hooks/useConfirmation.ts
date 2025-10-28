@@ -46,11 +46,11 @@ export function useConfirmations(
     } finally {
       setLoading(false)
     }
-  }, [page, limit, search, status, anoLectivo])
+  }, [])
 
   useEffect(() => {
     fetchConfirmations()
-  }, [fetchConfirmations])
+  }, [])
 
   return { confirmations, pagination, loading, error, refetch: fetchConfirmations }
 }
@@ -82,7 +82,7 @@ export function useConfirmation(id?: number) {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [])
 
   // Fetch manual para modal - não automático
   const fetchConfirmationManual = useCallback(async (confirmationId: number) => {
@@ -111,7 +111,7 @@ export function useConfirmation(id?: number) {
     if (id) {
       fetchConfirmation()
     }
-  }, [fetchConfirmation, id])
+  }, [id])
 
   return { 
     confirmation, 

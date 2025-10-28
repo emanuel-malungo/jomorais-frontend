@@ -34,11 +34,11 @@ export function usePagamentosPrincipais(page: number = 1, limit: number = 10, fi
     } finally {
       setLoading(false);
     }
-  }, [page, limit, filters]);
+  }, []);
 
   useEffect(() => {
     fetchPagamentos();
-  }, [fetchPagamentos]);
+  }, []);
 
   return {
     pagamentos,
@@ -65,11 +65,11 @@ export function usePagamentoPrincipal(id: number) {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, []);
 
   useEffect(() => {
     fetchPagamento();
-  }, [fetchPagamento]);
+  }, []);
 
   return {
     pagamento,
@@ -169,11 +169,11 @@ export function useDetalhesPagamento(page: number = 1, limit: number = 10, filte
     } finally {
       setLoading(false);
     }
-  }, [page, limit, filters]);
+  }, []);
 
   useEffect(() => {
     fetchDetalhes();
-  }, [fetchDetalhes]);
+  }, []);
 
   return {
     detalhes,
@@ -208,7 +208,7 @@ export function useDashboardFinanceiro() {
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+  }, []);
 
   return {
     dashboard,
@@ -274,11 +274,11 @@ export function useEstatisticasPagamentos(periodo: string = '30') {
     } finally {
       setLoading(false);
     }
-  }, [periodo]);
+  }, []);
 
   useEffect(() => {
     fetchEstatisticas();
-  }, [fetchEstatisticas]);
+  }, []);
 
   return {
     estatisticas,

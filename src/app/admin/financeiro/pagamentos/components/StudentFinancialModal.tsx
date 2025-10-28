@@ -69,7 +69,7 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
   
   const { anosLectivos } = useAnosLectivos();
   const { mesesPendentes, mesesPagos, fetchMesesPendentes, clearMesesPendentes, refreshMesesPendentes, loading: mesesLoading, mensagem } = useMesesPendentesAluno();
-  const { confirmacao, fetchConfirmacaoMaisRecente } = useConfirmacaoMaisRecente();
+  const { confirmacao, fetchConfirmacaoMaisRecente, clearCache } = useConfirmacaoMaisRecente();
 
   // Função para extrair dados acadêmicos priorizando confirmação mais recente
   const extractAcademicData = useCallback(() => {
@@ -133,8 +133,12 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
         .catch((error) => {
           console.error('❌ [StudentFinancialModal] Erro ao buscar confirmação:', error);
         });
+    } else if (!open) {
+      // Limpar cache quando o modal fechar
+      clearCache();
+      clearMesesPendentes();
     }
-  }, [student?.codigo, open, fetchConfirmacaoMaisRecente]);
+  }, [student?.codigo, open, fetchConfirmacaoMaisRecente, clearCache, clearMesesPendentes]);
 
   // Atualizar dados da confirmação quando confirmação mudar
   useEffect(() => {
@@ -142,7 +146,7 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
       const dados = extractAcademicData();
       setDadosConfirmacao(dados);
     }
-  }, [confirmacao, extractAcademicData]);
+  }, [confirmacao]);
 
   // Buscar meses pendentes quando o ano letivo mudar (otimizado com debounce)
   useEffect(() => {

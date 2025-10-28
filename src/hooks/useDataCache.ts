@@ -105,7 +105,7 @@ export function useDataCache<T>(
       }
       fetchingRef.current = false;
     }
-  }, [fetchFn, getCachedData, setCachedData]);
+  }, []);
 
   // Invalidar cache
   const invalidateCache = useCallback(() => {
@@ -120,7 +120,7 @@ export function useDataCache<T>(
   // Revalidar (forçar nova busca)
   const revalidate = useCallback(() => {
     return fetchData(true);
-  }, [fetchData]);
+  }, []);
 
   // Carregar dados ao montar o componente
   useEffect(() => {
@@ -133,7 +133,7 @@ export function useDataCache<T>(
     return () => {
       isMountedRef.current = false;
     };
-  }, [enabled, fetchData]);
+  }, [enabled]);
 
   return {
     data,

@@ -98,11 +98,11 @@ export function useAllCourses(search = "", includeArchived = false) {
             }
             fetchingRef.current = false;
         }
-    }, [search, includeArchived])
+    }, [])
 
     useEffect(() => {
         fetchAllCourses()
-    }, [fetchAllCourses])
+    }, [])
 
     return { courses, loading, error, refetch: fetchAllCourses }
 }

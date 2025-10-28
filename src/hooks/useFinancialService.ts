@@ -55,11 +55,11 @@ export function useTiposServicos(page: number = 1, limit: number = 10, filters?:
     } finally {
       setLoading(false);
     }
-  }, [page, limit, filters]);
+  }, []);
 
   useEffect(() => {
     fetchTiposServicos();
-  }, [fetchTiposServicos]);
+  }, []);
 
   return {
     tiposServicos,
@@ -86,13 +86,13 @@ export function useTipoServico(id: number) {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, []);
 
   useEffect(() => {
     if (id) {
       fetchTipoServico();
     }
-  }, [fetchTipoServico, id]);
+  }, [id]);
 
   return {
     tipoServico,

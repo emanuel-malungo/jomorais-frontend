@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   X, 
   Search, 
@@ -93,7 +93,7 @@ interface FormData {
 
 const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) => {
   // Função auxiliar para extrair dados acadêmicos priorizando confirmação mais recente
-  const extractAcademicData = (alunoCompleto: any) => {
+  const extractAcademicData = useCallback((alunoCompleto: any) => {
     console.log('🔍 [extractAcademicData] Extraindo dados acadêmicos:', {
       temDadosAcademicos: !!alunoCompleto?.dadosAcademicos,
       isFromConfirmacao: alunoCompleto?.dadosAcademicos?.isFromConfirmacao,
@@ -178,7 +178,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       isFromConfirmacao: false,
       sala: alunoCompleto?.sala || null
     };
-  };
+  }, []);
 
   // Estados do formulário
   const [formData, setFormData] = useState<FormData>({
@@ -212,6 +212,9 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
 
   // Debounce para busca de alunos
   const debouncedAlunoSearch = useDebounce(alunoSearch, 500);
+  
+  // Debounce para validação de borderô
+  const debouncedBordero = useDebounce(formData.numeroBordero, 800);
 
   // Hooks
   const { createPayment, loading: createLoading, error: createError } = useCreatePayment();
@@ -226,6 +229,14 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const { tiposServico, loading: tiposServicoLoading } = useTiposServico();
   const { confirmacao, fetchConfirmacaoMaisRecente, loading: confirmacaoLoading } = useConfirmacaoMaisRecente();
   const { getCurrentUser } = useFuncionarios();
+
+  // Memoizar dados acadêmicos para evitar recálculos desnecessários
+  const dadosAcademicos = useMemo(() => {
+    if (alunoCompleto) {
+      return extractAcademicData(alunoCompleto);
+    }
+    return null;
+  }, [alunoCompleto]);
 
   // Buscar alunos quando o termo de busca muda
   useEffect(() => {
@@ -248,6 +259,29 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       }
     }
   }, [anosLectivos, anoLectivoSelecionado]);
+
+  // Validar borderô automaticamente quando digitado
+  useEffect(() => {
+    const validateBorderoAsync = async () => {
+      if (debouncedBordero && debouncedBordero.length === 9) {
+        try {
+          setBorderoError('');
+          await validateBordero(debouncedBordero);
+          // Se chegou até aqui, o borderô é válido
+        } catch (error) {
+          setBorderoError((error as Error).message);
+        }
+      } else if (debouncedBordero && debouncedBordero.length > 0 && debouncedBordero.length < 9) {
+        setBorderoError('Número deve conter exatamente 9 dígitos');
+      } else if (!debouncedBordero) {
+        setBorderoError('');
+      }
+    };
+
+    if (isDeposito) {
+      validateBorderoAsync();
+    }
+  }, [debouncedBordero, isDeposito, validateBordero]);
 
   // Resetar formulário quando modal abre/fecha
   useEffect(() => {
@@ -530,7 +564,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     } else {
       console.log('❌ [FLUXO 1] Não foi possível extrair ano da turma');
     }
-  }, [selectedAluno?.codigo, confirmacao?.turma?.designacao, confirmacao?.tb_turmas?.designacao, confirmacao?.turma, anosLectivos.length, confirmacao?.codigo]);
+  }, [selectedAluno?.codigo, anosLectivos.length]);
 
   // Atualizar preço quando tipo de serviço da turma é carregado
   // Seleção automática do melhor tipo de serviço baseado no ano letivo
@@ -551,6 +585,12 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
         anoLectivoSelecionado: !!anoLectivoSelecionado,
         tiposServicoLength: tiposServico.length
       });
+      return;
+    }
+
+    // Evitar execução desnecessária se já temos o tipo de serviço correto
+    if (formData.codigo_Tipo_Servico && tipoServicoTurma?.codigo === formData.codigo_Tipo_Servico) {
+      console.log('✅ [FLUXO 2] Tipo de serviço já está correto, pulando busca');
       return;
     }
 
@@ -635,7 +675,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
         preco: ''
       }));
     }
-  }, [selectedAluno?.codigo, anoLectivoSelecionado?.codigo, tiposServico.length, tipoServicoTurma?.codigo, confirmacao?.codigo, confirmacao?.turma?.designacao, confirmacao?.tb_turmas?.designacao, confirmacao?.turma]);
+  }, [selectedAluno?.codigo, anoLectivoSelecionado?.codigo, tiposServico.length, tipoServicoTurma?.codigo]);
 
   // Handler para mudança de forma de pagamento
   const handleFormaPagamentoChange = (formaPagamentoId: string) => {
@@ -663,10 +703,8 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
     }
   };
 
-  // Handler para validação de borderô em tempo real
-  const handleBorderoChange = async (value: string) => {
-    setBorderoError('');
-    
+  // Handler para entrada de borderô (validação será feita pelo useEffect)
+  const handleBorderoChange = (value: string) => {
     // Permitir apenas dígitos e máximo 9 caracteres
     const numericValue = value.replace(/\D/g, '').slice(0, 9);
     
@@ -674,18 +712,6 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       ...prev,
       numeroBordero: numericValue
     }));
-    
-    // Validar quando tiver 9 dígitos
-    if (numericValue.length === 9) {
-      try {
-        await validateBordero(numericValue);
-        setBorderoError('');
-      } catch (error) {
-        setBorderoError((error as Error).message);
-      }
-    } else if (numericValue.length > 0) {
-      setBorderoError('Número deve conter exatamente 9 dígitos');
-    }
   };
 
   const validateForm = (): string | null => {
@@ -717,6 +743,8 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       if (!formData.tipoConta) return 'Selecione o banco/conta';
       if (!formData.numeroBordero) return 'Informe o número do borderô/referência';
       if (!/^\d{9}$/.test(formData.numeroBordero)) return 'Número do borderô/referência deve conter exatamente 9 dígitos';
+      if (borderoError) return 'Corrija o erro no número do borderô antes de continuar';
+      if (borderoValidating) return 'Aguarde a validação do número do borderô';
     }
     
     return null;
@@ -1171,76 +1199,73 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                       </div>
 
                       {/* Dados Acadêmicos Compactos */}
-                      {alunoCompleto && (() => {
-                        const dadosAcademicos = extractAcademicData(alunoCompleto);
-                        return (
-                          <div className="border-t border-green-200 pt-2">
-                            <div className="text-xs space-y-1">
-                              {/* Indicador de fonte dos dados */}
-                              {dadosAcademicos.isFromConfirmacao && (
-                                <div className="flex items-center gap-1 mb-1">
-                                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
-                                    ✅ Confirmação Mais Recente
-                                  </Badge>
-                                  <span className="text-xs text-blue-600">
-                                    {dadosAcademicos.anoLetivo}
-                                  </span>
-                                </div>
-                              )}
-                              
-                              {/* Linha 1: Curso e Classe */}
-                              <div className="flex justify-between">
-                                <span className="text-green-600">
-                                  <strong>Curso:</strong> {dadosAcademicos.curso}
-                                </span>
-                                <span className="text-green-600">
-                                  <strong>Classe:</strong> {dadosAcademicos.classe}
+                      {alunoCompleto && dadosAcademicos && (
+                        <div className="border-t border-green-200 pt-2">
+                          <div className="text-xs space-y-1">
+                            {/* Indicador de fonte dos dados */}
+                            {dadosAcademicos.isFromConfirmacao && (
+                              <div className="flex items-center gap-1 mb-1">
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                                  ✅ Confirmação Mais Recente
+                                </Badge>
+                                <span className="text-xs text-blue-600">
+                                  {dadosAcademicos.anoLetivo}
                                 </span>
                               </div>
-                              
-                              {/* Linha 2: Turma e Período */}
-                              <div className="flex justify-between">
+                            )}
+                            
+                            {/* Linha 1: Curso e Classe */}
+                            <div className="flex justify-between">
+                              <span className="text-green-600">
+                                <strong>Curso:</strong> {dadosAcademicos.curso}
+                              </span>
+                              <span className="text-green-600">
+                                <strong>Classe:</strong> {dadosAcademicos.classe}
+                              </span>
+                            </div>
+                            
+                            {/* Linha 2: Turma e Período */}
+                            <div className="flex justify-between">
+                              <span className="text-green-600">
+                                <strong>Turma:</strong> {dadosAcademicos.turma}
+                              </span>
+                              {dadosAcademicos.periodo !== 'Não informado' && (
                                 <span className="text-green-600">
-                                  <strong>Turma:</strong> {dadosAcademicos.turma}
+                                  <strong>Período:</strong> {dadosAcademicos.periodo}
                                 </span>
-                                {dadosAcademicos.periodo !== 'Não informado' && (
-                                  <span className="text-green-600">
-                                    <strong>Período:</strong> {dadosAcademicos.periodo}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Linha 3: Dados Pessoais */}
-                              <div className="flex justify-between pt-1 border-t border-green-100">
-                                {alunoCompleto?.dataNascimento && (
-                                  <span className="text-green-600">
-                                    <strong>Nascimento:</strong> {new Date(alunoCompleto.dataNascimento).toLocaleDateString('pt-AO')}
-                                  </span>
-                                )}
-                                <div className="flex gap-3">
-                                  {alunoCompleto?.sexo && (
-                                    <span className="text-green-600">
-                                      <strong>Sexo:</strong> {alunoCompleto.sexo}
-                                    </span>
-                                  )}
-                                  {alunoCompleto?.telefone && (
-                                    <span className="text-green-600">
-                                      <strong>Tel:</strong> {alunoCompleto.telefone}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Linha 4: Encarregado (se houver) */}
-                              {alunoCompleto?.tb_encarregados?.[0]?.nome && (
-                                <div className="text-green-600">
-                                  <strong>Encarregado:</strong> {alunoCompleto.tb_encarregados[0].nome}
-                                </div>
                               )}
                             </div>
+
+                            {/* Linha 3: Dados Pessoais */}
+                            <div className="flex justify-between pt-1 border-t border-green-100">
+                              {alunoCompleto?.dataNascimento && (
+                                <span className="text-green-600">
+                                  <strong>Nascimento:</strong> {new Date(alunoCompleto.dataNascimento).toLocaleDateString('pt-AO')}
+                                </span>
+                              )}
+                              <div className="flex gap-3">
+                                {alunoCompleto?.sexo && (
+                                  <span className="text-green-600">
+                                    <strong>Sexo:</strong> {alunoCompleto.sexo}
+                                  </span>
+                                )}
+                                {alunoCompleto?.telefone && (
+                                  <span className="text-green-600">
+                                    <strong>Tel:</strong> {alunoCompleto.telefone}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Linha 4: Encarregado (se houver) */}
+                            {alunoCompleto?.tb_encarregados?.[0]?.nome && (
+                              <div className="text-green-600">
+                                <strong>Encarregado:</strong> {alunoCompleto.tb_encarregados[0].nome}
+                              </div>
+                            )}
                           </div>
-                        );
-                      })()}
+                        </div>
+                      )}
 
                       {/* Loading dos dados completos */}
                       {selectedAluno && !alunoCompleto && (
@@ -1584,16 +1609,31 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                     maxLength={9}
                     className={borderoError ? 'border-red-300 focus:border-red-500' : ''}
                   />
-                  {borderoError && (
-                    <p className="text-sm text-red-600 flex items-center gap-1">
-                      <span className="text-red-500">⚠</span>
-                      {borderoError}
+                  {/* Status de validação */}
+                  {borderoValidating && formData.numeroBordero.length === 9 && (
+                    <p className="text-sm text-blue-600 flex items-center gap-1">
+                      <span className="animate-spin">⟳</span>
+                      Verificando número...
                     </p>
                   )}
-                  {formData.numeroBordero && !borderoError && formData.numeroBordero.length === 9 && (
+                  {borderoError && (
+                    <div className="text-sm text-red-600 space-y-1">
+                      <p className="flex items-center gap-1">
+                        <span className="text-red-500">⚠</span>
+                        {borderoError.includes('fatura') ? 'Número já utilizado!' : borderoError}
+                      </p>
+                      {borderoError.includes('fatura') && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                          <p className="text-xs text-red-700 font-medium">Detalhes:</p>
+                          <p className="text-xs text-red-600 mt-1">{borderoError}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {formData.numeroBordero && !borderoError && !borderoValidating && formData.numeroBordero.length === 9 && (
                     <p className="text-sm text-green-600 flex items-center gap-1">
                       <span className="text-green-500">✓</span>
-                      Número válido
+                      Número válido e disponível
                     </p>
                   )}
                   <p className="text-xs text-gray-500">

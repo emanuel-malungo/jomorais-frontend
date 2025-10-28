@@ -47,7 +47,7 @@ export const useStudent = (): UseStudentReturn => {
             const errorMessage = getErrorMessage(error, "Erro ao carregar alunos");
             toast.error(errorMessage);
         }
-    }, [setLoading, clearError]);
+    }, []);
 
     const getAllStudents = useCallback(async (
         page: number = 1, 
@@ -74,7 +74,7 @@ export const useStudent = (): UseStudentReturn => {
             const errorMessage = getErrorMessage(error, "Erro ao carregar alunos");
             toast.error(errorMessage);
         }
-    }, [setLoading, clearError]);
+    }, []);
 
     const getStudentById = useCallback(async (id: number) => {
         try {
@@ -93,7 +93,7 @@ export const useStudent = (): UseStudentReturn => {
             const errorMessage = getErrorMessage(error, "Erro ao buscar aluno");
             toast.error(errorMessage);
         }
-    }, [setLoading, clearError]);
+    }, []);
 
     const createStudent = useCallback(async (studentData: Student) => {
         try {
