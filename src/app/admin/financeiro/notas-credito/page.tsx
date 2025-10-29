@@ -26,6 +26,7 @@ import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useCreditNotes } from '@/hooks/useCreditNotes';
+import useAuth from '@/hooks/useAuth';
 
 interface CreditNote {
   codigo: number;
@@ -54,6 +55,9 @@ interface CreditNote {
 const NotasCreditoPage = () => {
   // Hook para gerenciar notas de crédito
   const { creditNotes, loading, error, pagination, fetchCreditNotes } = useCreditNotes();
+  
+  // Hook para obter usuário logado
+  const { user } = useAuth();
   
   // Estados principais
   const [selectedCreditNote, setSelectedCreditNote] = useState<CreditNote | null>(null);
@@ -391,15 +395,19 @@ const NotasCreditoPage = () => {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-green-700 font-medium">Nome:</span>
-                    <p className="text-green-900">{selectedCreditNote.tb_utilizadores?.nome || 'N/A'}</p>
+                    <p className="text-green-900">{user?.nome || 'Usuário Logado'}</p>
                   </div>
                   <div>
                     <span className="text-green-700 font-medium">Usuário:</span>
-                    <p className="text-green-900">{selectedCreditNote.tb_utilizadores?.user || 'N/A'}</p>
+                    <p className="text-green-900">{user?.username || 'N/A'}</p>
                   </div>
                   <div>
                     <span className="text-green-700 font-medium">Código:</span>
-                    <p className="text-green-900">{selectedCreditNote.codigo_utilizador || 'N/A'}</p>
+                    <p className="text-green-900">{user?.id || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-green-700 font-medium">Tipo:</span>
+                    <p className="text-green-900">{user?.tipo || 'N/A'}</p>
                   </div>
                 </div>
               </div>
