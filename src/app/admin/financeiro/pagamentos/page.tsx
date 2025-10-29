@@ -8,7 +8,8 @@ import {
   Calendar,
   FileText,
   Eye,
-  Download
+  Download,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,17 +38,20 @@ import StatCard from '@/components/layout/StatCard';
 import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import NovoPaymentModal from './components/NovoPaymentModal';
 import StudentFinancialModal from './components/StudentFinancialModal';
+import CreditNoteModal from './components/CreditNoteModal';
 
 const PagamentosPage = () => {
   // Estados principais
   const [showNewPaymentModal, setShowNewPaymentModal] = useState(false);
   const [showStudentsModal, setShowStudentsModal] = useState(false);
   const [showFinancialModal, setShowFinancialModal] = useState(false);
+  const [showCreditNoteModal, setShowCreditNoteModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<{
     codigo: number;
     nome: string;
     n_documento_identificacao: string;
   } | null>(null);
+  const [selectedPaymentForCancellation, setSelectedPaymentForCancellation] = useState<any>(null);
 
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -158,6 +162,16 @@ const PagamentosPage = () => {
     } finally {
       setDownloadingPaymentId(null);
     }
+  };
+
+  const handleCancelPayment = (payment: any) => {
+    setSelectedPaymentForCancellation(payment);
+    setShowCreditNoteModal(true);
+  };
+
+  const handleCloseCreditNoteModal = () => {
+    setShowCreditNoteModal(false);
+    setSelectedPaymentForCancellation(null);
   };
 
   const formatCurrency = (value: number) => {
@@ -326,25 +340,36 @@ const PagamentosPage = () => {
                           <p className="text-sm text-gray-600">{payment.fatura}</p>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <Button
-                            onClick={() => handleDownloadInvoice(payment.codigo)}
-                            variant="outline"
-                            size="sm"
-                            disabled={downloadingPaymentId === payment.codigo}
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            {downloadingPaymentId === payment.codigo ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1"></div>
-                                Gerando...
-                              </>
-                            ) : (
-                              <>
-                                <Download className="w-4 h-4 mr-1" />
-                                Fatura
-                              </>
-                            )}
-                          </Button>
+                          <div className="flex items-center justify-center space-x-2">
+                            <Button
+                              onClick={() => handleDownloadInvoice(payment.codigo)}
+                              variant="outline"
+                              size="sm"
+                              disabled={downloadingPaymentId === payment.codigo}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              {downloadingPaymentId === payment.codigo ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1"></div>
+                                  Gerando...
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="w-4 h-4 mr-1" />
+                                  Fatura
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              onClick={() => handleCancelPayment(payment)}
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Anular
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -555,6 +580,18 @@ const PagamentosPage = () => {
         student={selectedStudent}
         financialData={financialData}
         loading={financialLoading}
+      />
+
+      {/* Modal Nota de Crédito */}
+      <CreditNoteModal
+        open={showCreditNoteModal}
+        onClose={handleCloseCreditNoteModal}
+        payment={selectedPaymentForCancellation}
+        onSuccess={() => {
+          // Recarregar lista de pagamentos após sucesso
+          const tipoServico = selectedTipoServico !== 'all' ? selectedTipoServico : undefined;
+          fetchPayments(paymentsCurrentPage, 10, debouncedPaymentsSearch, tipoServico);
+        }}
       />
     </Container>
   );
