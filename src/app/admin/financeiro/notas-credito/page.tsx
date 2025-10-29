@@ -38,10 +38,16 @@ interface CreditNote {
   next: string;
   dataOperacao: string;
   codigoPagamentoi?: number;
+  codigo_utilizador?: number;
   tb_alunos?: {
     codigo: number;
     nome: string;
     n_documento_identificacao: string;
+  };
+  tb_utilizadores?: {
+    codigo: number;
+    nome: string;
+    user: string;
   };
 }
 
@@ -375,6 +381,25 @@ const NotasCreditoPage = () => {
                   <div>
                     <span className="text-yellow-700 font-medium">Descrição Detalhada:</span>
                     <p className="text-yellow-900">{selectedCreditNote.descricao}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informações do Funcionário */}
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h3 className="font-medium text-green-900 mb-3">Funcionário Responsável</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-green-700 font-medium">Nome:</span>
+                    <p className="text-green-900">{selectedCreditNote.tb_utilizadores?.nome || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-green-700 font-medium">Usuário:</span>
+                    <p className="text-green-900">{selectedCreditNote.tb_utilizadores?.user || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-green-700 font-medium">Código:</span>
+                    <p className="text-green-900">{selectedCreditNote.codigo_utilizador || 'N/A'}</p>
                   </div>
                 </div>
               </div>
