@@ -33,21 +33,27 @@ export function useTiposServicos(page: number = 1, limit: number = 10, filters?:
       setLoading(true);
       setError(null);
       
+      console.log('🔄 Buscando tipos de serviços:', { page, limit, filters });
       const response = await FinancialServiceService.getTiposServicos(page, limit, filters);
       
       setTiposServicos(response.data);
       setPagination(response.pagination);
+      console.log('✅ Tipos de serviços carregados:', response.data.length);
     } catch (err: any) {
+      console.error('❌ Erro ao carregar tipos de serviços:', err);
       
       // Tentar requisição mais simples em caso de erro
       if (err.response?.status === 400 && (filters?.search || filters?.tipoServico !== 'all' || filters?.status !== 'all')) {
         try {
+          console.log('🔄 Tentando fallback sem filtros...');
           const fallbackResponse = await FinancialServiceService.getTiposServicos(page, limit);
           setTiposServicos(fallbackResponse.data);
           setPagination(fallbackResponse.pagination);
           setError(null); // Limpar erro já que conseguimos carregar os dados
+          console.log('✅ Fallback bem-sucedido:', fallbackResponse.data.length);
           return;
         } catch (fallbackErr) {
+          console.error('❌ Fallback também falhou:', fallbackErr);
         }
       }
       
@@ -55,11 +61,11 @@ export function useTiposServicos(page: number = 1, limit: number = 10, filters?:
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, filters]);
 
   useEffect(() => {
     fetchTiposServicos();
-  }, []);
+  }, [fetchTiposServicos]);
 
   return {
     tiposServicos,
