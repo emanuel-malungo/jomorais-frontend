@@ -1,4 +1,5 @@
 import api from '@/utils/api.utils';
+import { Document, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, HeadingLevel, TextRun, PageBreak, Packer } from 'docx';
 
 export interface StudentData {
   codigo: number;
@@ -449,6 +450,433 @@ export class TurmaReportService {
       
     } catch (error) {
       throw new Error(`Erro ao gerar PDF: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Gera documento Word para uma turma específica
+   */
+  static async generateSingleTurmaDOC(turma: any): Promise<void> {
+    try {
+      const alunos = await this.getStudentsByTurma(turma.codigo);
+      
+      // Ordenar alunos alfabeticamente
+      const alunosOrdenados = alunos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
+      
+      // Criar o documento
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            // Título do Instituto
+            new Paragraph({
+              text: 'INSTITUTO MÉDIO POLITÉCNICO JOMORAIS',
+              heading: HeadingLevel.HEADING_1,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 200 },
+            }),
+            
+            // Título do Relatório
+            new Paragraph({
+              text: 'LISTA NOMINAL DE ALUNOS',
+              heading: HeadingLevel.HEADING_2,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 300 },
+            }),
+            
+            // Data e hora
+            new Paragraph({
+              text: `Gerado em: ${new Date().toLocaleDateString('pt-AO')} às ${new Date().toLocaleTimeString('pt-AO')}`,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 },
+            }),
+            
+            // Informações da turma
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Turma: ', bold: true }),
+                new TextRun({ text: turma.designacao }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Classe: ', bold: true }),
+                new TextRun({ text: turma.tb_classes?.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Curso: ', bold: true }),
+                new TextRun({ text: turma.tb_cursos?.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Sala: ', bold: true }),
+                new TextRun({ text: turma.tb_salas?.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Período: ', bold: true }),
+                new TextRun({ text: turma.tb_periodos?.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Total de Alunos: ', bold: true }),
+                new TextRun({ text: alunos.length.toString() }),
+              ],
+              spacing: { after: 300 },
+            }),
+            
+            // Tabela de alunos
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [
+                // Cabeçalho
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph({ 
+                        children: [new TextRun({ text: 'Nº', bold: true })],
+                        alignment: AlignmentType.CENTER 
+                      })],
+                      width: { size: 8, type: WidthType.PERCENTAGE },
+                    }),
+                    new TableCell({
+                      children: [new Paragraph({ 
+                        children: [new TextRun({ text: 'Nome', bold: true })],
+                        alignment: AlignmentType.CENTER 
+                      })],
+                      width: { size: 30, type: WidthType.PERCENTAGE },
+                    }),
+                    new TableCell({
+                      children: [new Paragraph({ 
+                        children: [new TextRun({ text: 'Telefone', bold: true })],
+                        alignment: AlignmentType.CENTER 
+                      })],
+                      width: { size: 18, type: WidthType.PERCENTAGE },
+                    }),
+                    new TableCell({
+                      children: [new Paragraph({ 
+                        children: [new TextRun({ text: 'Documento', bold: true })],
+                        alignment: AlignmentType.CENTER 
+                      })],
+                      width: { size: 20, type: WidthType.PERCENTAGE },
+                    }),
+                    new TableCell({
+                      children: [new Paragraph({ 
+                        children: [new TextRun({ text: 'Idade', bold: true })],
+                        alignment: AlignmentType.CENTER 
+                      })],
+                      width: { size: 12, type: WidthType.PERCENTAGE },
+                    }),
+                    new TableCell({
+                      children: [new Paragraph({ 
+                        children: [new TextRun({ text: 'Status', bold: true })],
+                        alignment: AlignmentType.CENTER 
+                      })],
+                      width: { size: 12, type: WidthType.PERCENTAGE },
+                    }),
+                  ],
+                }),
+                // Dados dos alunos
+                ...alunosOrdenados.map((aluno, index) =>
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        children: [new Paragraph({ text: (index + 1).toString(), alignment: AlignmentType.CENTER })],
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ text: aluno.nome || 'N/A' })],
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ text: aluno.telefone || 'N/A', alignment: AlignmentType.CENTER })],
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ text: aluno.numero_documento || 'N/A', alignment: AlignmentType.CENTER })],
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ text: this.getAge(aluno), alignment: AlignmentType.CENTER })],
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ text: 'Ativo', alignment: AlignmentType.CENTER })],
+                      }),
+                    ],
+                  })
+                ),
+              ],
+            }),
+            
+            // Espaço antes das assinaturas
+            new Paragraph({ text: '', spacing: { before: 600 } }),
+            
+            // Assinaturas
+            new Paragraph({
+              text: 'Assinatura do Diretor: _________________________',
+              spacing: { after: 300 },
+            }),
+            new Paragraph({
+              text: 'Assinatura do Coordenador: _________________________',
+            }),
+          ],
+        }],
+      });
+      
+      // Gerar e baixar o arquivo
+      const blob = await Packer.toBlob(doc);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Lista_Alunos_${turma.designacao.replace(/\s+/g, '_')}.docx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Erro ao gerar DOC da turma:', error);
+      throw new Error(`Erro ao gerar DOC: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  /**
+   * Gera documento Word para todas as turmas
+   */
+  static async generateAllTurmasDOC(anoLectivoId?: number): Promise<void> {
+    try {
+      const turmasData = await this.getAllTurmasWithStudents(anoLectivoId);
+      
+      if (!turmasData || turmasData.length === 0) {
+        throw new Error('Nenhuma turma encontrada para o ano letivo selecionado');
+      }
+      
+      // Criar seções para cada turma
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sections: any[] = [];
+      
+      for (let turmaIndex = 0; turmaIndex < turmasData.length; turmaIndex++) {
+        const turmaData = turmasData[turmaIndex];
+        
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const children: any[] = [
+            // Título do Instituto
+            new Paragraph({
+              text: 'INSTITUTO MÉDIO POLITÉCNICO JOMORAIS',
+              heading: HeadingLevel.HEADING_1,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 200 },
+            }),
+            
+            // Título do Relatório
+            new Paragraph({
+              text: 'LISTA NOMINAL DE ALUNOS',
+              heading: HeadingLevel.HEADING_2,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 300 },
+            }),
+            
+            // Data e hora
+            new Paragraph({
+              text: `Gerado em: ${new Date().toLocaleDateString('pt-AO')} às ${new Date().toLocaleTimeString('pt-AO')}`,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 },
+            }),
+            
+            // Informações da turma
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Turma: ', bold: true }),
+                new TextRun({ text: turmaData.turma.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Classe: ', bold: true }),
+                new TextRun({ text: turmaData.turma.tb_classes?.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Curso: ', bold: true }),
+                new TextRun({ text: turmaData.turma.tb_cursos?.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Sala: ', bold: true }),
+                new TextRun({ text: turmaData.turma.tb_salas?.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Período: ', bold: true }),
+                new TextRun({ text: turmaData.turma.tb_periodos?.designacao || 'N/A' }),
+              ],
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: 'Total de Alunos: ', bold: true }),
+                new TextRun({ text: (turmaData.alunos?.length || 0).toString() }),
+              ],
+              spacing: { after: 300 },
+            }),
+          ];
+          
+          // Verificar se há alunos
+          if (!turmaData.alunos || turmaData.alunos.length === 0) {
+            children.push(
+              new Paragraph({
+                text: 'Nenhum aluno encontrado nesta turma.',
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 300 },
+              })
+            );
+          } else {
+            // Ordenar alunos alfabeticamente
+            const alunosOrdenados = [...turmaData.alunos].sort((a, b) => 
+              (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' })
+            );
+            
+            // Adicionar tabela de alunos
+            children.push(
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: [
+                  // Cabeçalho
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        children: [new Paragraph({ 
+                          children: [new TextRun({ text: 'Nº', bold: true })],
+                          alignment: AlignmentType.CENTER 
+                        })],
+                        width: { size: 8, type: WidthType.PERCENTAGE },
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ 
+                          children: [new TextRun({ text: 'Nome', bold: true })],
+                          alignment: AlignmentType.CENTER 
+                        })],
+                        width: { size: 30, type: WidthType.PERCENTAGE },
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ 
+                          children: [new TextRun({ text: 'Telefone', bold: true })],
+                          alignment: AlignmentType.CENTER 
+                        })],
+                        width: { size: 18, type: WidthType.PERCENTAGE },
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ 
+                          children: [new TextRun({ text: 'Documento', bold: true })],
+                          alignment: AlignmentType.CENTER 
+                        })],
+                        width: { size: 20, type: WidthType.PERCENTAGE },
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ 
+                          children: [new TextRun({ text: 'Idade', bold: true })],
+                          alignment: AlignmentType.CENTER 
+                        })],
+                        width: { size: 12, type: WidthType.PERCENTAGE },
+                      }),
+                      new TableCell({
+                        children: [new Paragraph({ 
+                          children: [new TextRun({ text: 'Status', bold: true })],
+                          alignment: AlignmentType.CENTER 
+                        })],
+                        width: { size: 12, type: WidthType.PERCENTAGE },
+                      }),
+                    ],
+                  }),
+                  // Dados dos alunos
+                  ...alunosOrdenados.map((aluno, index) =>
+                    new TableRow({
+                      children: [
+                        new TableCell({
+                          children: [new Paragraph({ text: (index + 1).toString(), alignment: AlignmentType.CENTER })],
+                        }),
+                        new TableCell({
+                          children: [new Paragraph({ text: aluno.nome || 'N/A' })],
+                        }),
+                        new TableCell({
+                          children: [new Paragraph({ text: aluno.telefone || 'N/A', alignment: AlignmentType.CENTER })],
+                        }),
+                        new TableCell({
+                          children: [new Paragraph({ text: aluno.numero_documento || 'N/A', alignment: AlignmentType.CENTER })],
+                        }),
+                        new TableCell({
+                          children: [new Paragraph({ text: this.getAge(aluno), alignment: AlignmentType.CENTER })],
+                        }),
+                        new TableCell({
+                          children: [new Paragraph({ text: 'Ativo', alignment: AlignmentType.CENTER })],
+                        }),
+                      ],
+                    })
+                  ),
+                ],
+              })
+            );
+          }
+          
+          // Assinaturas
+          children.push(
+            new Paragraph({ text: '', spacing: { before: 600 } }),
+            new Paragraph({
+              text: 'Assinatura do Diretor: _________________________',
+              spacing: { after: 300 },
+            }),
+            new Paragraph({
+              text: 'Assinatura do Coordenador: _________________________',
+            })
+          );
+          
+          // Adicionar quebra de página entre turmas (exceto na última)
+          if (turmaIndex < turmasData.length - 1) {
+            children.push(
+              new Paragraph({
+                children: [new PageBreak()],
+              })
+            );
+          }
+          
+          sections.push(...children);
+          
+        } catch (turmaError) {
+          console.error(`Erro ao processar turma ${turmaData.turma.designacao}:`, turmaError);
+        }
+      }
+      
+      // Criar o documento
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: sections,
+        }],
+      });
+      
+      // Gerar e baixar o arquivo
+      const blob = await Packer.toBlob(doc);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Lista_Alunos_Todas_Turmas_${new Date().toISOString().split('T')[0]}.docx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      throw new Error(`Erro ao gerar DOC: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 }

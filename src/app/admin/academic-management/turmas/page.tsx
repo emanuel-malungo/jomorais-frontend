@@ -96,6 +96,7 @@ export default function TurmasPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedTurma, setSelectedTurma] = useState<ITurma | null>(null);
   const [reportType, setReportType] = useState<'single' | 'all'>('single');
+  const [reportFormat, setReportFormat] = useState<'pdf' | 'doc'>('pdf');
   const [selectedAnoLectivo, setSelectedAnoLectivo] = useState<AnoLectivo | null>(null);
   const [anosLectivos, setAnosLectivos] = useState<AnoLectivo[]>([]);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -231,6 +232,7 @@ export default function TurmasPage() {
     setIsGeneratingPDF(true);
     try {
       await TurmaReportService.generateAllTurmasPDF(selectedAnoLectivo.codigo);
+      toast.success('PDF de todas as turmas gerado com sucesso!');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast.error(errorMessage);
@@ -240,11 +242,53 @@ export default function TurmasPage() {
     }
   };
 
-  const handleGeneratePDF = () => {
-    if (reportType === 'single' && selectedTurma) {
-      generateStudentListPDF(selectedTurma);
-    } else if (reportType === 'all') {
-      generateAllTurmasPDF();
+  // Funções para geração de DOC
+  const generateStudentListDOC = async (turma: ITurma) => {
+    setIsGeneratingPDF(true);
+    try {
+      await TurmaReportService.generateSingleTurmaDOC(turma);
+      toast.success(`Documento Word da turma ${turma.designacao} gerado com sucesso!`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao gerar documento';
+      toast.error(errorMessage);
+    } finally {
+      setIsGeneratingPDF(false);
+      setShowReportModal(false);
+    }
+  };
+
+  const generateAllTurmasDOC = async () => {
+    if (!selectedAnoLectivo) {
+      alert('Por favor, selecione um ano letivo');
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+    try {
+      await TurmaReportService.generateAllTurmasDOC(selectedAnoLectivo.codigo);
+      toast.success('Documento Word de todas as turmas gerado com sucesso!');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      toast.error(errorMessage);
+    } finally {
+      setIsGeneratingPDF(false);
+      setShowReportModal(false);
+    }
+  };
+
+  const handleGenerateReport = () => {
+    if (reportFormat === 'pdf') {
+      if (reportType === 'single' && selectedTurma) {
+        generateStudentListPDF(selectedTurma);
+      } else if (reportType === 'all') {
+        generateAllTurmasPDF();
+      }
+    } else if (reportFormat === 'doc') {
+      if (reportType === 'single' && selectedTurma) {
+        generateStudentListDOC(selectedTurma);
+      } else if (reportType === 'all') {
+        generateAllTurmasDOC();
+      }
     }
   };
 
@@ -752,10 +796,49 @@ export default function TurmasPage() {
               </div>
             )}
 
+            {/* Formato do Relatório */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-700">
+                Formato do Arquivo
+              </label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="pdf-format"
+                    name="reportFormat"
+                    value="pdf"
+                    checked={reportFormat === 'pdf'}
+                    onChange={(e) => setReportFormat(e.target.value as 'pdf' | 'doc')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <label htmlFor="pdf-format" className="text-sm text-gray-700 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-red-500" />
+                    PDF (Portable Document Format)
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="doc-format"
+                    name="reportFormat"
+                    value="doc"
+                    checked={reportFormat === 'doc'}
+                    onChange={(e) => setReportFormat(e.target.value as 'pdf' | 'doc')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <label htmlFor="doc-format" className="text-sm text-gray-700 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-700" />
+                    DOC (Microsoft Word)
+                  </label>
+                </div>
+              </div>
+            </div>
+
             {/* Botões de Ação */}
             <div className="flex gap-3 pt-4">
               <Button
-                onClick={handleGeneratePDF}
+                onClick={handleGenerateReport}
                 disabled={isGeneratingPDF || !selectedAnoLectivo || (reportType === 'single' && !selectedTurma)}
                 className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
               >
@@ -767,13 +850,13 @@ export default function TurmasPage() {
                 ) : (
                   <>
                     <FileText className="w-4 h-4 mr-2" />
-                    Gerar PDF
+                    Gerar {reportFormat.toUpperCase()}
                   </>
                 )}
               </Button>
 
               <Button
-                onClick={handleGeneratePDF}
+                onClick={handleGenerateReport}
                 disabled={isGeneratingPDF || !selectedAnoLectivo || (reportType === 'single' && !selectedTurma)}
                 variant="outline"
                 className="flex-1"
@@ -786,7 +869,7 @@ export default function TurmasPage() {
                 ) : (
                   <>
                     <Printer className="w-4 h-4 mr-2" />
-                    Imprimir
+                    Imprimir {reportFormat.toUpperCase()}
                   </>
                 )}
               </Button>
