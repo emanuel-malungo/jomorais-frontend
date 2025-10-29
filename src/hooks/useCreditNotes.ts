@@ -106,6 +106,10 @@ export const useCreditNotes = () => {
       }
     } catch (err: any) {
       console.error('Erro ao criar nota de crédito:', err);
+      console.error('Resposta completa do erro:', err.response?.data);
+      console.error('Status do erro:', err.response?.status);
+      console.error('Headers do erro:', err.response?.headers);
+      
       const errorMessage = err.response?.data?.message || err.message || 'Erro ao criar nota de crédito';
       setError(errorMessage);
       throw new Error(errorMessage);
