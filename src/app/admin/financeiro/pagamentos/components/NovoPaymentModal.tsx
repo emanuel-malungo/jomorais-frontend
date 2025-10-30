@@ -763,8 +763,25 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       // Encontrar o ano letivo selecionado para obter o ano numérico correto por mês
       const anoLetivoSelecionado = anosLectivos.find(ano => ano.codigo === formData.ano);
 
-      // Criar pagamentos para cada mês selecionado
-      const pagamentosPromises = formData.mesesSelecionados.map(mes => {
+      // Criar pagamentos para cada mês selecionado SEQUENCIALMENTE
+      const payments = [];
+      
+      // Obter ID do usuário logado uma única vez
+      let codigoUtilizador = 1; // Padrão
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          codigoUtilizador = user.id || user.codigo || 1;
+        }
+      } catch (error) {
+        console.error('Erro ao obter ID do usuário logado:', error);
+      }
+
+      // Criar pagamentos SEQUENCIALMENTE para evitar duplicação de borderô
+      for (let i = 0; i < formData.mesesSelecionados.length; i++) {
+        const mes = formData.mesesSelecionados[i];
+        
         // Determinar o ano correto baseado no mês
         let anoCorreto = formData.ano!;
         if (anoLetivoSelecionado) {
@@ -778,17 +795,16 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           }
         }
 
-        // Obter ID do usuário logado
-        let codigoUtilizador = 1; // Padrão
-        try {
-          const userData = localStorage.getItem('user');
-          if (userData) {
-            const user = JSON.parse(userData);
-            // Tentar diferentes campos para o ID do usuário
-            codigoUtilizador = user.id || user.codigo || 1;
-          }
-        } catch (error) {
-          console.error('Erro ao obter ID do usuário logado:', error);
+        // Gerar borderô único para cada mês (se for depósito/multicaixa)
+        let numeroBorderoUnico = undefined;
+        if (isDeposito && formData.numeroBordero) {
+          // Adicionar sufixo ao borderô original para garantir unicidade
+          // Formato: borderôOriginal + índice do mês (01, 02, 03...)
+          const sufixo = String(i + 1).padStart(2, '0');
+          // Remover últimos 2 dígitos do borderô original e adicionar o sufixo
+          const borderoBase = formData.numeroBordero.slice(0, 7); // Primeiros 7 dígitos
+          numeroBorderoUnico = borderoBase + sufixo;
+          console.log(`Borderô único gerado para ${mes}: ${numeroBorderoUnico} (original: ${formData.numeroBordero})`);
         }
 
         const paymentData = {
@@ -799,18 +815,25 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           preco: parseFloat(formData.preco),
           observacao: formData.observacao,
           codigo_FormaPagamento: formData.codigo_FormaPagamento!,
-          codigo_Utilizador: codigoUtilizador, // ID do funcionário que está fazendo o pagamento
+          codigo_Utilizador: codigoUtilizador,
           ...(isDeposito && {
             tipoConta: formData.tipoConta,
-            numeroBordero: formData.numeroBordero
+            numeroBordero: numeroBorderoUnico
           })
         };
-        console.log('Dados do pagamento para mês', mes, ':', paymentData);
-        return createPayment(paymentData);
-      });
+        
+        console.log(`Criando pagamento ${i + 1}/${formData.mesesSelecionados.length} para mês ${mes}:`, paymentData);
+        
+        try {
+          const payment = await createPayment(paymentData);
+          payments.push(payment);
+          console.log(`✅ Pagamento ${i + 1} criado com sucesso`);
+        } catch (error) {
+          console.error(`❌ Erro ao criar pagamento ${i + 1} para mês ${mes}:`, error);
+          throw error; // Interromper se houver erro
+        }
+      }
 
-      console.log('Criando pagamentos para meses:', formData.mesesSelecionados);
-      const payments = await Promise.all(pagamentosPromises);
       console.log('Pagamentos criados com sucesso:', payments);
       
       // Atualizar dados de meses pendentes (sempre disparar evento para atualizar)
