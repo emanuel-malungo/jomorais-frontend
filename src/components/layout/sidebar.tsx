@@ -85,7 +85,7 @@ const menuItems: MenuItem[] = [
       { title: "Relatórios de Vendas", icon: TrendingUp, href: "/admin/financeiro/relatorios-vendas" },
       { title: "Exportação SAFT-AO", icon: Shield, href: "/admin/financeiro/saft" },
       { title: "Serviços", icon: FileText, href: "/admin/finance-management/services" },
-      { title: "Notas de Crédito", icon: FileText, href: "/admin/finance-management/credit-notes" }
+      { title: "Notas de Crédito", icon: FileText, href: "/admin/financeiro/notas-credito" }
     ]
   },
   {
