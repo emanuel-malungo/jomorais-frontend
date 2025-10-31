@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   // Usar variável de ambiente ou fallback para produção
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://jomorais-backend-o5e5.onrender.com",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://jomorais-backend-1.onrender.com",
   headers: {
     "Content-Type": "application/json",
   },
@@ -48,3 +48,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+
