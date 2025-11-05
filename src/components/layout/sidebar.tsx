@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -119,64 +119,15 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const { permissions, canAccess } = usePermissions()
 
-  // Auto-expandir menu que contém a página ativa
-  useEffect(() => {
-    const isActive = (href: string) => {
-      
-      if (pathname === href) return true;
-      
-      // Para evitar conflitos, verificamos se o pathname começa com href + "/"
-      // mas não é apenas uma substring de uma rota maior
-      if (href === "/admin") {
-        return pathname === "/admin";
-      }
-      
-      return pathname.startsWith(href + "/");
-    }
-
-    const newExpanded = new Set<string>()
-    const currentVisibleItems = filterMenuItems(menuItems)
-    
-    currentVisibleItems.forEach((item) => {
-      if (item.children) {
-        const hasActiveChild = item.children.some(child => 
-          child.href && isActive(child.href)
-        )
-        if (hasActiveChild) {
-          newExpanded.add(item.title)
-        }
-      }
-    })
-    
-    setExpandedItems(newExpanded)
-  }, [pathname])
-
-  // Função isActive para uso no render
-  const isActive = (href: string) => {
-    
+  // Memoizar a função isActive
+  const isActive = useCallback((href: string) => {
     if (pathname === href) return true;
-    
-    // Para evitar conflitos, verificamos se o pathname começa com href + "/"
-    // mas não é apenas uma substring de uma rota maior
-    if (href === "/admin") {
-      return pathname === "/admin";
-    }
-    
+    if (href === "/admin") return pathname === "/admin";
     return pathname.startsWith(href + "/");
-  }
+  }, [pathname]);
 
-  const toggleExpanded = (title: string) => {
-    const newExpanded = new Set(expandedItems)
-    if (newExpanded.has(title)) {
-      newExpanded.delete(title)
-    } else {
-      newExpanded.add(title)
-    }
-    setExpandedItems(newExpanded)
-  }
-
-  // Filtrar itens do menu baseado nas permissões
-  const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
+  // Memoizar filterMenuItems para evitar recálculos desnecessários
+  const filterMenuItems = useCallback((items: MenuItem[]): MenuItem[] => {
     return items.filter(item => {
       // Dashboard sempre visível
       if (item.href === "/admin") return true;
@@ -188,7 +139,7 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
         case "Gestão Acadêmica":
           return permissions.canAccessAcademicManagement;
         case "Professores":
-          return permissions.canAccessAcademicManagement; // Professores faz parte da gestão acadêmica
+          return permissions.canAccessAcademicManagement;
         case "Financeiro":
           return permissions.canAccessFinancial;
         case "Relatórios":
@@ -233,9 +184,40 @@ export default function Sidebar({ isCollapsed = false, onLogout }: SidebarProps)
       
       return item;
     }).filter(Boolean) as MenuItem[];
-  }
+  }, [permissions, canAccess]);
 
-  const visibleMenuItems = filterMenuItems(menuItems);
+  // Memoizar visibleMenuItems
+  const visibleMenuItems = useMemo(() => filterMenuItems(menuItems), [filterMenuItems]);
+
+  // Auto-expandir menu que contém a página ativa
+  useEffect(() => {
+    const newExpanded = new Set<string>()
+    
+    visibleMenuItems.forEach((item) => {
+      if (item.children) {
+        const hasActiveChild = item.children.some(child => 
+          child.href && isActive(child.href)
+        )
+        if (hasActiveChild) {
+          newExpanded.add(item.title)
+        }
+      }
+    })
+    
+    setExpandedItems(newExpanded)
+  }, [pathname, visibleMenuItems, isActive])
+
+  // Função isActive para uso no render (mesma referência do useCallback acima)
+
+  const toggleExpanded = (title: string) => {
+    const newExpanded = new Set(expandedItems)
+    if (newExpanded.has(title)) {
+      newExpanded.delete(title)
+    } else {
+      newExpanded.add(title)
+    }
+    setExpandedItems(newExpanded)
+  }
 
   const SidebarContent = () => (
     <div className={cn(

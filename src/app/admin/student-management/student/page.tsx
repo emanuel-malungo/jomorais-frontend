@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Container from '@/components/layout/Container';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -47,18 +47,19 @@ import FilterSearchCard from '@/components/layout/FilterSearchCard';
 import { ConfirmDeleteStudentModal } from '@/components/student/confirm-delete-student-modal';
 
 import { useRouter } from 'next/navigation';
-import useStudent from '@/hooks/useStudent';
 import { calculateAge } from '@/utils/calculateAge.utils';
-import useFilterOptions from '@/hooks/useFilterOptions';
-import { AlunosStatistics } from '@/types/student.types';
+import { useFilterOptions } from '@/contexts/FilterOptionsContext';
 import { toast } from 'react-toastify';
+import { useStudentsQuery, useStudentStatisticsQuery } from '@/hooks/useQueries';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import StudentService from '@/services/student.service';
 
 export default function ListStudentPage() {
 
-  const { students, loading, pagination, getAllStudents, getAlunosStatistics, deleteStudent } = useStudent();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  // Usar hook de opções de filtros
+  // Usar Context para filtros (carregado uma única vez no layout)
   const { statusOptions, courseOptions } = useFilterOptions();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -66,10 +67,29 @@ export default function ListStudentPage() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  
-  // Estatísticas
-  const [statistics, setStatistics] = useState<AlunosStatistics | null>(null);
-  const [loadingStats, setLoadingStats] = useState(false);
+
+  // Usar React Query para carregar estudantes (com cache automático)
+  const {
+    data: studentsData,
+    isLoading: loadingStudents,
+  } = useStudentsQuery(
+    currentPage,
+    itemsPerPage,
+    searchTerm,
+    statusFilter === 'all' ? null : statusFilter,
+    courseFilter === 'all' ? null : courseFilter,
+    true // enabled
+  );
+
+  // Usar React Query para carregar estatísticas (com cache automático)
+  const {
+    data: statistics,
+    isLoading: loadingStats,
+  } = useStudentStatisticsQuery(
+    statusFilter === 'all' ? null : statusFilter,
+    courseFilter === 'all' ? null : courseFilter,
+    true // enabled
+  );
 
   // Modal de exclusão
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -79,7 +99,6 @@ export default function ListStudentPage() {
     documento?: string;
     status: number;
   } | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteResult, setDeleteResult] = useState<{
     tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
@@ -87,30 +106,35 @@ export default function ListStudentPage() {
     info?: string;
   } | null>(null);
 
-    // Carregar estatísticas quando filtros mudarem
-  useEffect(() => {
-    const loadStatistics = async () => {
-      try {
-        setLoadingStats(true);
-        const stats = await getAlunosStatistics(statusFilter, courseFilter);
-        setStatistics(stats);
-      } catch (error) {
-        console.error('Erro ao carregar estatísticas:', error);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
+  // Mutation para deletar estudante
+  const deleteMutation = useMutation({
+    mutationFn: (studentId: number) => StudentService.deleteStudent(studentId),
+    onSuccess: (response) => {
+      toast.success('Aluno excluído com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: 'cascade_delete',
+        detalhes: (response as unknown as { detalhes?: Record<string, number | boolean> })?.detalhes || {},
+        info: (response as unknown as { info?: string })?.info
+      });
 
-    loadStatistics();
-  }, [statusFilter, courseFilter, getAlunosStatistics]);
-
-  // Carregar estudantes do backend quando filtros mudarem
-  useEffect(() => {
-    getAllStudents(currentPage, itemsPerPage, searchTerm, statusFilter, courseFilter);
-  }, [currentPage, itemsPerPage, searchTerm, statusFilter, courseFilter, getAllStudents]);
+      // Invalidar queries para recarregar dados
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['students'] });
+        queryClient.invalidateQueries({ queryKey: ['studentStatistics'] });
+        setDeleteModalOpen(false);
+        setStudentToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+    },
+    onError: (error: Error) => {
+      setDeleteError(error.message || 'Erro ao excluir aluno. Tente novamente.');
+    },
+  });
 
   // Resetar para primeira página quando filtros mudarem
-  useEffect(() => {
+  useMemo(() => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
@@ -118,7 +142,7 @@ export default function ListStudentPage() {
   }, [searchTerm, statusFilter, courseFilter]);
 
   // Handler para abrir modal de exclusão
-  const handleDeleteClick = (student: typeof students[0]) => {
+  const handleDeleteClick = (student: { codigo: number; nome: string; n_documento_identificacao?: string; codigo_Status: number }) => {
     setStudentToDelete({
       codigo: student.codigo,
       nome: student.nome,
@@ -133,43 +157,12 @@ export default function ListStudentPage() {
   // Handler para confirmar exclusão
   const handleConfirmDelete = async () => {
     if (!studentToDelete) return;
-
-    try {
-      setDeleteLoading(true);
-      setDeleteError(null);
-
-      // Chama o serviço de exclusão
-      const response = await deleteStudent(studentToDelete.codigo);
-      
-      // Se chegou aqui, a exclusão foi bem-sucedida
-      toast.success('Aluno excluído com sucesso!');
-      
-      // Definir resultado para exibir detalhes
-      setDeleteResult({
-        tipo: 'cascade_delete',
-        detalhes: (response as any)?.detalhes || {},
-        info: (response as any)?.info
-      });
-
-      // Recarregar a lista após 2 segundos
-      setTimeout(() => {
-        getAllStudents(currentPage, itemsPerPage, searchTerm, statusFilter, courseFilter);
-        setDeleteModalOpen(false);
-        setStudentToDelete(null);
-        setDeleteResult(null);
-      }, 2000);
-      
-    } catch (error: any) {
-      console.error('Erro ao excluir aluno:', error);
-      setDeleteError(error.message || 'Erro ao excluir aluno. Tente novamente.');
-    } finally {
-      setDeleteLoading(false);
-    }
+    deleteMutation.mutate(studentToDelete.codigo);
   };
 
   // Handler para fechar modal
   const handleCloseDeleteModal = () => {
-    if (!deleteLoading) {
+    if (!deleteMutation.isPending) {
       setDeleteModalOpen(false);
       setStudentToDelete(null);
       setDeleteError(null);
@@ -177,18 +170,19 @@ export default function ListStudentPage() {
     }
   };
 
-  // Os estudantes já vêm filtrados do backend
-  const displayStudents = students;
+  // Os estudantes vêm do React Query
+  const displayStudents = studentsData?.students || [];
+  const loading = loadingStudents;
 
-  // Usar paginação do backend
+  // Usar paginação do React Query
   const serverPagination = useMemo(() => {
-    return pagination || {
+    return studentsData?.pagination || {
       currentPage: 1,
       totalPages: 1,
       totalItems: 0,
       itemsPerPage: 10
     };
-  }, [pagination]);
+  }, [studentsData]);
 
   // Cálculos para exibição
   const startIndex = ((serverPagination.currentPage - 1) * serverPagination.itemsPerPage) + 1;
@@ -211,7 +205,7 @@ export default function ListStudentPage() {
         <StatCard
           title="Total de Alunos"
           value={loadingStats ? "..." : (statistics?.totalAlunos || 0).toString()}
-          change={loadingStats ? "Carregando..." : `${statistics?.percentuais.ativos || '0'}% ativos`}
+          change={loadingStats ? "Carregando..." : 'Total'}
           changeType="up"
           icon={Users}
           color="text-[#182F59]"
@@ -222,7 +216,7 @@ export default function ListStudentPage() {
         <StatCard
           title="Alunos Ativos"
           value={loadingStats ? "..." : (statistics?.alunosAtivos || 0).toString()}
-          change={loadingStats ? "Carregando..." : `${statistics?.percentuais.ativos || '0'}%`}
+          change={loadingStats ? "Carregando..." : 'Ativos'}
           changeType="up"
           icon={UserCheck}
           color="text-emerald-600"
@@ -233,7 +227,7 @@ export default function ListStudentPage() {
         <StatCard
           title="Alunos Inativos"
           value={loadingStats ? "..." : (statistics?.alunosInativos || 0).toString()}
-          change={loadingStats ? "Carregando..." : `${statistics?.percentuais.inativos || '0'}%`}
+          change={loadingStats ? "Carregando..." : 'Inativos'}
           changeType="down"
           icon={UserX}
           color="text-red-600"
@@ -244,7 +238,7 @@ export default function ListStudentPage() {
         <StatCard
           title="Com Matrícula"
           value={loadingStats ? "..." : (statistics?.alunosComMatricula || 0).toString()}
-          change={loadingStats ? "Carregando..." : `${statistics?.percentuais.comMatricula || '0'}%`}
+          change={loadingStats ? "Carregando..." : 'Matrícula'}
           changeType="up"
           icon={UserCheck}
           color="text-purple-600"
@@ -503,7 +497,7 @@ export default function ListStudentPage() {
         onOpenChange={handleCloseDeleteModal}
         onConfirm={handleConfirmDelete}
         student={studentToDelete}
-        loading={deleteLoading}
+        loading={deleteMutation.isPending}
         error={deleteError}
         deleteResult={deleteResult}
       />

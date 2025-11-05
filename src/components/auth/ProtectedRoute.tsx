@@ -32,24 +32,14 @@ export default function ProtectedRoute({
     }
   }, [isAuthenticated, loading, isInitialized, router, redirectTo]);
 
-  // Mostrar loading enquanto não inicializou ou ainda está carregando
-  if (!isInitialized || loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d5016] mx-auto mb-4"></div>
-          <p className="text-gray-600">Verificando autenticação...</p>
-        </div>
-      </div>
-    );
+  // Não mostrar loading - verificação acontece em background
+  // Se não estiver autenticado, o useEffect fará o redirecionamento
+  if (!isAuthenticated && isInitialized && !loading) {
+    return null;
   }
 
-  if (!isAuthenticated) {
-    return null; // O useEffect já fará o redirecionamento
-  }
-
-  // Verificar permissões se necessário
-  if (requirePermission && !canAccess.route(pathname)) {
+  // Só verificar permissões quando estiver completamente inicializado e autenticado
+  if (isInitialized && !loading && isAuthenticated && requirePermission && !canAccess.route(pathname)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
